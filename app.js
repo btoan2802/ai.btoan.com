@@ -1497,19 +1497,6 @@ window.visualViewport?.addEventListener("resize",()=>{
     }
 
 })
-function showRegister(){
-
-document.getElementById("loginForm").style.display="none"
-document.getElementById("registerForm").style.display="block"
-
-}
-
-function showLogin(){
-
-document.getElementById("loginForm").style.display="block"
-document.getElementById("registerForm").style.display="none"
-
-}
 
 async function detectCorrection(userText){
 
