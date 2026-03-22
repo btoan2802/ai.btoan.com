@@ -716,3 +716,31 @@ color:white;
   }
 
 }
+@media (max-width:768px){
+
+  html, body{
+    width:100%;
+    overflow-x:hidden !important;
+  }
+
+  #loginBox{
+    padding:10px;
+  }
+
+  #loginBox .container{
+    width:100% !important;
+    max-width:100% !important;
+    padding:0 10px;
+  }
+
+  .form-box form{
+    width:100%;
+    max-width:100%;
+    box-sizing:border-box;
+  }
+
+  .input-box input{
+    width:100%;
+  }
+
+}

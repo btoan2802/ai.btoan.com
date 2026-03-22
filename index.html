@@ -210,7 +210,7 @@ background:#1f63d6;
 <div id="loginBox">
 
 <div class="container active">
-          <div class="form-box login">
+          <div class="form-box login" id="loginForm">
               <form onsubmit="event.preventDefault(); login();">
 			  <div id="loginMsg" style="color:red;"></div>
                   <h1>Login</h1>
@@ -228,7 +228,7 @@ background:#1f63d6;
                   <button type="submit" class="btn">Login</button>
                   <div class="switch-auth">
                     Chưa có tài khoản? 
-                    <span onclick="showRegister()">Đăng ký</span>
+                    <span onclick="showRegisterForm()">Đăng ký</span>
                   </div>
                   <p>or login with social platforms</p>
                   <div class="social-icons">
@@ -240,7 +240,7 @@ background:#1f63d6;
               </form>
           </div>
 
-          <div class="form-box register">
+          <div class="form-box register" id="registerForm">
               <form onsubmit="event.preventDefault(); register();">
 			  <div id="registerMsg" style="color:red;"></div>
 				<h1>Registration</h1>
@@ -264,7 +264,7 @@ background:#1f63d6;
 				<button type="submit" class="btn">Register</button>
         <div class="switch-auth">
   Đã có tài khoản? 
-  <span onclick="showLogin()">Đăng nhập</span>
+  <span onclick="showLoginForm()">Đăng nhập</span>
 </div>
 				<p>or register with social platforms</p>
 
