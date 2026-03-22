@@ -1786,25 +1786,27 @@ const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
 const data = await res.json()
 
 if(data.has_profile){
-    // 👉 vào chat luôn
+
+    document.getElementById("profileBox").style.display="none"
     document.getElementById("chatApp").style.display="flex"
 
-    setTimeout(()=>{
-        addBotBubble("chào bạn 😄 tôi là Btoan AI.")
-    },100)
-
-    loadHistory()
-
 }else{
-    // 👉 bắt nhập thông tin
+
     document.getElementById("profileBox").style.display="flex"
+    document.getElementById("chatApp").style.display="none"
 }
 
 }
 async function saveProfile(){
 
+if(localStorage.getItem("has_profile") === "1"){
+    document.getElementById("profileBox").style.display="none"
+    document.getElementById("chatApp").style.display="flex"
+    return
+}
+
 const full_name = document.getElementById("pf_name").value.trim()
-let dob = document.getElementById("pf_dob").value.trim()
+const dob = document.getElementById("pf_dob").value
 const user_id = localStorage.getItem("user_id")
 
 // ===== validate =====
@@ -1849,6 +1851,7 @@ if(data.success){
 
     // lưu tên để dùng UI
     localStorage.setItem("full_name", full_name)
+    localStorage.setItem("has_profile","1")
 
     // set lên topbar luôn (nếu có)
     const userNameEl = document.getElementById("userName")

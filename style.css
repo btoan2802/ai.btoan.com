@@ -599,15 +599,15 @@ color:white;
   display:flex;
 }
 .send-btn{
-  width:44px;
-  height:44px;
-  padding:0;
-  border-radius:12px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  background: linear-gradient(135deg,#6366f1,#4f46e5);
-  border:none;
+  width: 48px !important;
+  height: 44px;
+  padding: 0 !important;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+#msg{
+  flex:1;
 }
 
 .send-btn i{
