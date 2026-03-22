@@ -30,49 +30,15 @@ if(!$username || !$password){
 }
 
 # kiểm tra độ dài
-if(strlen($password) < 8){
+if(strlen($password) < 6){
     echo json_encode([
         "status"=>"error",
-        "msg"=>"Mật khẩu phải tối thiểu 8 ký tự"
+        "msg"=>"Mật khẩu phải tối thiểu 6 ký tự"
     ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-# chữ hoa
-if(!preg_match('/[A-Z]/', $password)){
-    echo json_encode([
-        "status"=>"error",
-        "msg"=>"Mật khẩu phải có chữ hoa"
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
 
-# chữ thường
-if(!preg_match('/[a-z]/', $password)){
-    echo json_encode([
-        "status"=>"error",
-        "msg"=>"Mật khẩu phải có chữ thường"
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-# số
-if(!preg_match('/[0-9]/', $password)){
-    echo json_encode([
-        "status"=>"error",
-        "msg"=>"Mật khẩu phải có số"
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
-
-# ký tự đặc biệt
-if(!preg_match('/[\W]/', $password)){
-    echo json_encode([
-        "status"=>"error",
-        "msg"=>"Mật khẩu phải có ký tự đặc biệt"
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
-}
 
 $hash = $password; // bạn đang lưu plain password
 
