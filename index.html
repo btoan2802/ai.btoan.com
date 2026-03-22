@@ -205,12 +205,11 @@ background:#1f63d6;
 
 <body class="login-page">
 
-
 <!-- LOGIN -->
 
 <div id="loginBox">
 
-<div class="container active">
+<div class="container" id="authContainer">
           <div class="form-box login">
               <form onsubmit="event.preventDefault(); login();">
 			  <div id="loginMsg" style="color:red;"></div>
@@ -275,13 +274,13 @@ background:#1f63d6;
               <div class="toggle-panel toggle-left">
                   <h1>Hello, Welcome!</h1>
                   <p>Don't have an account?</p>
-                  <button class="btn register-btn">Register</button>
+                  <button class="btn register-btn" onclick="showRegister()">Register</button>
               </div>
 
               <div class="toggle-panel toggle-right">
                   <h1>Welcome Back!</h1>
                   <p>Already have an account?</p>
-                  <button class="btn login-btn">Login</button>
+                  <button class="btn login-btn" onclick="showLogin()">Login</button>
               </div>
           </div>
       </div>
