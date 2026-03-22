@@ -1882,10 +1882,9 @@ try{
 if(data.success){
 
 
-    if(data.full_name){
+        
         localStorage.setItem("full_name", data.full_name)
         localStorage.setItem("has_profile","1")
-    }
 
     // ❌ KHÔNG remove nữa
     const loginBox = document.getElementById("loginBox")
