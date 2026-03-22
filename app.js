@@ -816,15 +816,25 @@ const res = await fetch("/ai/api/login.php",{
     })
 });
 
+const raw = await res.text();
+console.log("RAW LOGIN:", raw);
+
 let data;
 try{
-    data = await res.json();
-}catch{
-    document.getElementById("loginMsg").innerText = "Server lỗi (JSON)";
+    data = JSON.parse(raw);
+}catch(e){
+    console.error("❌ JSON lỗi:", raw);
+    document.getElementById("loginMsg").innerText = "Server trả JSON lỗi";
     return;
 }
 
+console.log("PARSED:", data);
+
 console.log("LOGIN RESPONSE:", data);
+
+if(!data.user_id){
+    console.error("❌ user_id KHÔNG tồn tại trong response", data)
+}
 
 if(data.success){
 
