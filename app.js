@@ -1155,7 +1155,7 @@ imgInput.files = dt.files
 
 
 window.onload = function(){
-    showLogin()
+    
 	chatEl = document.getElementById("chat") || null;
 	msgEl = document.getElementById("msg") || null;
 
