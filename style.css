@@ -656,7 +656,7 @@ color:white;
 #attachments{
   flex-shrink:0;
 }
-@media (max-width: 768px){
+/* @media (max-width: 768px){
 
   body{
     overflow-x: hidden;
@@ -719,4 +719,4 @@ color:white;
     font-size: 16px;
   }
 
-}
+} */
