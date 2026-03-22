@@ -375,7 +375,7 @@ max-height:180px;
   display:none;
   height:100dvh;
   background:#f4f6fb;
-  pointer-events:none; /* 🔥 QUAN TRỌNG */
+  pointer-events:auto; /* 🔥 QUAN TRỌNG */
 }
 
 #chatApp > .d-flex{
