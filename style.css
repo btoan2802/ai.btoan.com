@@ -656,6 +656,3 @@ color:white;
 #attachments{
   flex-shrink:0;
 }
-*{
-  outline: 1px solid red;
-}
