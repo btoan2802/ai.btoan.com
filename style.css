@@ -744,3 +744,16 @@ color:white;
   }
 
 }
+@media (max-width:768px){
+
+  .toggle-box{
+    display:none !important;
+    pointer-events:none !important;
+    z-index:-1 !important;
+  }
+
+}
+.form-box{
+  position:relative;
+  z-index:10;
+}
