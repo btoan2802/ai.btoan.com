@@ -372,9 +372,10 @@ max-height:180px;
 /* layout chat + sidebar */
 
 #chatApp{
-display:none;
-height:100dvh;
-background:#f4f6fb;
+  display:none;
+  height:100dvh;
+  background:#f4f6fb;
+  pointer-events:none; /* 🔥 QUAN TRỌNG */
 }
 
 #chatApp > .d-flex{
@@ -593,7 +594,7 @@ color:white;
   position:fixed;
   inset:0;
   background:#fff;
-  z-index:9999;
+  z-index:999999; /* 🔥 tăng */
   display:flex;
 }
 .send-btn{
