@@ -1790,14 +1790,25 @@ return text
 }
 async function checkProfile(user_id){
 
+// 🔥 ƯU TIÊN localStorage
+if(localStorage.getItem("has_profile") === "1"){
 
-document.getElementById("userName").innerText =
-    localStorage.getItem("full_name") || "User"
+    document.getElementById("profileBox").style.display="none"
+    document.getElementById("chatApp").style.display="flex"
 
+    document.getElementById("userName").innerText =
+        localStorage.getItem("full_name") || "User"
+
+    return
+}
+
+// 🔽 fallback gọi API
 const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
 const data = await res.json()
 
 if(data.has_profile){
+
+    localStorage.setItem("has_profile","1") // 🔥 thêm dòng này
 
     document.getElementById("profileBox").style.display="none"
     document.getElementById("chatApp").style.display="flex"
@@ -1868,23 +1879,16 @@ try{
 // ===== success =====
 if(data.success){
 
-    localStorage.setItem("full_name", full_name)
-    localStorage.setItem("has_profile","1")
+    localStorage.setItem("user_id", data.user_id);
 
-    const userNameEl = document.getElementById("userName")
-    if(userNameEl){
-        userNameEl.innerText = full_name
+    if(data.full_name){
+        localStorage.setItem("full_name", data.full_name)
+        localStorage.setItem("has_profile","1") // 🔥 THÊM
     }
 
-    document.getElementById("profileBox").remove()
-    document.getElementById("chatApp").style.display="flex"
+    document.getElementById("loginBox").remove();
 
-    setTimeout(()=>{
-        addBotBubble("chào bạn 😄 tôi là Btoan AI.")
-    },100)
-
-    loadHistory()
-
+    checkProfile(data.user_id);
 }else{
     document.getElementById("profileMsg").innerText = "Lỗi lưu dữ liệu"
 }
