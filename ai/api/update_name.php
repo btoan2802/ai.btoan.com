@@ -31,9 +31,7 @@ try{
     $stmt->execute([$full_name, $dob, $user_id]);
 
     echo json_encode([
-        "success" => true,
-        "user_id" => $user_id,
-        "full_name" => $full_name
+        "success" => true
     ]);
 
 }catch(Exception $e){

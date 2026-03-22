@@ -18,10 +18,7 @@ $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
 if($user && $user['full_name'] && $user['dob']){
-    echo json_encode([
-        "has_profile" => true,
-        "full_name" => $user['full_name']
-    ]);
+    echo json_encode(["has_profile"=>true]);
 }else{
-    echo json_encode(["has_profile" => false]);
+    echo json_encode(["has_profile"=>false]);
 }
