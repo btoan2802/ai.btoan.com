@@ -1,28 +1,33 @@
-const container = document.querySelector('.container');
-const registerBtn = document.querySelector('.register-btn');
-const loginBtn = document.querySelector('.login-btn');
+function isMobile(){
+  return window.innerWidth <= 768;
+}
 
-registerBtn.addEventListener('click', () => {
-    container.classList.add('active');
-})
-
-loginBtn.addEventListener('click', () => {
-    container.classList.remove('active');
-})
 function showRegister(){
-  document.querySelector('.login').classList.remove('active');
-  document.querySelector('.register').classList.add('active');
+  if(isMobile()){
+    document.querySelector('.login').style.display = 'none';
+    document.querySelector('.register').style.display = 'block';
+  }else{
+    document.querySelector('.container').classList.add('active');
+  }
 }
 
 function showLogin(){
-  document.querySelector('.register').classList.remove('active');
-  document.querySelector('.login').classList.add('active');
+  if(isMobile()){
+    document.querySelector('.login').style.display = 'block';
+    document.querySelector('.register').style.display = 'none';
+  }else{
+    document.querySelector('.container').classList.remove('active');
+  }
 }
 
-/* Mặc định mobile mở login */
+/* fix nút bên panel (desktop vẫn dùng) */
+document.querySelector('.register-btn').onclick = showRegister;
+document.querySelector('.login-btn').onclick = showLogin;
+
+/* mặc định mobile */
 window.addEventListener("load", () => {
-  if(window.innerWidth <= 768){
-    document.querySelector('.login').classList.add('active');
-    document.querySelector('.register').classList.remove('active');
+  if(isMobile()){
+    document.querySelector('.login').style.display = 'block';
+    document.querySelector('.register').style.display = 'none';
   }
 });

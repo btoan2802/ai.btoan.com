@@ -705,3 +705,14 @@ color:white;
     cursor:pointer;
   }
 }
+@media (max-width:768px){
+
+  .login{
+    display:block !important;
+  }
+
+  .register{
+    display:none !important;
+  }
+
+}
