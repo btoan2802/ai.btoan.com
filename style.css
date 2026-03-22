@@ -656,74 +656,67 @@ color:white;
 #attachments{
   flex-shrink:0;
 }
-@media (max-width: 768px) {
+@media (max-width: 768px){
 
-  /* ===== HEADER ===== */
-  .overlay-container {
-    height: 35vh !important;
-    padding: 20px;
+  body{
+    overflow-x: hidden;
   }
 
-  .overlay h1 {
-    font-size: 22px;
+  .container{
+    flex-direction: column !important;
+    height: auto !important;
   }
 
-  .overlay p {
+  .left-panel{
+    width: 100% !important;
+    height: 200px !important;
+    padding: 20px !important;
+    text-align: center;
+  }
+
+  .left-panel h1{
+    font-size: 24px !important;
+  }
+
+  .left-panel p{
+    font-size: 14px !important;
+  }
+
+  .left-panel button{
+    padding: 8px 20px !important;
     font-size: 14px;
   }
 
-  .overlay button {
-    padding: 10px 20px;
-    font-size: 14px;
+  .right-panel{
+    width: 100% !important;
+    padding: 20px !important;
   }
 
-  /* ===== FORM ===== */
-  .form-container {
-    width: 100%;
-    padding: 20px;
+  .right-panel h1{
+    font-size: 26px;
+    margin-bottom: 10px;
   }
 
-  form h1 {
-    font-size: 24px;
-    margin-bottom: 20px;
-  }
-
-  .input-box input {
-    height: 45px;
-    padding: 0 12px;
-    font-size: 14px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-  }
-
-  .input-box {
-    margin-bottom: 15px;
-  }
-
-  /* ===== BUTTON LOGIN ===== */
-  button[type="submit"] {
-    height: 45px;
-    border-radius: 8px;
-    font-size: 15px;
-    margin-top: 10px;
-  }
-
-  /* ===== FORGOT PASSWORD ===== */
-  form a {
-    display: block;
+  .input-box{
     margin: 10px 0;
-    font-size: 13px;
   }
 
-  /* ===== SOCIAL ===== */
-  .social-container {
-    margin-top: 15px;
+  .input-box input{
+    padding: 10px !important;
+    font-size: 14px;
   }
 
-  .social-container a {
-    width: 45px;
-    height: 45px;
-    margin: 0 5px;
+  .btn{
+    padding: 10px !important;
+    font-size: 14px;
+  }
+
+  .social-icons{
+    gap: 10px;
+  }
+
+  .social-icons i{
     font-size: 16px;
   }
+
 }
