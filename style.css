@@ -656,80 +656,39 @@ color:white;
 #attachments{
   flex-shrink:0;
 }
-
-
-
-
-body.login-page{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  height:100vh;
-}
-body:not(.login-page){
-  display:block;
-}
-/* @media (max-width: 768px){
+@media (max-width: 768px){
 
   body{
     overflow-x: hidden;
   }
 
-  .container{
-    flex-direction: column !important;
-    height: auto !important;
+  #loginBox .container{
+    flex-direction: column;
+    width: 100%;
+    max-width: 380px;
+    height: auto;
+    margin: auto;
   }
 
-  .left-panel{
+  .form-box{
     width: 100% !important;
-    height: 200px !important;
-    padding: 20px !important;
-    text-align: center;
+    position: relative !important;
   }
 
-  .left-panel h1{
-    font-size: 24px !important;
-  }
-
-  .left-panel p{
-    font-size: 14px !important;
-  }
-
-  .left-panel button{
-    padding: 8px 20px !important;
-    font-size: 14px;
-  }
-
-  .right-panel{
+  .toggle-box{
     width: 100% !important;
-    padding: 20px !important;
+    height: 180px;
   }
 
-  .right-panel h1{
-    font-size: 26px;
-    margin-bottom: 10px;
-  }
-
-  .input-box{
-    margin: 10px 0;
+  .toggle-panel{
+    position: relative !important;
+    width: 100%;
+    height: auto;
+    border-radius: 0;
   }
 
   .input-box input{
-    padding: 10px !important;
     font-size: 14px;
   }
 
-  .btn{
-    padding: 10px !important;
-    font-size: 14px;
-  }
-
-  .social-icons{
-    gap: 10px;
-  }
-
-  .social-icons i{
-    font-size: 16px;
-  }
-
-} */
+}
