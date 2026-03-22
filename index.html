@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="vi">
+<head>
+
+<link rel="icon" href="favicon.ico">
+
+<script>
+window.MathJax = {
+tex: {
+inlineMath: [['$', '$'], ['\\(', '\\)']],
+displayMath: [['$$','$$'], ['\\[','\\]']]
+},
+svg: {
+fontCache: 'global'
+}
+};
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+<link rel="stylesheet"
+href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Btoan AI</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="./style.css">
+
+<style>
+
+/* GLOBAL */
+
+body{
+margin:0;
+font-family:system-ui,-apple-system,Segoe UI,Roboto;
+background:#f8fafc;
+height:100vh;
+}
+
+/* LOGIN */
+
+#loginBox{
+display:flex;
+align-items:center;
+justify-content:center;
+height:100vh;
+}
+
+.auth-card{
+width:360px;
+background:#fff;
+border-radius:14px;
+padding:30px;
+box-shadow:0 20px 60px rgba(0,0,0,0.2);
+}
+
+.auth-title{
+font-size:26px;
+font-weight:700;
+text-align:center;
+margin-bottom:20px;
+}
+
+.form-control{
+border-radius:8px;
+padding:10px 12px;
+}
+
+.password-box{
+position:relative;
+}
+
+.toggle-pass{
+position:absolute;
+right:10px;
+top:50%;
+transform:translateY(-50%);
+cursor:pointer;
+color:#888;
+}
+
+.btn-primary{
+background:#2b7cff;
+border:none;
+border-radius:8px;
+font-weight:600;
+}
+
+.btn-primary:hover{
+background:#1f63d6;
+}
+
+.btn-success{
+border-radius:8px;
+font-weight:600;
+}
+
+.btn-outline-secondary{
+border-radius:8px;
+}
+
+#loginMsg,
+#registerMsg{
+font-size:14px;
+min-height:18px;
+}
+
+.auth-footer{
+text-align:center;
+margin-top:15px;
+font-size:14px;
+color:#666;
+}
+
+.auth-footer span{
+color:#2b7cff;
+cursor:pointer;
+font-weight:600;
+}
+
+/* APP */
+
+#chatApp{
+display:none;
+width:100%;
+height:100vh;
+background:#f4f6fb;
+}
+
+.sidebar{
+width:260px;
+background:#fff;
+border-right:1px solid #ddd;
+height:100vh;
+overflow-y:auto;
+}
+
+.sidebar-title{
+font-weight:bold;
+padding:15px;
+border-bottom:1px solid #eee;
+}
+
+.chat-history-item{
+padding:10px 15px;
+cursor:pointer;
+border-bottom:1px solid #f0f0f0;
+}
+
+.chat-history-item:hover{
+background:#f5f5f5;
+}
+
+.topbar{
+display:flex;
+align-items:center;
+padding:10px 15px;
+background:#fff;
+border-bottom:1px solid #ddd;
+}
+
+.menu-btn{
+font-size:20px;
+margin-right:10px;
+cursor:pointer;
+border:none;
+background:none;
+}
+
+#chat{
+overflow:auto;
+}
+
+.new-chat-btn{
+padding:10px;
+margin:10px;
+background:#2b7cff;
+color:white;
+border-radius:6px;
+cursor:pointer;
+text-align:center;
+font-weight:600;
+}
+
+.new-chat-btn:hover{
+background:#1f63d6;
+}
+
+</style>
+
+</head>
+
+<body>
+
+
+<!-- LOGIN -->
+
+<div id="loginBox">
+
+<div class="auth-card">
+
+<div class="auth-title">🤖 Btoan AI</div>
+
+<!-- LOGIN -->
+
+<div id="loginForm">
+
+<div id="loginMsg" class="text-danger mb-2"></div>
+
+<input id="login_username"
+class="form-control mb-3"
+placeholder="Username">
+
+<div class="password-box mb-3">
+
+<input id="login_password"
+class="form-control"
+type="password"
+placeholder="Password">
+
+<i class="bi bi-eye toggle-pass"
+onclick="togglePassword('login_password', this)"></i>
+
+</div>
+
+<button onclick="login()" class="btn btn-primary w-100 mb-3">
+Đăng nhập
+</button>
+
+<div class="auth-footer">
+Chưa có tài khoản?
+<span onclick="showRegister()">Đăng ký</span>
+</div>
+
+</div>
+
+
+<!-- REGISTER -->
+
+<div id="registerForm" style="display:none">
+
+<div id="registerMsg" class="text-danger mb-2"></div>
+
+<input id="reg_username"
+class="form-control mb-3"
+placeholder="Username">
+
+<div class="password-box mb-3">
+
+<input id="reg_password"
+class="form-control"
+type="password"
+placeholder="Password">
+
+<i class="bi bi-eye toggle-pass"
+onclick="togglePassword('reg_password', this)"></i>
+
+</div>
+
+<div class="password-box mb-3">
+
+<input id="reg_password2"
+class="form-control"
+type="password"
+placeholder="Nhập lại password">
+
+<i class="bi bi-eye toggle-pass"
+onclick="togglePassword('reg_password2', this)"></i>
+
+</div>
+
+<button onclick="register()" class="btn btn-success w-100 mb-3">
+Tạo tài khoản
+</button>
+
+<div class="auth-footer">
+Đã có tài khoản?
+<span onclick="showLogin()">Đăng nhập</span>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- APP -->
+
+<div id="chatApp">
+
+<div class="d-flex" style="height:100vh">
+
+<!-- SIDEBAR -->
+
+<div id="sidebar" class="sidebar">
+
+<div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
+
+<div class="sidebar-title">
+Lịch sử chat
+</div>
+
+<div id="historyList"></div>
+
+</div>
+
+
+<!-- MAIN -->
+
+<div class="flex-grow-1 d-flex flex-column">
+
+
+<!-- TOPBAR -->
+
+<div class="topbar">
+
+<button class="menu-btn" onclick="toggleSidebar()">☰</button>
+
+<div class="fw-bold">Btoan AI</div>
+
+<div class="ms-auto">
+
+<button class="btn btn-sm btn-danger" onclick="logout()">Đăng xuất</button>
+
+</div>
+
+</div>
+
+
+<!-- CHAT -->
+
+<main id="chat" class="flex-grow-1 p-3"></main>
+
+<div id="status" class="p-2 text-muted" style="display:none"></div>
+
+
+<!-- INPUT -->
+
+<div class="p-2 border-top">
+
+<div class="d-flex align-items-center">
+
+<input id="fileImg" type="file" accept="image/*" multiple hidden>
+<input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
+<input id="fileDoc" type="file"
+accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+multiple hidden>
+
+<div class="dropdown">
+
+<button class="btn btn-light" data-bs-toggle="dropdown">+</button>
+
+<ul class="dropdown-menu">
+
+<li>
+<button id="pickImage" class="dropdown-item">
+🖼️ Gửi ảnh
+</button>
+</li>
+
+<li>
+<button id="pickCamera" class="dropdown-item">
+📷 Chụp ảnh
+</button>
+</li>
+
+<li>
+<button id="pickFile" class="dropdown-item">
+📄 Gửi tệp
+</button>
+</li>
+
+</ul>
+
+</div>
+
+<div class="dropdown mx-1">
+  <button id="modeBtn"
+          class="btn btn-light btn-sm dropdown-toggle"
+          data-bs-toggle="dropdown">
+    ⚡ Fast
+  </button>
+
+  <ul class="dropdown-menu">
+    <li>
+      <button class="dropdown-item" onclick="setMode('fast')">
+        ⚡ Fast
+      </button>
+    </li>
+    <li>
+      <button class="dropdown-item" onclick="setMode('thinking')">
+        🧠 Thinking
+      </button>
+    </li>
+  </ul>
+</div>
+
+<textarea
+id="msg"
+class="form-control mx-2"
+placeholder="nhập tin nhắn..."
+rows="1"
+></textarea>
+
+<button id="send" class="btn btn-primary">
+Gửi
+</button>
+
+</div>
+
+<div id="attachments"></div>
+
+</div>
+
+
+<div class="text-center small p-2">
+© AI được thành lập bởi Dev Nguyễn Bảo Toàn
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+
+<script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
+
+<script src="./app.js"></script>
+
+</body>
+</html>
