@@ -1326,7 +1326,19 @@ send()
 }
 })
 
+// ===== auto format dd/mm/yyyy =====
+const dobInput = document.getElementById("pf_dob")
 
+if(dobInput){
+  dobInput.addEventListener("input", (e)=>{
+    let v = e.target.value.replace(/\D/g,"")
+
+    if(v.length >= 2) v = v.slice(0,2) + "/" + v.slice(2)
+    if(v.length >= 5) v = v.slice(0,5) + "/" + v.slice(5,9)
+
+    e.target.value = v
+  })
+}
 
 
 }
@@ -1799,14 +1811,8 @@ if(data.has_profile){
 }
 async function saveProfile(){
 
-if(localStorage.getItem("has_profile") === "1"){
-    document.getElementById("profileBox").style.display="none"
-    document.getElementById("chatApp").style.display="flex"
-    return
-}
-
 const full_name = document.getElementById("pf_name").value.trim()
-const dob = document.getElementById("pf_dob").value
+let dob = document.getElementById("pf_dob").value.trim()
 const user_id = localStorage.getItem("user_id")
 
 // ===== validate =====
@@ -1821,9 +1827,22 @@ if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)){
     return
 }
 
-// ===== convert dd/mm/yyyy → yyyy-mm-dd =====
-const parts = dob.split("/")
-dob = `${parts[2]}-${parts[1]}-${parts[0]}`
+// ===== check ngày hợp lệ =====
+const [day, month, year] = dob.split("/")
+
+const dateObj = new Date(`${year}-${month}-${day}`)
+
+if(
+    dateObj.getFullYear() != year ||
+    (dateObj.getMonth() + 1) != month ||
+    dateObj.getDate() != day
+){
+    document.getElementById("profileMsg").innerText = "Ngày không hợp lệ"
+    return
+}
+
+// ===== convert → yyyy-mm-dd =====
+dob = `${year}-${month}-${day}`
 
 // ===== gửi API =====
 const res = await fetch("/ai/api/update_name.php",{
@@ -1849,20 +1868,15 @@ try{
 // ===== success =====
 if(data.success){
 
-    // lưu tên để dùng UI
     localStorage.setItem("full_name", full_name)
     localStorage.setItem("has_profile","1")
 
-    // set lên topbar luôn (nếu có)
     const userNameEl = document.getElementById("userName")
     if(userNameEl){
         userNameEl.innerText = full_name
     }
 
-    // đóng form profile
     document.getElementById("profileBox").remove()
-
-    // mở chat
     document.getElementById("chatApp").style.display="flex"
 
     setTimeout(()=>{
