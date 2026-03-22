@@ -1870,14 +1870,16 @@ if(data.success){
 
     if(data.full_name){
         localStorage.setItem("full_name", data.full_name)
-        localStorage.setItem("has_profile","1") // 🔥 THÊM
+        localStorage.setItem("has_profile","1")
     }
 
-    document.getElementById("loginBox").remove();
+    // ❌ KHÔNG remove nữa
+    const loginBox = document.getElementById("loginBox")
+    if(loginBox){
+        loginBox.style.display = "none"
+    }
 
     checkProfile(data.user_id);
-}else{
-    document.getElementById("profileMsg").innerText = "Lỗi lưu dữ liệu"
 }
 
 }
