@@ -212,14 +212,15 @@ background:#1f63d6;
 
 <div class="container">
           <div class="form-box login">
-              <form action="#">
+              <form onsubmit="event.preventDefault(); login();">
+			  <div id="loginMsg" style="color:red;"></div>
                   <h1>Login</h1>
                   <div class="input-box">
-                      <input type="text" placeholder="Username" required>
+                      <input id="login_username" type="text" placeholder="Username" required>
                       <i class='bx bxs-user'></i>
                   </div>
                   <div class="input-box">
-                      <input type="password" placeholder="Password" required>
+                      <input id="login_password" type="password" placeholder="Password" required>
                       <i class='bx bxs-lock-alt' ></i>
                   </div>
                   <div class="forgot-link">
@@ -237,29 +238,37 @@ background:#1f63d6;
           </div>
 
           <div class="form-box register">
-              <form action="#">
-                  <h1>Registration</h1>
-                  <div class="input-box">
-                      <input type="text" placeholder="Username" required>
-                      <i class='bx bxs-user'></i>
-                  </div>
-                  <div class="input-box">
-                      <input type="email" placeholder="Email" required>
-                      <i class='bx bxs-envelope' ></i>
-                  </div>
-                  <div class="input-box">
-                      <input type="password" placeholder="Password" required>
-                      <i class='bx bxs-lock-alt' ></i>
-                  </div>
-                  <button type="submit" class="btn">Register</button>
-                  <p>or register with social platforms</p>
-                  <div class="social-icons">
-                      <a href="#"><i class='bx bxl-google' ></i></a>
-                      <a href="#"><i class='bx bxl-facebook' ></i></a>
-                      <a href="#"><i class='bx bxl-github' ></i></a>
-                      <a href="#"><i class='bx bxl-linkedin' ></i></a>
-                  </div>
-              </form>
+              <form onsubmit="event.preventDefault(); register();">
+			  <div id="registerMsg" style="color:red;"></div>
+				<h1>Registration</h1>
+
+				<div class="input-box">
+					<input id="reg_username" type="text" placeholder="Username" required>
+					<i class='bx bxs-user'></i>
+				</div>
+
+				<div class="input-box">
+					<input id="reg_password" type="password" placeholder="Password" required>
+					<i class='bx bxs-lock-alt'></i>
+				</div>
+
+				<!-- FIX ở đây -->
+				<div class="input-box">
+					<input id="reg_password2" type="password" placeholder="Confirm Password" required>
+					<i class='bx bxs-lock-alt'></i>
+				</div>
+
+				<button type="submit" class="btn">Register</button>
+
+				<p>or register with social platforms</p>
+
+				<div class="social-icons">
+					<a href="#"><i class='bx bxl-google'></i></a>
+					<a href="#"><i class='bx bxl-facebook'></i></a>
+					<a href="#"><i class='bx bxl-github'></i></a>
+					<a href="#"><i class='bx bxl-linkedin'></i></a>
+				</div>
+			</form>
           </div>
 
           <div class="toggle-box">
