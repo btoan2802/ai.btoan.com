@@ -905,7 +905,7 @@ document.getElementById("reg_password2").value=""
 // ====== LOGOUT ======
 function logout(){
 
-localStorage.removeItem("user_id");
+localStorage.clear();
 location.reload();
 
 }
@@ -1790,35 +1790,22 @@ return text
 }
 async function checkProfile(user_id){
 
-// 🔥 ƯU TIÊN localStorage
-if(localStorage.getItem("has_profile") === "1"){
-
-    document.getElementById("profileBox").style.display="none"
-    document.getElementById("chatApp").style.display="flex"
-
-    document.getElementById("userName").innerText =
-        localStorage.getItem("full_name") || "User"
-
-    return
-}
-
-// 🔽 fallback gọi API
 const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
 const data = await res.json()
 
 if(data.has_profile){
 
-    localStorage.setItem("has_profile","1") // 🔥 thêm dòng này
-
     document.getElementById("profileBox").style.display="none"
     document.getElementById("chatApp").style.display="flex"
+
+    document.getElementById("userName").innerText =
+        data.full_name || "User"
 
 }else{
 
     document.getElementById("profileBox").style.display="flex"
     document.getElementById("chatApp").style.display="none"
 }
-
 }
 async function saveProfile(){
 
