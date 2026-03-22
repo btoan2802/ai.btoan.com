@@ -637,3 +637,17 @@ color:white;
   letter-spacing:1px;
   font-weight:500;
 }
+.dropdown > button{
+  width:40px;
+  height:40px;
+  border-radius:10px;
+  padding:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.chat-history-item button{
+  border:none;
+  background:none;
+  font-size:18px;
+}
