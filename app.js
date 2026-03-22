@@ -802,46 +802,47 @@ addBotBubble("lỗi: "+e.message)
 // ====== LOGIN ======
 async function login(){
 
-localStorage.setItem("full_name", data.full_name || "")
+const username = document.getElementById("login_username").value;
+const password = document.getElementById("login_password").value;
 
-const username=document.getElementById("login_username").value;
-const password=document.getElementById("login_password").value;
-
-const res=await fetch("/ai/api/login.php",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-username,
-password
-})
+const res = await fetch("/ai/api/login.php",{
+    method:"POST",
+    headers:{
+        "Content-Type":"application/json"
+    },
+    body:JSON.stringify({
+        username,
+        password
+    })
 });
 
-const data=await res.json();
+let data;
+try{
+    data = await res.json();
+}catch{
+    document.getElementById("loginMsg").innerText = "Server lỗi (JSON)";
+    return;
+}
 
-console.log("LOGIN RESPONSE:",data);
+console.log("LOGIN RESPONSE:", data);
 
 if(data.success){
 
-localStorage.setItem("user_id",data.user_id)
+    // ✅ lưu user_id
+    localStorage.setItem("user_id", data.user_id);
 
-document.getElementById("loginBox").remove()
+    // ✅ lưu tên (nếu có)
+    if(data.full_name){
+        localStorage.setItem("full_name", data.full_name);
+    }
 
-// 👉 check profile trước
-checkProfile(data.user_id)
+    document.getElementById("loginBox").remove();
 
-// 🔥 delay để DOM ready
-setTimeout(()=>{
-    addBotBubble("chào bạn 😄 tôi là Btoan AI.")
-},100)
+    // 👉 check profile
+    checkProfile(data.user_id);
 
-loadHistory()
-}
-else{
-
-document.getElementById("loginMsg").innerText = "Sai tài khoản hoặc mật khẩu";
-
+}else{
+    document.getElementById("loginMsg").innerText = "Sai tài khoản hoặc mật khẩu";
 }
 
 }
