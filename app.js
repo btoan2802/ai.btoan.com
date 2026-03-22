@@ -1155,80 +1155,179 @@ imgInput.files = dt.files
 
 
 window.onload = function(){
+	chatEl = document.getElementById("chat") || null;
+	msgEl = document.getElementById("msg") || null;
 
     chatEl = document.getElementById("chat");
-    msgEl = document.getElementById("msg");
     statusEl = document.getElementById("status");
+    msgEl = document.getElementById("msg");
+	
 
-    lastExportContent = localStorage.getItem("lastExportContent") || "";
+    lastExportContent = localStorage.getItem("lastExportContent") || ""
 
-    // ✅ chỉ chạy khi tồn tại msgEl
-    if(msgEl){
+    // 🔥 đặt SAU khi có msgEl
+if(msgEl){
 
-        msgEl.addEventListener("focus", ()=>{
+  msgEl.addEventListener("focus", ()=>{
 
-            // ❌ CHẶN MOBILE
-            if(window.innerWidth <= 768) return;
+  // ❌ CHẶN MOBILE
+  if(window.innerWidth <= 768) return
 
-            setTimeout(()=>{
-                msgEl.scrollIntoView({block:"center"});
-            },300);
+  setTimeout(()=>{
+    msgEl.scrollIntoView({block:"center"});
+  },300)
 
-        });
+})
 
-        // auto resize
-        msgEl.addEventListener("input", ()=>{
-            msgEl.style.height = "auto";
-            msgEl.style.height = msgEl.scrollHeight + "px";
-        });
-    }
 
-    // ✅ QUAN TRỌNG: check chatEl trước khi dùng
-    if(chatEl){
 
-        chatEl.addEventListener("dragover",(e)=>{
-            e.preventDefault();
-        });
 
-        chatEl.addEventListener("drop",(e)=>{
-            e.preventDefault();
-            // giữ nguyên code của mày ở đây
-        });
-    }
+  // auto resize
+  msgEl.addEventListener("input", ()=>{
+    msgEl.style.height = "auto";
+    msgEl.style.height = msgEl.scrollHeight + "px";
+  })
 
-    attachments = document.getElementById("attachments");
+}
+sendBtn = document.getElementById("send");
 
-    const uid = localStorage.getItem("user_id");
+if(chatEl){
 
-    if(uid && uid !== "undefined"){
+chatEl.addEventListener("dragover",(e)=>{
+    e.preventDefault()
+})
 
-        const loginBox = document.getElementById("loginBox");
-        const chatApp = document.getElementById("chatApp");
+chatEl.addEventListener("drop",(e)=>{
+    e.preventDefault()
 
-        if(loginBox) loginBox.style.display = "none";
-        if(chatApp) chatApp.style.display = "flex";
+    const droppedFiles = e.dataTransfer.files
+    const docInput = document.getElementById("fileDoc")
+    const imgInput = document.getElementById("fileImg")
 
-        checkProfile(uid);
-        loadHistory();
-        newChat();
+    const dtDoc = new DataTransfer()
+    const dtImg = new DataTransfer()
 
-    }else{
+    Array.from(droppedFiles).forEach(file=>{
+        if(file.type.startsWith("image")){
+            const reader = new FileReader()
 
-        const loginBox = document.getElementById("loginBox");
-        const chatApp = document.getElementById("chatApp");
+            reader.onload = function(ev){
+                const div=document.createElement("div")
+                div.className="atimg"
 
-        if(loginBox) loginBox.style.display = "flex";
-        if(chatApp) chatApp.style.display = "none";
-    }
+                div.innerHTML=`
+                <img src="${ev.target.result}">
+                <button class="atremove">×</button>
+                `
 
-    document.getElementById("send")?.addEventListener("click", send);
+                div.querySelector(".atremove").onclick=()=> div.remove()
 
-    msgEl?.addEventListener("keydown",(e)=>{
-        if(e.key==="Enter" && !e.shiftKey){
-            e.preventDefault();
-            send();
+                if(attachments) attachments.appendChild(div)
+            }
+
+            reader.readAsDataURL(file)
+            dtImg.items.add(file)
+
+        }else{
+
+            const div=document.createElement("div")
+            div.className="atchip"
+
+            div.innerHTML=`
+            📄 ${file.name}
+            <button class="atremove">×</button>
+            `
+
+            div.querySelector(".atremove").onclick=()=> div.remove()
+
+            if(attachments) attachments.appendChild(div)
+
+            dtDoc.items.add(file)
         }
-    });
+    })
+
+    if(imgInput) imgInput.files = dtImg.files
+    if(docInput) docInput.files = dtDoc.files
+
+})
+
+}
+
+attachments = document.getElementById("attachments");
+// camera preview
+document.getElementById("fileCam")?.addEventListener("change",(e)=>{
+
+attachments.innerHTML=""
+
+Array.from(e.target.files).forEach(file=>{
+
+const reader = new FileReader()
+
+reader.onload = function(ev){
+
+const div = document.createElement("div")
+div.className="atimg"
+
+div.innerHTML=`
+<img src="${ev.target.result}">
+<button class="atremove">×</button>
+`
+
+div.querySelector(".atremove").onclick=()=>{
+div.remove()
+}
+
+attachments.appendChild(div)
+
+}
+
+reader.readAsDataURL(file)
+
+})
+
+})
+
+const uid = localStorage.getItem("user_id");
+
+if(uid && uid !== "undefined"){
+
+    document.getElementById("loginBox").style.display="none";
+
+    checkProfile(uid)
+    loadHistory()
+    newChat()
+
+}else{
+
+    document.getElementById("loginBox").style.display="flex";
+    document.getElementById("chatApp").style.display="none";
+
+}
+
+document.getElementById("send")?.addEventListener("click",send)
+
+msgEl?.addEventListener("keydown",(e)=>{
+if(e.key==="Enter" && !e.shiftKey){
+e.preventDefault()
+send()
+}
+})
+
+// ===== auto format dd/mm/yyyy =====
+const dobInput = document.getElementById("pf_dob")
+
+if(dobInput){
+  dobInput.addEventListener("input", (e)=>{
+    let v = e.target.value.replace(/\D/g,"")
+
+    if(v.length >= 2) v = v.slice(0,2) + "/" + v.slice(2)
+    if(v.length >= 5) v = v.slice(0,5) + "/" + v.slice(5,9)
+
+    e.target.value = v
+  })
+}
+
+
 }
 function toggleSidebar(){
 
