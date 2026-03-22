@@ -374,11 +374,11 @@ max-height:180px;
 #chatApp{
 display:none;
 height:100dvh;
+background:#f4f6fb;
 }
 
 #chatApp > .d-flex{
-height:100%;
-width:100%;
+  height:100%;
 }
 
 /* sidebar */
@@ -391,19 +391,16 @@ width:100%;
 /* main chat */
 
 .flex-grow-1{
-flex:1;
-display:flex;
-flex-direction:column;
-min-width:0;
-height:100%;
+  display:flex;
+  flex-direction:column;
+  min-width:0;
 }
 
 /* chat scroll */
 
 #chat{
-flex:1;
-overflow:auto;
-padding-bottom:140px;
+  flex:1;
+  overflow:auto;
 }
 
 .menu-btn{
@@ -650,4 +647,10 @@ color:white;
   border:none;
   background:none;
   font-size:18px;
+}
+.p-2.border-top{
+  flex-shrink:0;
+}
+#attachments{
+  flex-shrink:0;
 }
