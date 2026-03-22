@@ -1191,13 +1191,12 @@ if(msgEl){
 }
 sendBtn = document.getElementById("send");
 
-if(chatEl){
-
 chatEl.addEventListener("dragover",(e)=>{
     e.preventDefault()
 })
 
 chatEl.addEventListener("drop",(e)=>{
+
     e.preventDefault()
 
     const droppedFiles = e.dataTransfer.files
@@ -1208,10 +1207,14 @@ chatEl.addEventListener("drop",(e)=>{
     const dtImg = new DataTransfer()
 
     Array.from(droppedFiles).forEach(file=>{
+
+        // ảnh
         if(file.type.startsWith("image")){
+
             const reader = new FileReader()
 
             reader.onload = function(ev){
+
                 const div=document.createElement("div")
                 div.className="atimg"
 
@@ -1220,15 +1223,22 @@ chatEl.addEventListener("drop",(e)=>{
                 <button class="atremove">×</button>
                 `
 
-                div.querySelector(".atremove").onclick=()=> div.remove()
+                div.querySelector(".atremove").onclick=()=>{
+                    div.remove()
+                }
 
-                if(attachments) attachments.appendChild(div)
+                attachments.appendChild(div)
+
             }
 
             reader.readAsDataURL(file)
+
             dtImg.items.add(file)
 
-        }else{
+        }
+
+        // file document
+        else{
 
             const div=document.createElement("div")
             div.className="atchip"
@@ -1238,20 +1248,22 @@ chatEl.addEventListener("drop",(e)=>{
             <button class="atremove">×</button>
             `
 
-            div.querySelector(".atremove").onclick=()=> div.remove()
+            div.querySelector(".atremove").onclick=()=>{
+                div.remove()
+            }
 
-            if(attachments) attachments.appendChild(div)
+            attachments.appendChild(div)
 
             dtDoc.items.add(file)
+
         }
+
     })
 
-    if(imgInput) imgInput.files = dtImg.files
-    if(docInput) docInput.files = dtDoc.files
+    imgInput.files = dtImg.files
+    docInput.files = dtDoc.files
 
 })
-
-}
 
 attachments = document.getElementById("attachments");
 // camera preview
