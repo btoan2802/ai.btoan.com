@@ -656,6 +656,19 @@ color:white;
 #attachments{
   flex-shrink:0;
 }
+
+
+
+
+body.login-page{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+}
+body:not(.login-page){
+  display:block;
+}
 /* @media (max-width: 768px){
 
   body{
