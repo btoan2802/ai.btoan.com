@@ -802,6 +802,8 @@ addBotBubble("lỗi: "+e.message)
 // ====== LOGIN ======
 async function login(){
 
+localStorage.setItem("full_name", data.full_name || "")
+
 const username=document.getElementById("login_username").value;
 const password=document.getElementById("login_password").value;
 
@@ -1775,6 +1777,10 @@ return text
 }
 async function checkProfile(user_id){
 
+
+document.getElementById("userName").innerText =
+    localStorage.getItem("full_name") || "User"
+
 const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
 const data = await res.json()
 
@@ -1797,14 +1803,26 @@ if(data.has_profile){
 async function saveProfile(){
 
 const full_name = document.getElementById("pf_name").value.trim()
-const dob = document.getElementById("pf_dob").value
+let dob = document.getElementById("pf_dob").value.trim()
 const user_id = localStorage.getItem("user_id")
 
+// ===== validate =====
 if(!full_name || !dob){
     document.getElementById("profileMsg").innerText = "Vui lòng nhập đầy đủ"
     return
 }
 
+// ===== validate format dd/mm/yyyy =====
+if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)){
+    document.getElementById("profileMsg").innerText = "Ngày sinh phải dạng dd/mm/yyyy"
+    return
+}
+
+// ===== convert dd/mm/yyyy → yyyy-mm-dd =====
+const parts = dob.split("/")
+dob = `${parts[2]}-${parts[1]}-${parts[0]}`
+
+// ===== gửi API =====
 const res = await fetch("/ai/api/update_name.php",{
     method:"POST",
     headers:{
@@ -1817,12 +1835,30 @@ const res = await fetch("/ai/api/update_name.php",{
     })
 })
 
-const data = await res.json()
+let data
+try{
+    data = await res.json()
+}catch{
+    document.getElementById("profileMsg").innerText = "Server lỗi (không phải JSON)"
+    return
+}
 
+// ===== success =====
 if(data.success){
 
+    // lưu tên để dùng UI
+    localStorage.setItem("full_name", full_name)
+
+    // set lên topbar luôn (nếu có)
+    const userNameEl = document.getElementById("userName")
+    if(userNameEl){
+        userNameEl.innerText = full_name
+    }
+
+    // đóng form profile
     document.getElementById("profileBox").remove()
 
+    // mở chat
     document.getElementById("chatApp").style.display="flex"
 
     setTimeout(()=>{

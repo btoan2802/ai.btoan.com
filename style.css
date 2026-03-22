@@ -6,7 +6,7 @@
   --text: #1f2937;
   --muted: #6b7280;
 
-  --brand: #10a37f;       /* màu xanh ChatGPT */
+  --brand: #4143d8;       /* màu xanh ChatGPT */
 
   --shadow: 0 4px 12px rgba(0,0,0,0.04);
 
@@ -597,4 +597,43 @@ color:white;
   background:#fff;
   z-index:9999;
   display:flex;
+}
+.send-btn{
+  width:44px;
+  height:44px;
+  padding:0;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background: linear-gradient(135deg,#6366f1,#4f46e5);
+  border:none;
+}
+
+.send-btn i{
+  font-size:18px;
+  color:#fff;
+}
+/* ===== UI nâng cấp ===== */
+
+.btn-primary{
+  background: linear-gradient(135deg,#6366f1,#4f46e5);
+  border:none;
+}
+
+.new-chat-btn{
+  background: linear-gradient(135deg,#6366f1,#4f46e5);
+}
+
+.sidebar{
+  background:#f9fafb;
+}
+
+.topbar{
+  background:#fff;
+  border-bottom:1px solid #eee;
+}
+#pf_dob{
+  letter-spacing:1px;
+  font-weight:500;
 }

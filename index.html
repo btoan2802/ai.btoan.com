@@ -300,7 +300,7 @@ background:#1f63d6;
 
     <input id="pf_name" class="form-control mb-3" placeholder="Họ và tên">
 
-    <input id="pf_dob" type="date" class="form-control mb-3">
+    <input id="pf_dob" type="text" class="form-control mb-3" placeholder="dd/mm/yyyy">
 
     <button onclick="saveProfile()" class="btn btn-primary w-100">
       Xác nhận
@@ -345,9 +345,13 @@ Lịch sử chat
 
 <div class="fw-bold">Btoan AI</div>
 
-<div class="ms-auto">
+<div class="ms-auto d-flex align-items-center gap-2">
 
-<button class="btn btn-sm btn-danger" onclick="logout()">Đăng xuất</button>
+<span id="userName" style="font-weight:600;"></span>
+
+<button class="btn btn-sm btn-danger" onclick="logout()">
+Đăng xuất
+</button>
 
 </div>
 
@@ -373,54 +377,35 @@ Lịch sử chat
 accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 multiple hidden>
 
-<div class="dropdown">
-
-<button class="btn btn-light" data-bs-toggle="dropdown">+</button>
-
 <ul class="dropdown-menu">
 
 <li>
-<button id="pickImage" class="dropdown-item">
-🖼️ Gửi ảnh
+<button id="pickImage" class="dropdown-item">🖼️ Gửi ảnh</button>
+</li>
+
+<li>
+<button id="pickCamera" class="dropdown-item">📷 Chụp ảnh</button>
+</li>
+
+<li>
+<button id="pickFile" class="dropdown-item">📄 Gửi tệp</button>
+</li>
+
+<li><hr></li>
+
+<li>
+<button class="dropdown-item" onclick="setMode('fast')">
+⚡ Fast
 </button>
 </li>
 
 <li>
-<button id="pickCamera" class="dropdown-item">
-📷 Chụp ảnh
-</button>
-</li>
-
-<li>
-<button id="pickFile" class="dropdown-item">
-📄 Gửi tệp
+<button class="dropdown-item" onclick="setMode('thinking')">
+🧠 Thinking
 </button>
 </li>
 
 </ul>
-
-</div>
-
-<div class="dropdown mx-1">
-  <button id="modeBtn"
-          class="btn btn-light btn-sm dropdown-toggle"
-          data-bs-toggle="dropdown">
-    ⚡ Fast
-  </button>
-
-  <ul class="dropdown-menu">
-    <li>
-      <button class="dropdown-item" onclick="setMode('fast')">
-        ⚡ Fast
-      </button>
-    </li>
-    <li>
-      <button class="dropdown-item" onclick="setMode('thinking')">
-        🧠 Thinking
-      </button>
-    </li>
-  </ul>
-</div>
 
 <textarea
 id="msg"
@@ -429,8 +414,8 @@ placeholder="nhập tin nhắn..."
 rows="1"
 ></textarea>
 
-<button id="send" class="btn btn-primary">
-Gửi
+<button id="send" class="btn btn-primary send-btn">
+<i class="bi bi-send"></i>
 </button>
 
 </div>
