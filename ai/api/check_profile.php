@@ -17,7 +17,7 @@ $stmt = $conn->prepare("SELECT full_name, dob FROM users WHERE id=?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
-if($user && $user['full_name'] && $user['dob']){
+if($user && !empty($user['full_name'])){
     echo json_encode(["has_profile"=>true]);
 }else{
     echo json_encode(["has_profile"=>false]);
