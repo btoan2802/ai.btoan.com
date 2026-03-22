@@ -1809,12 +1809,12 @@ if(data.has_profile){
 }
 async function saveProfile(){
 
-    console.log({full_name, dob})
-    console.log("API response:", data)
 
 const full_name = document.getElementById("pf_name").value.trim()
 let dob = document.getElementById("pf_dob").value.trim()
 const user_id = localStorage.getItem("user_id")
+
+console.log({full_name, dob})
 
 // ===== validate =====
 if(!full_name || !dob){
@@ -1829,6 +1829,8 @@ if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)){
 }
 
 // ===== check ngày hợp lệ =====
+const [day, month, year] = dob.split("/")
+
 const d = Number(day)
 const m = Number(month)
 const y = Number(year)
@@ -1841,7 +1843,8 @@ if(
   document.getElementById("profileMsg").innerText = "Ngày không hợp lệ"
   return
 }
-// ===== convert → yyyy-mm-dd =====
+
+// convert
 dob = `${year}-${month}-${day}`
 
 // ===== gửi API =====
