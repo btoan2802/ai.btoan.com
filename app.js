@@ -1881,18 +1881,13 @@ try{
 // ===== success =====
 if(data.success){
 
+    const user_id = localStorage.getItem("user_id")
 
-        
-        localStorage.setItem("full_name", data.full_name)
-        localStorage.setItem("has_profile","1")
+    localStorage.setItem("has_profile", "1")
 
-    // ❌ KHÔNG remove nữa
-    const loginBox = document.getElementById("loginBox")
-    if(loginBox){
-        loginBox.style.display = "none"
-    }
+    // 👇 QUAN TRỌNG NHẤT
+    checkProfile(user_id)
 
-    checkProfile(data.user_id);
 }
 
 }
