@@ -824,7 +824,7 @@ if(data.success){
 
 localStorage.setItem("user_id",data.user_id)
 
-document.getElementById("loginBox").style.display="none"
+document.getElementById("loginBox").remove()
 document.getElementById("chatApp").style.display="flex"
 
 // 🔥 delay để DOM ready
