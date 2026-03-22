@@ -13,7 +13,7 @@ if(!$user_id){
     exit;
 }
 
-$stmt = $conn->prepare("SELECT full_name, dob FROM users WHERE id=?");
+$stmt = $pdo->prepare("SELECT full_name, dob FROM users WHERE id=?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch();
 
