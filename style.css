@@ -656,39 +656,52 @@ color:white;
 #attachments{
   flex-shrink:0;
 }
-@media (max-width: 768px){
+@media (max-width:768px){
 
-  body{
-    overflow-x: hidden;
-  }
-
+  /* Ẩn hiệu ứng container gốc */
   #loginBox .container{
-    flex-direction: column;
-    width: 100%;
-    max-width: 380px;
-    height: auto;
-    margin: auto;
+    display:block;
+    width:100%;
+    max-width:380px;
+    margin:auto;
+    height:auto;
   }
 
-  .form-box{
-    width: 100% !important;
-    position: relative !important;
-  }
-
+  /* Ẩn toggle animation */
   .toggle-box{
-    width: 100% !important;
-    height: 180px;
+    display:none !important;
   }
 
-  .toggle-panel{
-    position: relative !important;
-    width: 100%;
-    height: auto;
-    border-radius: 0;
+  /* Ẩn hết form */
+  .form-box{
+    display:none;
+    width:100% !important;
+    position:relative !important;
   }
 
-  .input-box input{
-    font-size: 14px;
+  /* Form active sẽ hiện */
+  .form-box.active{
+    display:block;
   }
 
+  /* Style card cho đẹp */
+  .form-box form{
+    background:#fff;
+    padding:25px 20px;
+    border-radius:14px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.1);
+  }
+
+  /* Button chuyển form */
+  .switch-auth{
+    text-align:center;
+    margin-top:15px;
+    font-size:14px;
+  }
+
+  .switch-auth span{
+    color:#4f46e5;
+    font-weight:600;
+    cursor:pointer;
+  }
 }
