@@ -800,7 +800,7 @@ addBotBubble("lỗi: "+e.message)
 }
 
 // ====== LOGIN ======
-async function login(){
+aasync function login(){
 
 const username = document.getElementById("login_username").value;
 const password = document.getElementById("login_password").value;
@@ -823,32 +823,23 @@ let data;
 try{
     data = JSON.parse(raw);
 }catch(e){
-    console.error("❌ JSON lỗi:", raw);
-    document.getElementById("loginMsg").innerText = "Server trả JSON lỗi";
+    console.error("JSON lỗi:", raw);
     return;
 }
 
 console.log("PARSED:", data);
 
-console.log("LOGIN RESPONSE:", data);
+// 🔥 FORCE SAVE luôn (bỏ if)
+if(data.user_id){
 
-if(!data.user_id){
-    console.error("❌ user_id KHÔNG tồn tại trong response", data)
-}
+    console.log("SAVE user_id =", data.user_id);
 
-if(data.success){
+    localStorage.setItem("user_id", String(data.user_id));
 
-    // ✅ lưu user_id
-    localStorage.setItem("user_id", data.user_id);
-
-    // ✅ lưu tên (nếu có)
-    if(data.full_name){
-        localStorage.setItem("full_name", data.full_name);
-    }
+    console.log("AFTER SAVE:", localStorage.getItem("user_id"));
 
     document.getElementById("loginBox").remove();
 
-    // 👉 check profile
     checkProfile(data.user_id);
 
 }else{
@@ -856,7 +847,6 @@ if(data.success){
 }
 
 }
-
 // ====== REGISTER ======
 async function register(){
 
