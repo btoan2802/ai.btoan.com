@@ -591,3 +591,10 @@ color:white;
 .bubble:hover .copy-btn-clean{
   opacity: 1;
 }
+#profileBox{
+  position:fixed;
+  inset:0;
+  background:#fff;
+  z-index:9999;
+  display:flex;
+}

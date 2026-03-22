@@ -825,7 +825,9 @@ if(data.success){
 localStorage.setItem("user_id",data.user_id)
 
 document.getElementById("loginBox").remove()
-document.getElementById("chatApp").style.display="flex"
+
+// 👉 check profile trước
+checkProfile(data.user_id)
 
 // 🔥 delay để DOM ready
 setTimeout(()=>{
@@ -1295,7 +1297,10 @@ const uid = localStorage.getItem("user_id");
 if(uid){
 
     document.getElementById("loginBox").style.display="none";
-    document.getElementById("chatApp").style.display="flex";
+
+    // 👉 check profile luôn
+    checkProfile(uid)
+
 
     loadHistory()
 
@@ -1766,5 +1771,68 @@ return text
 .replace(/tôi sẽ giúp.*?\n/gi,"")
 .replace(/👉|📄|🔎/g,"")
 .trim()
+
+}
+async function checkProfile(user_id){
+
+const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+const data = await res.json()
+
+if(data.has_profile){
+    // 👉 vào chat luôn
+    document.getElementById("chatApp").style.display="flex"
+
+    setTimeout(()=>{
+        addBotBubble("chào bạn 😄 tôi là Btoan AI.")
+    },100)
+
+    loadHistory()
+
+}else{
+    // 👉 bắt nhập thông tin
+    document.getElementById("profileBox").style.display="flex"
+}
+
+}
+async function saveProfile(){
+
+const full_name = document.getElementById("pf_name").value.trim()
+const dob = document.getElementById("pf_dob").value
+const user_id = localStorage.getItem("user_id")
+
+if(!full_name || !dob){
+    document.getElementById("profileMsg").innerText = "Vui lòng nhập đầy đủ"
+    return
+}
+
+const res = await fetch("/ai/api/update_name.php",{
+    method:"POST",
+    headers:{
+        "Content-Type":"application/json"
+    },
+    body: JSON.stringify({
+        user_id,
+        full_name,
+        dob
+    })
+})
+
+const data = await res.json()
+
+if(data.success){
+
+    document.getElementById("profileBox").remove()
+
+    document.getElementById("chatApp").style.display="flex"
+
+    setTimeout(()=>{
+        addBotBubble("chào bạn 😄 tôi là Btoan AI.")
+    },100)
+
+    loadHistory()
+
+}else{
+    document.getElementById("profileMsg").innerText = "Lỗi lưu dữ liệu"
+}
 
 }
