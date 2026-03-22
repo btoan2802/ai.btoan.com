@@ -1809,10 +1809,16 @@ if(data.has_profile){
 }
 async function saveProfile(){
 
+    const user_id = localStorage.getItem("user_id")
+
+if(!user_id){
+    alert("Lỗi: chưa đăng nhập (user_id null)")
+    console.log("user_id =", user_id)
+    return
+}
 
 const full_name = document.getElementById("pf_name").value.trim()
 let dob = document.getElementById("pf_dob").value.trim()
-const user_id = localStorage.getItem("user_id")
 
 console.log({full_name, dob})
 
