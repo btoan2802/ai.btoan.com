@@ -1823,19 +1823,29 @@ if(!full_name || !dob){
 }
 
 // ===== validate format dd/mm/yyyy =====
+// ===== validate format dd/mm/yyyy =====
 if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)){
     document.getElementById("profileMsg").innerText = "Ngày sinh phải dạng dd/mm/yyyy"
     return
 }
 
-// ===== check ngày hợp lệ =====
-const [day, month, year] = dob.split("/")
+// ===== split ngày =====
+const parts = dob.split("/")
+
+if(parts.length !== 3){
+  document.getElementById("profileMsg").innerText = "Sai định dạng ngày"
+  return
+}
+
+const [day, month, year] = parts
 
 const d = Number(day)
 const m = Number(month)
 const y = Number(year)
 
+// ===== check hợp lệ =====
 if(
+  isNaN(d) || isNaN(m) || isNaN(y) ||
   d < 1 || d > 31 ||
   m < 1 || m > 12 ||
   y < 1900 || y > 2100
@@ -1843,7 +1853,6 @@ if(
   document.getElementById("profileMsg").innerText = "Ngày không hợp lệ"
   return
 }
-
 // convert
 dob = `${year}-${month}-${day}`
 
