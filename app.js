@@ -840,6 +840,10 @@ if(data.user_id){
 
     document.getElementById("loginBox").remove();
 
+    loadHistory()
+    newChat()
+    checkProfile(data.user_id)
+
     checkProfile(data.user_id);
 
 }else{

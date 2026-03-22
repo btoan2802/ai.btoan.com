@@ -656,3 +656,74 @@ color:white;
 #attachments{
   flex-shrink:0;
 }
+@media (max-width: 768px) {
+
+  /* ===== HEADER ===== */
+  .overlay-container {
+    height: 35vh !important;
+    padding: 20px;
+  }
+
+  .overlay h1 {
+    font-size: 22px;
+  }
+
+  .overlay p {
+    font-size: 14px;
+  }
+
+  .overlay button {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+
+  /* ===== FORM ===== */
+  .form-container {
+    width: 100%;
+    padding: 20px;
+  }
+
+  form h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+  }
+
+  .input-box input {
+    height: 45px;
+    padding: 0 12px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+  }
+
+  .input-box {
+    margin-bottom: 15px;
+  }
+
+  /* ===== BUTTON LOGIN ===== */
+  button[type="submit"] {
+    height: 45px;
+    border-radius: 8px;
+    font-size: 15px;
+    margin-top: 10px;
+  }
+
+  /* ===== FORGOT PASSWORD ===== */
+  form a {
+    display: block;
+    margin: 10px 0;
+    font-size: 13px;
+  }
+
+  /* ===== SOCIAL ===== */
+  .social-container {
+    margin-top: 15px;
+  }
+
+  .social-container a {
+    width: 45px;
+    height: 45px;
+    margin: 0 5px;
+    font-size: 16px;
+  }
+}
