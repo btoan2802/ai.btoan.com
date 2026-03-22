@@ -370,7 +370,7 @@ max-height:180px;
   .home-btn{ right: 12px; }
 }
 /* layout chat + sidebar */
-l#chatApp{
+#chatApp{
   height:100vh;
   display:flex;
   flex-direction:column;
