@@ -1307,23 +1307,18 @@ reader.readAsDataURL(file)
 
 const uid = localStorage.getItem("user_id");
 
-if(uid){
+if(uid && uid !== "undefined"){
 
     document.getElementById("loginBox").style.display="none";
 
-    // 👉 check profile luôn
     checkProfile(uid)
-
-
     loadHistory()
-
-    // 🔥 luôn tạo chat mới
     newChat()
 
 }else{
 
-document.getElementById("loginBox").style.display="flex";
-document.getElementById("chatApp").style.display="none";
+    document.getElementById("loginBox").style.display="flex";
+    document.getElementById("chatApp").style.display="none";
 
 }
 
