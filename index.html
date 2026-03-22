@@ -361,68 +361,53 @@ Lịch sử chat
 
 <!-- CHAT -->
 
-<main id="chat" class="flex-grow-1 p-3"></main>
+<div id="chatApp">
 
-<div id="status" class="p-2 text-muted" style="display:none"></div>
+  <!-- MAIN WRAP -->
+  <div class="app-wrapper">
 
+    <!-- CONTENT -->
+    <div class="app-main">
 
-<!-- INPUT -->
+      <!-- SIDEBAR -->
+      <div id="sidebar" class="sidebar">
+        <div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
+        <div class="sidebar-title">Lịch sử chat</div>
+        <div id="historyList"></div>
+      </div>
 
-<div class="p-2 border-top">
+      <!-- MAIN -->
+      <div class="main-content">
 
-<div class="d-flex align-items-center">
+        <!-- TOPBAR -->
+        <div class="topbar">
+          <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+          <div class="fw-bold">Btoan AI</div>
 
-<input id="fileImg" type="file" accept="image/*" multiple hidden>
-<input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
-<input id="fileDoc" type="file"
-accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-multiple hidden>
+          <div class="ms-auto d-flex align-items-center gap-2">
+            <span id="userName"></span>
+            <button class="btn btn-sm btn-danger" onclick="logout()">Đăng xuất</button>
+          </div>
+        </div>
 
-<!-- ✅ NÚT + -->
-<div class="dropdown">
-  <button class="btn btn-light me-2" data-bs-toggle="dropdown">
-    +
-  </button>
+        <!-- CHAT -->
+        <main id="chat"></main>
 
-  <ul class="dropdown-menu">
+        <!-- INPUT -->
+        <div class="input-area">
+          <!-- giữ nguyên input của bạn -->
+        </div>
 
-    <li><button id="pickImage" class="dropdown-item">🖼️ Gửi ảnh</button></li>
-    <li><button id="pickCamera" class="dropdown-item">📷 Chụp ảnh</button></li>
-    <li><button id="pickFile" class="dropdown-item">📄 Gửi tệp</button></li>
+      </div>
 
-    <li><hr></li>
+    </div>
 
-    <li><button class="dropdown-item" onclick="setMode('fast')">⚡ Fast</button></li>
-    <li><button class="dropdown-item" onclick="setMode('thinking')">🧠 Thinking</button></li>
+    <!-- ✅ FOOTER -->
+    <div class="footer">
+      © AI được thành lập bởi Dev Nguyễn Bảo Toàn
+    </div>
 
-  </ul>
-</div>
-
-<textarea
-id="msg"
-class="form-control mx-2"
-placeholder="nhập tin nhắn..."
-rows="1"
-></textarea>
-
-<button id="send" class="btn btn-primary send-btn">
-  <i class="bi bi-send"></i>
-</button>
-
-</div>
-
-</div>
-
-<div id="attachments"></div>
-
-</div>
-
-<div class="text-center small p-2">
-© AI được thành lập bởi Dev Nguyễn Bảo Toàn
-</div>
-
-
-</div>
+  </div>
 
 </div>
 
