@@ -1809,6 +1809,9 @@ if(data.has_profile){
 }
 async function saveProfile(){
 
+    console.log({full_name, dob})
+    console.log("API response:", data)
+
 const full_name = document.getElementById("pf_name").value.trim()
 let dob = document.getElementById("pf_dob").value.trim()
 const user_id = localStorage.getItem("user_id")
@@ -1826,19 +1829,18 @@ if(!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)){
 }
 
 // ===== check ngày hợp lệ =====
-const [day, month, year] = dob.split("/")
-
-const dateObj = new Date(`${year}-${month}-${day}`)
+const d = Number(day)
+const m = Number(month)
+const y = Number(year)
 
 if(
-    dateObj.getFullYear() != year ||
-    (dateObj.getMonth() + 1) != month ||
-    dateObj.getDate() != day
+  d < 1 || d > 31 ||
+  m < 1 || m > 12 ||
+  y < 1900 || y > 2100
 ){
-    document.getElementById("profileMsg").innerText = "Ngày không hợp lệ"
-    return
+  document.getElementById("profileMsg").innerText = "Ngày không hợp lệ"
+  return
 }
-
 // ===== convert → yyyy-mm-dd =====
 dob = `${year}-${month}-${day}`
 
