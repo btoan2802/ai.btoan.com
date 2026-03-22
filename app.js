@@ -1881,7 +1881,6 @@ try{
 // ===== success =====
 if(data.success){
 
-    localStorage.setItem("user_id", data.user_id);
 
     if(data.full_name){
         localStorage.setItem("full_name", data.full_name)
