@@ -330,6 +330,8 @@ const timer = setInterval(()=>{
 
         clearInterval(timer)
 
+        setSending(false) // 🔥 mở lại nút send
+
         /* highlight lại */
         content.querySelectorAll("pre code").forEach(el=>{
             hljs.highlightElement(el)
@@ -681,6 +683,7 @@ if(userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trê
     runSearch(query, userText)
 
     msgEl.value = ""   // 🔥 FIX BUG INPUT KHÔNG XÓA
+    setSending(false)
 
     return
 }
@@ -689,6 +692,7 @@ if(userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trê
 
 // export txt (giữ nguyên)
 if(userText.trim() === "/export"){
+    setSending(false)
     return exportFile(lastAIAnswer)
 }
 
@@ -713,8 +717,7 @@ imgInput.value=""
 camInput.value=""
 docInput.value=""
 
-const btn = document.getElementById("send")
-if(btn) btn.disabled = true
+setSending(true)
 
 const typing=document.createElement("div")
 typing.className="msgrow bot"
@@ -784,6 +787,8 @@ detectCorrection(userText)
 typing.remove()
 streamBot(reply, exportType)
 
+// ❗ KHÔNG enable ở đây (vì stream chưa xong)
+
 setTimeout(()=>{
 if(window.MathJax){
 MathJax.typeset()
@@ -794,6 +799,8 @@ MathJax.typeset()
 
 typing.remove()
 addBotBubble("lỗi: "+e.message)
+
+setSending(false) // 🔥 tránh bị kẹt nút
 
 }
 
@@ -1895,4 +1902,8 @@ if(data.success){
 
 }
 
+}
+function setSending(state){
+  const btn = document.getElementById("send")
+  if(btn) btn.disabled = state
 }
