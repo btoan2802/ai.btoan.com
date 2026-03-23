@@ -327,11 +327,10 @@ const timer = setInterval(()=>{
 
     i++
 
-    if(i => text.length){
+    if(i >= text.length){
 
         clearInterval(timer)
 
-        setSending(false) // 🔥 mở lại nút send
 
         /* highlight lại */
         content.querySelectorAll("pre code").forEach(el=>{
@@ -594,7 +593,8 @@ return reply;
 // ====== SEND ======
 async function send(){
 
-
+if(isSending) return
+isSending = true
 
 
 const userText = msgEl.value.trim()
@@ -664,7 +664,10 @@ content: text
 
 
 
-if(!userText && images.length===0 && files.length===0) return
+if(!userText && images.length===0 && files.length===0){
+  isSending = false
+  return
+}
 // ===== TOOL DETECTION =====
 if(userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")){
 
@@ -686,7 +689,6 @@ if(userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trê
     runSearch(query, userText)
 
     msgEl.value = ""   // 🔥 FIX BUG INPUT KHÔNG XÓA
-    setSending(false)
 
     return
 }
@@ -695,7 +697,7 @@ if(userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trê
 
 // export txt (giữ nguyên)
 if(userText.trim() === "/export"){
-    setSending(false)
+    isSending = false
     return exportFile(lastAIAnswer)
 }
 
@@ -788,6 +790,7 @@ detectCorrection(userText)
 
 typing.remove()
 streamBot(reply, exportType)
+isSending = false
 
 // ❗ KHÔNG enable ở đây (vì stream chưa xong)
 
@@ -802,6 +805,7 @@ MathJax.typeset()
 typing.remove()
 addBotBubble("lỗi: "+e.message)
 
+isSending = false // 🔥 BẮT BUỘC
 
 }
 
