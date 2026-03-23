@@ -16,6 +16,7 @@ let attachments;
 let lastAIAnswer = ""
 let mode = "auto"
 let lastExportContent = ""
+let isSending = false
 
 const systemInstruction = `
 Nếu người dùng yêu cầu xuất file:
@@ -594,6 +595,8 @@ return reply;
 async function send(){
 
 
+
+
 const userText = msgEl.value.trim()
 if(!userText.toLowerCase().includes("tìm trên mạng") && !userText.startsWith("/search")){
     lastUserMessage = userText
@@ -717,7 +720,6 @@ imgInput.value=""
 camInput.value=""
 docInput.value=""
 
-setSending(true)
 
 const typing=document.createElement("div")
 typing.className="msgrow bot"
@@ -800,7 +802,6 @@ MathJax.typeset()
 typing.remove()
 addBotBubble("lỗi: "+e.message)
 
-setSending(false) // 🔥 tránh bị kẹt nút
 
 }
 
@@ -1902,8 +1903,4 @@ if(data.success){
 
 }
 
-}
-function setSending(state){
-  const btn = document.getElementById("send")
-  if(btn) btn.disabled = state
 }
