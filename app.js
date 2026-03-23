@@ -326,7 +326,7 @@ const timer = setInterval(()=>{
 
     i++
 
-    if(i > text.length){
+    if(i => text.length){
 
         clearInterval(timer)
 
