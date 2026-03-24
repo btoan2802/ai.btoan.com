@@ -2,38 +2,24 @@
 document.addEventListener("DOMContentLoaded", () => {
 
   const container = document.querySelector('.container');
-  const loginBox = document.querySelector('.login');
-  const registerBox = document.querySelector('.register');
+const loginBox = document.getElementById('loginForm');
+const registerBox = document.getElementById('registerForm');
   const registerBtn = document.querySelector('.register-btn');
   const loginBtn = document.querySelector('.login-btn');
-
+loginBox.classList.add('active');
   function isMobile(){
     return window.innerWidth <= 768;
   }
 
-  // ===== SHOW REGISTER =====
-  window.showRegisterForm = function(){
-    if(!loginBox || !registerBox) return;
+window.showRegisterForm = function(){
+  registerBox.classList.add('active');
+  loginBox.classList.remove('active');
+}
 
-    if(isMobile()){
-      loginBox.style.display = 'none';
-      registerBox.style.display = 'block';
-    }else{
-      container.classList.add('active');
-    }
-  }
-
-  // ===== SHOW LOGIN =====
-  window.showLoginForm = function(){
-    if(!loginBox || !registerBox) return;
-
-    if(isMobile()){
-      loginBox.style.display = 'block';
-      registerBox.style.display = 'none';
-    }else{
-      container.classList.remove('active');
-    }
-  }
+window.showLoginForm = function(){
+  loginBox.classList.add('active');
+  registerBox.classList.remove('active');
+}
 
   // ===== BUTTON PANEL DESKTOP =====
   if(registerBtn){
@@ -45,17 +31,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ===== DEFAULT MOBILE =====
-  function setupMobile(){
-    if(!loginBox || !registerBox) return;
-
-    if(isMobile()){
-      loginBox.style.display = 'block';
-      registerBox.style.display = 'none';
-    }else{
-      loginBox.style.display = '';
-      registerBox.style.display = '';
-    }
+function setupMobile(){
+  if(isMobile()){
+    container.classList.remove('active'); // mặc định login
   }
+}
 
   setupMobile();
 

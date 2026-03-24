@@ -57,7 +57,6 @@ form{ width: 100%; }
 
     .container.active .form-box{ right: 50%; }
 
-    .form-box.register{ visibility: hidden; }
         .container.active .form-box.register{ visibility: visible; }
 
 .input-box{
