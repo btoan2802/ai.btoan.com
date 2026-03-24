@@ -674,14 +674,14 @@ color:white;
 
   /* Ẩn hết form */
   .form-box{
-    display:none;
+    display:none !important;
     width:100% !important;
     position:relative !important;
   }
 
   /* Form active sẽ hiện */
   .form-box.active{
-    display:block;
+    display:block !important;
   }
 
   /* Style card cho đẹp */
@@ -707,13 +707,6 @@ color:white;
 }
 @media (max-width:768px){
 
-  .login{
-    display:block !important;
-  }
-
-  .register{
-    display:none !important;
-  }
 
 }
 @media (max-width:768px){
