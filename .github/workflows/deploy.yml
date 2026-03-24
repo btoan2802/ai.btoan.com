@@ -27,4 +27,4 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           password: ${{ secrets.SERVER_PASS }}
           script: |
-            powershell -Command "cd 'C:\website\test.ai.btoan.com'; git pull origin develop"
+            powershell -Command "cd 'C:\website\dev.ai.btoan.com'; git pull origin develop"
