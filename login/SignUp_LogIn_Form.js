@@ -1,45 +1,41 @@
-// ===== SAFE READY =====
 document.addEventListener("DOMContentLoaded", () => {
 
   const container = document.querySelector('.container');
-const loginBox = document.getElementById('loginForm');
-const registerBox = document.getElementById('registerForm');
   const registerBtn = document.querySelector('.register-btn');
   const loginBtn = document.querySelector('.login-btn');
-loginBox.classList.add('active');
+
   function isMobile(){
     return window.innerWidth <= 768;
   }
 
-window.showRegisterForm = function(){
-  registerBox.classList.add('active');
-  loginBox.classList.remove('active');
-}
+  // ===== REGISTER =====
+  window.showRegisterForm = function(){
+    container.classList.add('active');
+  }
 
-window.showLoginForm = function(){
-  loginBox.classList.add('active');
-  registerBox.classList.remove('active');
-}
+  // ===== LOGIN =====
+  window.showLoginForm = function(){
+    container.classList.remove('active');
+  }
 
-  // ===== BUTTON PANEL DESKTOP =====
+  // ===== BUTTON PANEL =====
   if(registerBtn){
-    registerBtn.onclick = window.showRegisterForm;
+    registerBtn.onclick = showRegisterForm;
   }
 
   if(loginBtn){
-    loginBtn.onclick = window.showLoginForm;
+    loginBtn.onclick = showLoginForm;
   }
 
-  // ===== DEFAULT MOBILE =====
-function setupMobile(){
-  if(isMobile()){
-    container.classList.remove('active'); // mặc định login
+  // ===== MOBILE DEFAULT =====
+  function setupMobile(){
+    if(isMobile()){
+      container.classList.remove('active'); // mặc định login
+    }
   }
-}
 
   setupMobile();
 
-  // ===== FIX XOAY MÀN HÌNH =====
   window.addEventListener("resize", setupMobile);
 
 });
