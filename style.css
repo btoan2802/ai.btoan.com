@@ -134,7 +134,7 @@ body{
   border: 1px solid var(--stroke);
   border-radius: 18px;
   padding: 14px 16px;
-  max-width: 72%;
+  max-width: 100%;
 
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
