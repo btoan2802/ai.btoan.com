@@ -902,7 +902,7 @@ msgBox.innerHTML=`<div class="text-success">
 </div>`
 
 setTimeout(()=>{
-showLogin()
+showLoginForm()
 },1500)
 
 }else{
@@ -1509,19 +1509,6 @@ window.visualViewport?.addEventListener("resize",()=>{
     }
 
 })
-function showRegister(){
-
-document.getElementById("loginForm").style.display="none"
-document.getElementById("registerForm").style.display="block"
-
-}
-
-function showLogin(){
-
-document.getElementById("loginForm").style.display="block"
-document.getElementById("registerForm").style.display="none"
-
-}
 
 async function detectCorrection(userText){
 
