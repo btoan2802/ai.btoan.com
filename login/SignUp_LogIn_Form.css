@@ -248,24 +248,65 @@ form{ width: 100%; }
 }
 @media (max-width: 768px){
 
+  body{
+    align-items: flex-start;
+  }
+
+  .container{
+    width: 100% !important;
+    height: auto !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* ❌ tắt animation system */
+  .toggle-box{
+    display: none !important;
+  }
+
+  /* ✅ reset form */
   .form-box{
     position: relative !important;
     width: 100% !important;
     height: auto !important;
     right: 0 !important;
     bottom: 0 !important;
-
-    visibility: visible !important;
-    opacity: 1 !important;
     transform: none !important;
+    transition: none !important;
+    padding: 25px !important;
   }
 
-  .container{
-    height: auto !important;
+  /* ✅ chỉ hiện 1 form */
+  .form-box.login{
+    display: block;
   }
 
-  .toggle-box{
-    display: none !important;
+  .form-box.register{
+    display: none;
   }
 
+  .container.active .form-box.login{
+    display: none;
+  }
+
+  .container.active .form-box.register{
+    display: block;
+  }
+
+}
+.form-box.login{
+    visibility: visible;
+}
+
+.form-box.register{
+    visibility: hidden;
+}
+
+.container.active .form-box.login{
+    visibility: hidden;
+}
+
+.container.active .form-box.register{
+    visibility: visible;
 }
