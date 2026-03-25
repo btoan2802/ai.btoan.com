@@ -246,3 +246,26 @@ form{ width: 100%; }
 .container.active .form-box.login{
     visibility: hidden;
 }
+@media (max-width: 768px){
+
+  .form-box{
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+
+    visibility: visible !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .container{
+    height: auto !important;
+  }
+
+  .toggle-box{
+    display: none !important;
+  }
+
+}
