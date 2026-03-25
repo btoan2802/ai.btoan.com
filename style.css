@@ -65,7 +65,20 @@ body{
 }
 .clear-top .ico{ width: 16px; height: 16px; fill: currentColor; opacity: .85; }
 .clear-top:active{ transform: translateY(1px); }
+.form-box.login{
+  z-index: 2;
+}
 
+.form-box.register{
+  z-index: 1;
+}
+.container.active .form-box.login{
+  z-index: 1;
+}
+
+.container.active .form-box.register{
+  z-index: 2;
+}
 .scroll-bottom{
   width: 40px;
   height: 40px;
@@ -422,6 +435,7 @@ position:fixed;
 top:0;
 left:0;
 width:260px;
+flex-shrink: 0;
 height:100%;
 background:#fff;
 z-index:2000;

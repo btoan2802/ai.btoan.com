@@ -12,13 +12,29 @@ loginBox.classList.add('active');
   }
 
 window.showRegisterForm = function(){
-  registerBox.classList.add('active');
-  loginBox.classList.remove('active');
+
+  if(window.innerWidth <= 768){
+    // MOBILE
+    registerBox.classList.add('active');
+    loginBox.classList.remove('active');
+  }else{
+    // DESKTOP
+    container.classList.add('active');
+  }
+
 }
 
 window.showLoginForm = function(){
-  loginBox.classList.add('active');
-  registerBox.classList.remove('active');
+
+  if(window.innerWidth <= 768){
+    // MOBILE
+    loginBox.classList.add('active');
+    registerBox.classList.remove('active');
+  }else{
+    // DESKTOP
+    container.classList.remove('active');
+  }
+
 }
 
   // ===== BUTTON PANEL DESKTOP =====
