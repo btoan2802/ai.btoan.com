@@ -1,457 +1,460 @@
 <!doctype html>
 <html lang="vi">
+
 <head>
 
-<link rel="icon" href="favicon.ico">
+  <link rel="icon" href="favicon.ico">
 
-<script>
-window.MathJax = {
-tex: {
-inlineMath: [['$', '$'], ['\\(', '\\)']],
-displayMath: [['$$','$$'], ['\\[','\\]']]
-},
-svg: {
-fontCache: 'global'
-}
-};
-</script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']]
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
 
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
-<link rel="stylesheet"
-href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 
-<link rel="stylesheet"
-href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Btoan AI</title>
+  <title>Btoan AI</title>
 
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<link rel="stylesheet" href="./style.css">
-<link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
-<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 
-<style>
+  <style>
+    /* GLOBAL */
 
-/* GLOBAL */
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto;
+      background: #f8fafc;
+      height: 100vh;
+    }
 
-body{
-margin:0;
-font-family:system-ui,-apple-system,Segoe UI,Roboto;
-background:#f8fafc;
-height:100vh;
-}
+    /* LOGIN */
 
-/* LOGIN */
+    #loginBox {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
 
-#loginBox{
-display:flex;
-align-items:center;
-justify-content:center;
-height:100vh;
-}
+    .auth-card {
+      width: 360px;
+      background: #fff;
+      border-radius: 14px;
+      padding: 30px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    }
 
-.auth-card{
-width:360px;
-background:#fff;
-border-radius:14px;
-padding:30px;
-box-shadow:0 20px 60px rgba(0,0,0,0.2);
-}
+    .auth-title {
+      font-size: 26px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 20px;
+    }
 
-.auth-title{
-font-size:26px;
-font-weight:700;
-text-align:center;
-margin-bottom:20px;
-}
+    .form-control {
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
 
-.form-control{
-border-radius:8px;
-padding:10px 12px;
-}
+    .password-box {
+      position: relative;
+    }
 
-.password-box{
-position:relative;
-}
+    .toggle-pass {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      color: #888;
+    }
 
-.toggle-pass{
-position:absolute;
-right:10px;
-top:50%;
-transform:translateY(-50%);
-cursor:pointer;
-color:#888;
-}
+    .btn-primary {
+      background: #2b7cff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+    }
 
-.btn-primary{
-background:#2b7cff;
-border:none;
-border-radius:8px;
-font-weight:600;
-}
+    .btn-primary:hover {
+      background: #1f63d6;
+    }
 
-.btn-primary:hover{
-background:#1f63d6;
-}
+    .btn-success {
+      border-radius: 8px;
+      font-weight: 600;
+    }
 
-.btn-success{
-border-radius:8px;
-font-weight:600;
-}
+    .btn-outline-secondary {
+      border-radius: 8px;
+    }
 
-.btn-outline-secondary{
-border-radius:8px;
-}
+    #loginMsg,
+    #registerMsg {
+      font-size: 14px;
+      min-height: 18px;
+    }
 
-#loginMsg,
-#registerMsg{
-font-size:14px;
-min-height:18px;
-}
+    .auth-footer {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 14px;
+      color: #666;
+    }
 
-.auth-footer{
-text-align:center;
-margin-top:15px;
-font-size:14px;
-color:#666;
-}
+    .auth-footer span {
+      color: #2b7cff;
+      cursor: pointer;
+      font-weight: 600;
+    }
 
-.auth-footer span{
-color:#2b7cff;
-cursor:pointer;
-font-weight:600;
-}
+    /* APP */
 
-/* APP */
+    #chatApp {
+      display: none;
+      width: 100%;
+      height: 100vh;
+      background: #f4f6fb;
+    }
 
-#chatApp{
-display:none;
-width:100%;
-height:100vh;
-background:#f4f6fb;
-}
+    .sidebar {
+      width: 260px;
+      background: #fff;
+      flex-shrink: 0;
+      border-right: 1px solid #ddd;
+      height: 100vh;
+      overflow-y: auto;
+    }
 
-.sidebar{
-width:260px;
-background:#fff;
-flex-shrink: 0;
-border-right:1px solid #ddd;
-height:100vh;
-overflow-y:auto;
-}
+    .sidebar-title {
+      font-weight: bold;
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+    }
 
-.sidebar-title{
-font-weight:bold;
-padding:15px;
-border-bottom:1px solid #eee;
-}
+    .chat-history-item {
+      padding: 10px 15px;
+      cursor: pointer;
+      border-bottom: 1px solid #f0f0f0;
+    }
 
-.chat-history-item{
-padding:10px 15px;
-cursor:pointer;
-border-bottom:1px solid #f0f0f0;
-}
+    .chat-history-item:hover {
+      background: #f5f5f5;
+    }
 
-.chat-history-item:hover{
-background:#f5f5f5;
-}
+    .topbar {
+      display: flex;
+      align-items: center;
+      padding: 10px 15px;
+      background: #fff;
+      border-bottom: 1px solid #ddd;
+    }
 
-.topbar{
-display:flex;
-align-items:center;
-padding:10px 15px;
-background:#fff;
-border-bottom:1px solid #ddd;
-}
+    .menu-btn {
+      font-size: 20px;
+      margin-right: 10px;
+      cursor: pointer;
+      border: none;
+      background: none;
+    }
 
-.menu-btn{
-font-size:20px;
-margin-right:10px;
-cursor:pointer;
-border:none;
-background:none;
-}
+    #chat {
+      overflow: auto;
+    }
 
-#chat{
-overflow:auto;
-}
+    .new-chat-btn {
+      padding: 10px;
+      margin: 10px;
+      background: #2b7cff;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      text-align: center;
+      font-weight: 600;
+    }
 
-.new-chat-btn{
-padding:10px;
-margin:10px;
-background:#2b7cff;
-color:white;
-border-radius:6px;
-cursor:pointer;
-text-align:center;
-font-weight:600;
-}
+    .new-chat-btn:hover {
+      background: #1f63d6;
+    }
+  </style>
 
-.new-chat-btn:hover{
-background:#1f63d6;
-}
-
-</style>
-
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 
 <body>
 
-<!-- LOGIN -->
+  <!-- LOGIN -->
 
-<div id="loginBox">
+  <div id="loginBox">
 
-<div class="container active">
-          <div class="form-box login" id="loginForm">
-              <form onsubmit="event.preventDefault(); login();">
-			  <div id="loginMsg" style="color:red;"></div>
-                  <h1>Login</h1>
-                  <div class="input-box">
-                      <input id="login_username" type="text" placeholder="Username" required>
-                      <i class='bx bxs-user'></i>
-                  </div>
-                  <div class="input-box">
-                      <input id="login_password" type="password" placeholder="Password" required>
-                      <i class='bx bxs-lock-alt' ></i>
-                  </div>
-                  <div class="forgot-link">
-                      <a href="#">Forgot Password?</a>
-                  </div>
-                  <button type="submit" class="btn">Login</button>
-                  <div class="switch-auth">
-                    Chưa có tài khoản? 
-                    <span onclick="showRegisterForm()">Đăng ký</span>
-                  </div>
-                  <p>or login with social platforms</p>
-                  <div class="social-icons">
-                      <a href="#"><i class='bx bxl-google' ></i></a>
-                      <a href="#"><i class='bx bxl-facebook' ></i></a>
-                      <a href="#"><i class='bx bxl-github' ></i></a>
-                      <a href="#"><i class='bx bxl-linkedin' ></i></a>
-                  </div>
-              </form>
+    <div class="container active">
+      <div class="form-box login" id="loginForm">
+        <form onsubmit="event.preventDefault(); login();">
+          <div id="loginMsg" style="color:red;"></div>
+          <h1>Login</h1>
+          <div class="input-box">
+            <input id="login_username" type="text" placeholder="Username" required>
+            <i class='bx bxs-user'></i>
           </div>
-
-          <div class="form-box register" id="registerForm">
-              <form onsubmit="event.preventDefault(); register();">
-			  <div id="registerMsg" style="color:red;"></div>
-				<h1>Registration</h1>
-
-				<div class="input-box">
-					<input id="reg_username" type="text" placeholder="Username" required>
-					<i class='bx bxs-user'></i>
-				</div>
-
-				<div class="input-box">
-					<input id="reg_password" type="password" placeholder="Password" required>
-					<i class='bx bxs-lock-alt'></i>
-				</div>
-
-				<!-- FIX ở đây -->
-				<div class="input-box">
-					<input id="reg_password2" type="password" placeholder="Confirm Password" required>
-					<i class='bx bxs-lock-alt'></i>
-				</div>
-
-				<button type="submit" class="btn">Register</button>
-        <div class="switch-auth">
-  Đã có tài khoản? 
-  <span onclick="showLoginForm()">Đăng nhập</span>
-</div>
-				<p>or register with social platforms</p>
-
-				<div class="social-icons">
-					<a href="#"><i class='bx bxl-google'></i></a>
-					<a href="#"><i class='bx bxl-facebook'></i></a>
-					<a href="#"><i class='bx bxl-github'></i></a>
-					<a href="#"><i class='bx bxl-linkedin'></i></a>
-				</div>
-			</form>
+          <div class="input-box">
+            <input id="login_password" type="password" placeholder="Password" required>
+            <i class='bx bxs-lock-alt'></i>
           </div>
-
-          <div class="toggle-box">
-              <div class="toggle-panel toggle-left">
-                  <h1>Hello, Welcome!</h1>
-                  <p>Don't have an account?</p>
-                  <button class="btn register-btn">Register</button>
-              </div>
-
-              <div class="toggle-panel toggle-right">
-                  <h1>Welcome Back!</h1>
-                  <p>Already have an account?</p>
-                  <button class="btn login-btn">Login</button>
-              </div>
+          <div class="forgot-link">
+            <a href="#">Forgot Password?</a>
           </div>
+          <button type="submit" class="btn">Login</button>
+          <div class="switch-auth">
+            Chưa có tài khoản?
+            <span onclick="showRegisterForm()">Đăng ký</span>
+          </div>
+          <p>or login with social platforms</p>
+          <div class="social-icons">
+
+            <div id="g_id_onload"
+              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
+              data-callback="handleGoogleLogin" data-auto_prompt="false">
+            </div>
+
+            <div class="g_id_signin" data-type="standard" data-size="large">
+            </div>
+          </div>
+        </form>
       </div>
 
-</div>
+      <div class="form-box register" id="registerForm">
+        <form onsubmit="event.preventDefault(); register();">
+          <div id="registerMsg" style="color:red;"></div>
+          <h1>Registration</h1>
 
+          <div class="input-box">
+            <input id="reg_username" type="text" placeholder="Username" required>
+            <i class='bx bxs-user'></i>
+          </div>
 
-<!-- PROFILE -->
-<div id="profileBox" style="display:none; align-items:center; justify-content:center; height:100vh;">
+          <div class="input-box">
+            <input id="reg_password" type="password" placeholder="Password" required>
+            <i class='bx bxs-lock-alt'></i>
+          </div>
 
-  <div class="auth-card">
+          <!-- FIX ở đây -->
+          <div class="input-box">
+            <input id="reg_password2" type="password" placeholder="Confirm Password" required>
+            <i class='bx bxs-lock-alt'></i>
+          </div>
 
-    <div class="auth-title">Hoàn thiện thông tin</div>
+          <button type="submit" class="btn">Register</button>
+          <div class="switch-auth">
+            Đã có tài khoản?
+            <span onclick="showLoginForm()">Đăng nhập</span>
+          </div>
+          <p>or register with social platforms</p>
 
-    <div id="profileMsg" class="text-danger mb-2"></div>
+          <div class="social-icons">
 
-    <input id="pf_name" class="form-control mb-3" placeholder="Họ và tên">
+            <div id="g_id_onload"
+              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
+              data-callback="handleGoogleLogin" data-auto_prompt="false">
+            </div>
 
-    <input id="pf_dob" type="text" class="form-control mb-3" placeholder="dd/mm/yyyy"
->
+            <div class="g_id_signin" data-type="standard" data-size="large">
+            </div>
+          </div>
+        </form>
+      </div>
 
-    <button type="button" onclick="saveProfile()" class="btn btn-primary w-100">
-      Xác nhận
-    </button>
+      <div class="toggle-box">
+        <div class="toggle-panel toggle-left">
+          <h1>Hello, Welcome!</h1>
+          <p>Don't have an account?</p>
+          <button class="btn register-btn">Register</button>
+        </div>
+
+        <div class="toggle-panel toggle-right">
+          <h1>Welcome Back!</h1>
+          <p>Already have an account?</p>
+          <button class="btn login-btn">Login</button>
+        </div>
+      </div>
+    </div>
 
   </div>
 
-</div>
+
+  <!-- PROFILE -->
+  <div id="profileBox" style="display:none; align-items:center; justify-content:center; height:100vh;">
+
+    <div class="auth-card">
+
+      <div class="auth-title">Hoàn thiện thông tin</div>
+
+      <div id="profileMsg" class="text-danger mb-2"></div>
+
+      <input id="pf_name" class="form-control mb-3" placeholder="Họ và tên">
+
+      <input id="pf_dob" type="text" class="form-control mb-3" placeholder="dd/mm/yyyy">
+
+      <button type="button" onclick="saveProfile()" class="btn btn-primary w-100">
+        Xác nhận
+      </button>
+
+    </div>
+
+  </div>
 
 
-<!-- APP -->
+  <!-- APP -->
 
-<div id="chatApp">
+  <div id="chatApp">
 
-<div class="d-flex" style="height:100vh">
+    <div class="d-flex" style="height:100vh">
 
-<!-- SIDEBAR -->
+      <!-- SIDEBAR -->
 
-<div id="sidebar" class="sidebar">
+      <div id="sidebar" class="sidebar">
 
-<div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
+        <div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
 
-<div class="sidebar-title">
-Lịch sử chat
-</div>
+        <div class="sidebar-title">
+          Lịch sử chat
+        </div>
 
-<div id="historyList"></div>
+        <div id="historyList"></div>
 
-</div>
-
-
-<!-- MAIN -->
-
-<div class="flex-grow-1 d-flex flex-column">
+      </div>
 
 
-<!-- TOPBAR -->
+      <!-- MAIN -->
 
-<div class="topbar">
-
-<button class="menu-btn" onclick="toggleSidebar()">☰</button>
-
-<div class="fw-bold">Btoan AI</div>
-
-<div class="ms-auto d-flex align-items-center gap-2">
-
-<span id="userName" style="font-weight:600;"></span>
-
-<button class="btn btn-sm btn-danger" onclick="logout()">
-Đăng xuất
-</button>
-
-</div>
-
-</div>
+      <div class="flex-grow-1 d-flex flex-column">
 
 
-<!-- CHAT -->
+        <!-- TOPBAR -->
 
-<main id="chat" class="flex-grow-1 p-3"></main>
+        <div class="topbar">
 
-<div id="status" class="p-2 text-muted" style="display:none"></div>
+          <button class="menu-btn" onclick="toggleSidebar()">☰</button>
 
+          <div class="fw-bold">Btoan AI</div>
 
-<!-- INPUT -->
+          <div class="ms-auto d-flex align-items-center gap-2">
 
-<div class="p-2 border-top">
+            <span id="userName" style="font-weight:600;"></span>
 
-<div class="d-flex align-items-center">
+            <button class="btn btn-sm btn-danger" onclick="logout()">
+              Đăng xuất
+            </button>
 
-<input id="fileImg" type="file" accept="image/*" multiple hidden>
-<input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
-<input id="fileDoc" type="file"
-accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-multiple hidden>
+          </div>
 
-<!-- ✅ NÚT + -->
-<div class="dropdown">
-  <button class="btn btn-light me-2" data-bs-toggle="dropdown">
-    +
-  </button>
-
-  <ul class="dropdown-menu">
-
-    <li><button id="pickImage" class="dropdown-item">🖼️ Gửi ảnh</button></li>
-    <li><button id="pickCamera" class="dropdown-item">📷 Chụp ảnh</button></li>
-    <li><button id="pickFile" class="dropdown-item">📄 Gửi tệp</button></li>
-
-    <li><hr></li>
-
-    <li><button class="dropdown-item" onclick="setMode('fast')">⚡ Fast</button></li>
-    <li><button class="dropdown-item" onclick="setMode('thinking')">🧠 Thinking</button></li>
-
-  </ul>
-</div>
-
-<textarea
-id="msg"
-class="form-control mx-2"
-placeholder="nhập tin nhắn..."
-rows="1"
-></textarea>
-
-<button id="send" class="btn btn-primary send-btn">
-  <i class="bi bi-send"></i>
-</button>
-
-</div>
-
-</div>
-
-<div id="attachments"></div>
-<div class="text-center small p-2">
-© AI được thành lập bởi Dev Nguyễn Bảo Toàn
-</div>
-
-</div>
+        </div>
 
 
-</div>
+        <!-- CHAT -->
 
-</div>
+        <main id="chat" class="flex-grow-1 p-3"></main>
+
+        <div id="status" class="p-2 text-muted" style="display:none"></div>
 
 
-</div>
+        <!-- INPUT -->
+
+        <div class="p-2 border-top">
+
+          <div class="d-flex align-items-center">
+
+            <input id="fileImg" type="file" accept="image/*" multiple hidden>
+            <input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
+            <input id="fileDoc" type="file"
+              accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              multiple hidden>
+
+            <!-- ✅ NÚT + -->
+            <div class="dropdown">
+              <button class="btn btn-light me-2" data-bs-toggle="dropdown">
+                +
+              </button>
+
+              <ul class="dropdown-menu">
+
+                <li><button id="pickImage" class="dropdown-item">🖼️ Gửi ảnh</button></li>
+                <li><button id="pickCamera" class="dropdown-item">📷 Chụp ảnh</button></li>
+                <li><button id="pickFile" class="dropdown-item">📄 Gửi tệp</button></li>
+
+                <li>
+                  <hr>
+                </li>
+
+                <li><button class="dropdown-item" onclick="setMode('fast')">⚡ Fast</button></li>
+                <li><button class="dropdown-item" onclick="setMode('thinking')">🧠 Thinking</button></li>
+
+              </ul>
+            </div>
+
+            <textarea id="msg" class="form-control mx-2" placeholder="nhập tin nhắn..." rows="1"></textarea>
+
+            <button id="send" class="btn btn-primary send-btn">
+              <i class="bi bi-send"></i>
+            </button>
+
+          </div>
+
+        </div>
+
+        <div id="attachments"></div>
+        <div class="text-center small p-2">
+          © AI được thành lập bởi Dev Nguyễn Bảo Toàn
+        </div>
+
+      </div>
+
+
+    </div>
+
+  </div>
+
+
+  </div>
 
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
-<script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 
-<script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
+  <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
 
-<script src="login/SignUp_LogIn_Form.js"></script>
+  <script src="login/SignUp_LogIn_Form.js"></script>
 
-<script src="./app.js"></script>
+  <script src="./app.js"></script>
 
 </body>
+
 </html>
