@@ -248,50 +248,36 @@ form{ width: 100%; }
 }
 @media (max-width: 768px){
 
-  body{
-    align-items: flex-start;
-  }
-
   .container{
-    width: 100% !important;
     height: auto !important;
-    border-radius: 0 !important;
-    margin: 0 !important;
-    box-shadow: none !important;
   }
 
-  /* ❌ tắt animation system */
-  .toggle-box{
-    display: none !important;
-  }
-
-  /* ✅ reset form */
   .form-box{
     position: relative !important;
     width: 100% !important;
     height: auto !important;
     right: 0 !important;
     bottom: 0 !important;
-    transform: none !important;
-    transition: none !important;
-    padding: 25px !important;
+
+    display: none; /* 🔥 QUAN TRỌNG */
   }
 
-  /* ✅ chỉ hiện 1 form */
+  /* ===== LOGIN DEFAULT ===== */
   .form-box.login{
-    display: block;
+    display: flex;
   }
 
-  .form-box.register{
-    display: none;
-  }
-
+  /* ===== KHI ACTIVE (REGISTER) ===== */
   .container.active .form-box.login{
     display: none;
   }
 
   .container.active .form-box.register{
-    display: block;
+    display: flex;
+  }
+
+  .toggle-box{
+    display: none !important;
   }
 
 }
