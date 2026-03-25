@@ -1835,9 +1835,24 @@ function handleGoogleLogin(response) {
     .then(res => res.json())
     .then(data => {
         if(data.success){
-            localStorage.setItem("user_id", data.user.id);
 
-            location.reload();
+            const user_id = data.user.id;
+
+            // ✅ lưu đúng hệ thống bạn đang dùng
+            localStorage.setItem("user_id", user_id);
+
+            // ✅ ẩn login
+            document.getElementById("loginBox").style.display = "none";
+
+            // ✅ auto fill tên (xịn hơn)
+            document.getElementById("pf_name").value = data.user.name || "";
+
+            // ✅ check profile NGAY (KHÔNG reload)
+            checkProfile(user_id);
+
+            // 👉 nếu đã có profile → load app luôn
+            loadHistory();
+            newChat();
 
         } else {
             alert("Login Google thất bại");
