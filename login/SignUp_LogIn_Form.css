@@ -236,3 +236,48 @@ form{ width: 100%; }
 
     .toggle-panel h1{font-size: 30px; }
 }
+.form-box.login{
+    visibility: visible;
+}
+
+.form-box.register{
+    visibility: hidden;
+}
+.container.active .form-box.login{
+    visibility: hidden;
+}
+@media (max-width: 768px){
+
+  .container{
+    height: auto !important;
+  }
+
+  .form-box{
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    right: 0 !important;
+    bottom: 0 !important;
+
+    display: none; /* 🔥 QUAN TRỌNG */
+  }
+
+  /* ===== LOGIN DEFAULT ===== */
+  .form-box.login{
+    display: flex;
+  }
+
+  /* ===== KHI ACTIVE (REGISTER) ===== */
+  .container.active .form-box.login{
+    display: none;
+  }
+
+  .container.active .form-box.register{
+    display: flex;
+  }
+
+  .toggle-box{
+    display: none !important;
+  }
+
+}

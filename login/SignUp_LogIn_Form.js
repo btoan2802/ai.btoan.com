@@ -1,15 +1,8 @@
-// ===== SAFE READY =====
 document.addEventListener("DOMContentLoaded", () => {
 
   const container = document.querySelector('.container');
-const loginBox = document.getElementById('loginForm');
-const registerBox = document.getElementById('registerForm');
   const registerBtn = document.querySelector('.register-btn');
   const loginBtn = document.querySelector('.login-btn');
-loginBox.classList.add('active');
-  function isMobile(){
-    return window.innerWidth <= 768;
-  }
 
 window.showRegisterForm = function(){
 
@@ -37,25 +30,18 @@ window.showLoginForm = function(){
 
 }
 
-  // ===== BUTTON PANEL DESKTOP =====
+  // ===== BUTTON PANEL (desktop panel xanh) =====
   if(registerBtn){
-    registerBtn.onclick = window.showRegisterForm;
+    registerBtn.addEventListener('click', showRegisterForm);
   }
 
   if(loginBtn){
-    loginBtn.onclick = window.showLoginForm;
+    loginBtn.addEventListener('click', showLoginForm);
   }
 
-  // ===== DEFAULT MOBILE =====
-function setupMobile(){
-  if(isMobile()){
+  // ===== MOBILE DEFAULT (chỉ chạy 1 lần) =====
+  if(window.innerWidth <= 768){
     container.classList.remove('active'); // mặc định login
   }
-}
-
-  setupMobile();
-
-  // ===== FIX XOAY MÀN HÌNH =====
-  window.addEventListener("resize", setupMobile);
 
 });
