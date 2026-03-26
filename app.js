@@ -852,7 +852,7 @@ async function send() {
 // ====== LOGIN ======
 async function login() {
 
-    localStorage.setItem("username", data.username);
+    localStorage.setItem("username", data.full_name || username);
 
     const username = document.getElementById("login_username").value;
     const password = document.getElementById("login_password").value;
@@ -892,10 +892,10 @@ async function login() {
 
         document.getElementById("loginBox").remove();
 
+        await checkProfile(data.user_id)  // 🔥 QUAN TRỌNG
+
         loadHistory()
         newChat()
-
-        checkProfile(data.user_id);
 
     } else {
         document.getElementById("loginMsg").innerText = "Sai tài khoản hoặc mật khẩu";
@@ -1708,13 +1708,19 @@ async function checkProfile(user_id) {
     const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
     const data = await res.json()
 
+    // 🔥 LUÔN set tên (fix lỗi không hiện tên)
+    const name =
+        (data.full_name && data.full_name.trim()) ||
+        localStorage.getItem("username") ||
+        "User"
+
+    document.getElementById("userName").innerText = name
+
+    // UI hiển thị
     if (data.has_profile) {
 
         document.getElementById("profileBox").style.display = "none"
         document.getElementById("chatApp").style.display = "flex"
-
-        const name = data.full_name || localStorage.getItem("username") || "User"
-        document.getElementById("userName").innerText = name
 
     } else {
 

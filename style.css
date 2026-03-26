@@ -401,6 +401,12 @@ max-height:180px;
 .sidebar{
   background: #ffffff;
   border-right: 1px solid var(--stroke);
+
+  display: flex;
+  flex-direction: column;
+
+  height: 100%;
+  overflow: hidden; /* 🔥 QUAN TRỌNG NHẤT */
 }
 
 /* main chat */
@@ -767,4 +773,9 @@ color:white;
 .sidebar {
   display: flex;
   flex-direction: column;
+}
+.logout-box{
+  padding: 12px;
+  border-top: 1px solid #eee;
+  flex-shrink: 0;
 }
