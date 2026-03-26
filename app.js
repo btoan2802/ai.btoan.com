@@ -852,7 +852,7 @@ async function send() {
 // ====== LOGIN ======
 async function login() {
 
-    localStorage.setItem("username", data.full_name || username);
+    
 
     const username = document.getElementById("login_username").value;
     const password = document.getElementById("login_password").value;
@@ -887,6 +887,9 @@ async function login() {
         console.log("SAVE user_id =", data.user_id);
 
         localStorage.setItem("user_id", String(data.user_id));
+
+        localStorage.setItem("user_id", String(data.user_id));
+
 
         console.log("AFTER SAVE:", localStorage.getItem("user_id"));
 
