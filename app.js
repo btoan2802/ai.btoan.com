@@ -852,6 +852,8 @@ async function send() {
 // ====== LOGIN ======
 async function login() {
 
+    localStorage.setItem("username", data.username);
+
     const username = document.getElementById("login_username").value;
     const password = document.getElementById("login_password").value;
 
@@ -892,7 +894,6 @@ async function login() {
 
         loadHistory()
         newChat()
-        checkProfile(data.user_id)
 
         checkProfile(data.user_id);
 
@@ -1712,8 +1713,8 @@ async function checkProfile(user_id) {
         document.getElementById("profileBox").style.display = "none"
         document.getElementById("chatApp").style.display = "flex"
 
-        document.getElementById("userName").innerText =
-            data.full_name || "User"
+        const name = data.full_name || localStorage.getItem("username") || "User"
+        document.getElementById("userName").innerText = name
 
     } else {
 
@@ -1850,9 +1851,9 @@ function handleGoogleLogin(response) {
             // ✅ check profile NGAY (KHÔNG reload)
             checkProfile(user_id);
 
-            // 👉 nếu đã có profile → load app luôn
-            loadHistory();
-            newChat();
+            // // 👉 nếu đã có profile → load app luôn
+            // loadHistory();
+            // newChat();
 
         } else {
             alert("Login Google thất bại");

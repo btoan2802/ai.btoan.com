@@ -764,3 +764,7 @@ color:white;
   position:relative;
   z-index:10;
 }
+.sidebar {
+  display: flex;
+  flex-direction: column;
+}
