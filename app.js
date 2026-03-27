@@ -1256,52 +1256,54 @@ window.onload = function () {
 
     if (avatarInput) {
 
-        avatarInput.addEventListener("change", function () {
+        avatarInput.addEventListener("change", async function () {
 
             const file = this.files[0]
             if (!file) return
 
-            const reader = new FileReader()
+            console.log("🔥 FILE SELECTED:", file)
 
-            document.getElementById("avatarInput").addEventListener("change", async function () {
+            const formData = new FormData()
+            formData.append("avatar", file)
+            formData.append("user_id", localStorage.getItem("user_id"))
 
-                const file = this.files[0]
-                if (!file) return
+            try {
 
-                const formData = new FormData()
-                formData.append("avatar", file)
-                formData.append("user_id", localStorage.getItem("user_id"))
+                const res = await fetch("/ai/api/upload_avatar.php", {
+                    method: "POST",
+                    body: formData
+                })
 
+                const text = await res.text()
+                console.log("🔥 RAW RESPONSE:", text)
+
+                let data
                 try {
-
-                    const res = await fetch("/ai/api/upload_avatar.php", {
-                        method: "POST",
-                        body: formData
-                    })
-
-                    const data = await res.json()
-
-                    if (!data.success) {
-                        alert("Upload lỗi")
-                        return
-                    }
-
-                    // 🔥 update UI ngay
-                    const preview = document.getElementById("avatarPreview")
-                    preview.innerHTML = `<img src="${data.url}?t=${Date.now()}">`
-
-                    // 🔥 update avatar góc trên
-                    const avatarTop = document.getElementById("userAvatar")
-                    avatarTop.innerHTML = `<img src="${data.url}?t=${Date.now()}">`
-
-                } catch (e) {
-                    console.error(e)
-                    alert("Server lỗi")
+                    data = JSON.parse(text)
+                } catch {
+                    alert("API lỗi không phải JSON")
+                    return
                 }
 
-            })
+                console.log("🔥 PARSED:", data)
 
-            reader.readAsDataURL(file)
+                if (!data.success) {
+                    alert("Upload thất bại")
+                    return
+                }
+
+                const url = data.avatar + "?t=" + Date.now()
+
+                document.getElementById("avatarPreview").innerHTML =
+                    `<img src="${url}" style="width:100%;height:100%;border-radius:50%">`
+
+                document.getElementById("userAvatar").innerHTML =
+                    `<img src="${url}" style="width:100%;height:100%;border-radius:50%">`
+
+            } catch (e) {
+                console.error("UPLOAD ERROR:", e)
+                alert("Server lỗi")
+            }
 
         })
 
