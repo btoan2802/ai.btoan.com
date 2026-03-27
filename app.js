@@ -377,7 +377,7 @@ function streamBot(text, exportType = null) {
 
             clearInterval(timer)
 
-
+            isSending = false // 🔥 ENABLE KHI STREAM XONG
             /* highlight lại */
             content.querySelectorAll("pre code").forEach(el => {
                 hljs.highlightElement(el)
@@ -816,6 +816,7 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
             await runSearch(query, userText)
 
+            isSending = false   // 🔥 THÊM
             return
         }
 
@@ -831,7 +832,6 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
         typing.remove()
         streamBot(reply, exportType)
-        isSending = false
 
         // ❗ KHÔNG enable ở đây (vì stream chưa xong)
 
