@@ -46,6 +46,7 @@ if (!move_uploaded_file($file["tmp_name"], $path)) {
 
 // 🔥 URL PUBLIC (browser dùng)
 $url = "/ai/uploads/avatars/" . $filename;
+$url = str_replace("\\", "/", $url);
 
 // ===== SAVE DB =====
 $stmt = $conn->prepare("UPDATE users SET avatar=? WHERE id=?");
