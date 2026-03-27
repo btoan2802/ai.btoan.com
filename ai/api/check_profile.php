@@ -14,13 +14,14 @@ if ($user_id <= 0) {
     echo json_encode([
         "has_profile" => false,
         "full_name" => null,
-        "dob" => null
+        "dob" => null,
+        "avatar" => null
     ]);
     exit;
 }
 
 // ===== QUERY =====
-$stmt = $conn->prepare("SELECT full_name, dob FROM users WHERE id = ?");
+$stmt = $conn->prepare("SELECT full_name, dob, avatar FROM users WHERE id = ?");
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
 
@@ -32,7 +33,8 @@ if (!$user) {
     echo json_encode([
         "has_profile" => false,
         "full_name" => null,
-        "dob" => null
+        "dob" => null,
+        "avatar" => null
     ]);
     exit;
 }
@@ -40,10 +42,12 @@ if (!$user) {
 // ===== DATA =====
 $full_name = trim($user['full_name'] ?? "");
 $dob = $user['dob'] ?? null;
+$avatar = $user['avatar'] ?? null;
 
 // ===== RESPONSE =====
 echo json_encode([
     "has_profile" => !empty($full_name),
     "full_name" => !empty($full_name) ? $full_name : null,
-    "dob" => $dob
+    "dob" => $dob,
+    "avatar" => $avatar
 ]);

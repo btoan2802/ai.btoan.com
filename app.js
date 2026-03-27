@@ -1263,23 +1263,43 @@ window.onload = function () {
 
             const reader = new FileReader()
 
-            reader.onload = function (e) {
+            document.getElementById("avatarInput").addEventListener("change", async function () {
 
-                const base64 = e.target.result
+                const file = this.files[0]
+                if (!file) return
 
-                // 👇 hiện trong modal
-                document.getElementById("avatarPreview").innerHTML =
-                    `<img src="${base64}" style="width:100%;height:100%;border-radius:50%">`
+                const formData = new FormData()
+                formData.append("avatar", file)
+                formData.append("user_id", localStorage.getItem("user_id"))
 
-                // 👇 hiện trên header luôn
-                document.getElementById("userAvatar").innerHTML =
-                    `<img src="${base64}" style="width:100%;height:100%;border-radius:50%">`
+                try {
 
-                // 👇 lưu lại
-                localStorage.setItem("avatar", base64)
+                    const res = await fetch("/ai/api/upload_avatar.php", {
+                        method: "POST",
+                        body: formData
+                    })
 
-                console.log("✅ avatar saved")
-            }
+                    const data = await res.json()
+
+                    if (!data.success) {
+                        alert("Upload lỗi")
+                        return
+                    }
+
+                    // 🔥 update UI ngay
+                    const preview = document.getElementById("avatarPreview")
+                    preview.innerHTML = `<img src="${data.url}?t=${Date.now()}">`
+
+                    // 🔥 update avatar góc trên
+                    const avatarTop = document.getElementById("userAvatar")
+                    avatarTop.innerHTML = `<img src="${data.url}?t=${Date.now()}">`
+
+                } catch (e) {
+                    console.error(e)
+                    alert("Server lỗi")
+                }
+
+            })
 
             reader.readAsDataURL(file)
 
@@ -2014,7 +2034,12 @@ document.addEventListener("click", function (e) {
             // ===== AVATAR (🔥 QUAN TRỌNG) =====
             if (avatarPreview) {
 
-                const avatar = localStorage.getItem("avatar")
+                if (data.avatar) {
+
+                    document.getElementById("userAvatar").innerHTML =
+                        `<img src="${data.avatar}?t=${Date.now()}">`
+
+                }
 
                 if (avatar) {
                 avatarPreview.innerHTML = `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%">`
