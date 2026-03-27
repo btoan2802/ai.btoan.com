@@ -476,7 +476,7 @@
         <!-- AVATAR -->
         <div class="avatar-upload">
           <div id="avatarPreview" class="avatar-preview">U</div>
-          <input type="file" id="avatarInput" accept="image/*" hidden>
+          <input type="file" id="avatarInput" accept="image/*" style="display:none">
           <button onclick="document.getElementById('avatarInput').click()" class="btn btn-light btn-sm mt-2">
             Đổi ảnh
           </button>
