@@ -715,29 +715,29 @@ async function send() {
         return
     }
     // ===== TOOL DETECTION =====
-    if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
+if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
 
-        let query = userText
+    let query = userText
+    query = query.replace(/tìm trên mạng/gi, "")
+    query = query.replace(/^\/search/gi, "")
+    query = query.trim()
 
-        // clean keyword
-        query = query.replace(/tìm trên mạng/gi, "")
-        query = query.replace(/^\/search/gi, "")
-        query = query.trim()
-
-        if (!query) {
-            addBotBubble("❌ bạn chưa nhập nội dung cần tìm")
-            return
-        }
-
-        addUserBubble(userText)
-        scrollToBottom()
-
-        runSearch(query, userText)
-
-        msgEl.value = ""   // 🔥 FIX BUG INPUT KHÔNG XÓA
-
+    if (!query) {
+        addBotBubble("❌ bạn chưa nhập nội dung cần tìm")
+        isSending = false   // 🔥 THÊM
         return
     }
+
+    addUserBubble(userText)
+    scrollToBottom()
+
+    runSearch(query, userText)
+
+    msgEl.value = ""
+
+    isSending = false   // 🔥 QUAN TRỌNG
+    return
+}
 
     // ===== EXPORT COMMAND =====
 
@@ -781,18 +781,13 @@ async function send() {
         // 🔥 FORCE EXPORT FORMAT
         // 🔥 detect export trực tiếp từ user
         if (userText.toLowerCase().includes("xuất file docx")) {
-
-            typing.remove()
-
-            const content = lastExportContent || lastAIAnswer || userText
-
-            if (!content) {
+            if (!lastExportContent) {
                 addBotBubble("❌ chưa có nội dung để xuất")
+                isSending = false   // 🔥 THÊM
                 return
             }
-
-            exportDOCX(content)
-            return
+            isSending = false
+            return exportDOCX(lastExportContent)
         }
 
         // 🔥 AI quyết định export
