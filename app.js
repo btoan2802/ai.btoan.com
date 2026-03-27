@@ -1709,11 +1709,21 @@ function cleanExportContent(text) {
         avatar.style.background = colors[name.length % colors.length]
 
         if (data.has_profile) {
+
+            // ✅ đã có profile → vào chat
             document.getElementById("profileBox").style.display = "none"
             document.getElementById("chatApp").style.display = "flex"
+
+            // ✅ lưu lại để biết là EDIT mode
+            localStorage.setItem("has_profile", "1")
+
         } else {
+
+            // ❌ chưa có → bắt nhập
             document.getElementById("profileBox").style.display = "flex"
             document.getElementById("chatApp").style.display = "none"
+
+            localStorage.setItem("has_profile", "0")
         }
     }
 async function saveProfile() {
@@ -1797,12 +1807,24 @@ async function saveProfile() {
 
         const user_id = localStorage.getItem("user_id")
 
+        // ✅ đánh dấu đã có profile
         localStorage.setItem("has_profile", "1")
 
-        // 👇 QUAN TRỌNG NHẤT
+        // ✅ đóng màn profile
+        document.getElementById("profileBox").style.display = "none"
+
+        // ✅ mở lại chat
+        document.getElementById("chatApp").style.display = "flex"
+
+        // ✅ cập nhật lại tên + avatar ngay
         checkProfile(user_id)
 
+        // ✅ (optional) toast nhẹ cho đẹp
+        addBotBubble("✅ Đã cập nhật thông tin!")
+
     }
+
+    
 
 }
 function isMobile() {
@@ -1892,6 +1914,44 @@ document.addEventListener("click", function (e) {
 })
 
 function openProfile() {
+
+    const hasProfile = localStorage.getItem("has_profile") === "1"
+
     document.getElementById("profileBox").style.display = "flex"
     document.getElementById("chatApp").style.display = "none"
+
+    const title = document.querySelector("#profileBox .auth-title")
+    const btn = document.querySelector("#profileBox button")
+
+    if (hasProfile) {
+        title.innerText = "Chỉnh sửa thông tin"
+        btn.innerText = "Lưu thay đổi"
+    } else {
+        title.innerText = "Hoàn thiện thông tin"
+        btn.innerText = "Xác nhận"
+    }
+
+    // 🔥 load dữ liệu cũ vào input
+    loadProfileData()
+}
+async function loadProfileData() {
+
+    const user_id = localStorage.getItem("user_id")
+    if (!user_id) return
+
+    const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+    const data = await res.json()
+
+    if (data.full_name) {
+        document.getElementById("pf_name").value = data.full_name
+    }
+
+    if (data.dob) {
+        // yyyy-mm-dd → dd/mm/yyyy
+        const parts = data.dob.split("-")
+        if (parts.length === 3) {
+            document.getElementById("pf_dob").value =
+                parts[2] + "/" + parts[1] + "/" + parts[0]
+        }
+    }
 }
