@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit();
 }
 
-$host = "btoan.com";
+$host = "localhost";
 $user = "btoan";
 $pass = "toanhotface";
 $db   = "btoan_ai";
