@@ -1758,20 +1758,32 @@ function cleanExportContent(text) {
         // ✅ avatar chữ cái đầu
         const avatarEl = document.getElementById("userAvatar")
 
-if (data.avatar) {
+        // reset
+        avatarEl.innerHTML = ""
+        avatarEl.style.background = "none"
 
-    const url = data.avatar + "?t=" + Date.now()
+        if (data.avatar) {
 
-    avatarEl.innerHTML = `
-        <img src="${url}" 
-             style="width:100%;height:100%;border-radius:50%">
-    `
+            const url = data.avatar + "?t=" + Date.now()
 
-} else {
+            avatarEl.innerHTML = `
+                <img src="${url}" 
+                    style="width:100%;height:100%;border-radius:50%">
+            `
 
-    avatarEl.innerText = name.charAt(0).toUpperCase()
+        } else {
 
-}
+            avatarEl.innerText = name.charAt(0).toUpperCase()
+
+            const colors = [
+                "linear-gradient(135deg,#6366f1,#4f46e5)",
+                "linear-gradient(135deg,#22c55e,#16a34a)",
+                "linear-gradient(135deg,#f59e0b,#d97706)",
+                "linear-gradient(135deg,#ef4444,#dc2626)"
+            ]
+
+            avatarEl.style.background = colors[name.length % colors.length]
+        }
 
         // 🎨 màu avatar
         const colors = [
@@ -1780,7 +1792,7 @@ if (data.avatar) {
             "linear-gradient(135deg,#f59e0b,#d97706)",
             "linear-gradient(135deg,#ef4444,#dc2626)"
         ]
-        avatar.style.background = colors[name.length % colors.length]
+        avatarEl.style.background = colors[name.length % colors.length]
 
         // 💾 lưu lại full_name để dùng sau
         if (fullName) {
