@@ -1922,27 +1922,35 @@ document.addEventListener("click", function (e) {
     }
 })
 
-function openProfile() {
+        function openProfile() {
 
-    const hasProfile = localStorage.getItem("has_profile") === "1"
+            const modal = document.getElementById("profileModal")
 
-    document.getElementById("profileBox").style.display = "flex"
-    document.getElementById("chatApp").style.display = "none"
+            if (!modal) {
+                console.error("❌ profileModal not found")
+                return
+            }
 
-    const title = document.querySelector("#profileBox .auth-title")
-    const btn = document.querySelector("#profileBox button")
+            const hasProfile = localStorage.getItem("has_profile") === "1"
 
-    if (hasProfile) {
-        title.innerText = "Chỉnh sửa thông tin"
-        btn.innerText = "Lưu thay đổi"
-    } else {
-        title.innerText = "Hoàn thiện thông tin"
-        btn.innerText = "Xác nhận"
-    }
+            // ✅ mở modal (KHÔNG đụng chatApp nữa)
+            modal.style.display = "flex"
 
-    // 🔥 load dữ liệu cũ vào input
-    loadProfileData()
-}
+            // ===== UI TEXT =====
+            const title = modal.querySelector(".profile-title")
+            const btn = modal.querySelector("button")
+
+            if (hasProfile) {
+                if (title) title.innerText = "Chỉnh sửa thông tin"
+                if (btn) btn.innerText = "Lưu thay đổi"
+            } else {
+                if (title) title.innerText = "Hoàn thiện thông tin"
+                if (btn) btn.innerText = "Xác nhận"
+            }
+
+            // ===== LOAD DATA =====
+            loadProfileData()
+        }
 async function loadProfileData() {
 
     const user_id = localStorage.getItem("user_id")
