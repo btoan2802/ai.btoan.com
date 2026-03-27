@@ -1,5 +1,4 @@
-echo "UPLOAD HIT";
-exit;
+
 <?php
 
 require "db.php";
