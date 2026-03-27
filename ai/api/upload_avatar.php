@@ -8,7 +8,6 @@ if (!isset($_FILES["avatar"]) || !isset($_POST["user_id"])) {
 }
 
 $user_id = intval($_POST["user_id"]);
-
 $file = $_FILES["avatar"];
 
 // ===== validate =====
@@ -19,7 +18,6 @@ if ($file["error"] !== 0) {
 
 // chỉ cho ảnh
 $ext = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
-
 $allowed = ["jpg", "jpeg", "png", "webp"];
 
 if (!in_array($ext, $allowed)) {
@@ -30,7 +28,8 @@ if (!in_array($ext, $allowed)) {
 // ===== tạo tên file =====
 $filename = "avatar_" . $user_id . "_" . time() . "." . $ext;
 
-$uploadDir = "../uploads/avatars/";
+// 🔥 PATH REAL (filesystem)
+$uploadDir = __DIR__ . "/../uploads/avatars/";
 
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0777, true);
@@ -38,16 +37,21 @@ if (!is_dir($uploadDir)) {
 
 $path = $uploadDir . $filename;
 
-move_uploaded_file($file["tmp_name"], $path);
+// ===== move file =====
+if (!move_uploaded_file($file["tmp_name"], $path)) {
+    echo json_encode(["success" => false, "msg" => "move failed"]);
+    exit;
+}
 
-// ===== lưu DB =====
+// 🔥 URL PUBLIC (browser dùng)
 $url = "/ai/uploads/avatars/" . $filename;
 
+// ===== SAVE DB =====
 $stmt = $conn->prepare("UPDATE users SET avatar=? WHERE id=?");
 $stmt->bind_param("si", $url, $user_id);
 $stmt->execute();
 
 echo json_encode([
     "success" => true,
-    "url" => $url
+    "avatar" => $url   // 🔥 đổi từ url → avatar (đồng bộ frontend)
 ]);
