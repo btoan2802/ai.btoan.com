@@ -1252,7 +1252,40 @@ window.onload = function () {
             e.target.value = v
         })
     }
+    const avatarInput = document.getElementById("avatarInput")
 
+    if (avatarInput) {
+
+        avatarInput.addEventListener("change", function () {
+
+            const file = this.files[0]
+            if (!file) return
+
+            const reader = new FileReader()
+
+            reader.onload = function (e) {
+
+                const base64 = e.target.result
+
+                // 👇 hiện trong modal
+                document.getElementById("avatarPreview").innerHTML =
+                    `<img src="${base64}" style="width:100%;height:100%;border-radius:50%">`
+
+                // 👇 hiện trên header luôn
+                document.getElementById("userAvatar").innerHTML =
+                    `<img src="${base64}" style="width:100%;height:100%;border-radius:50%">`
+
+                // 👇 lưu lại
+                localStorage.setItem("avatar", base64)
+
+                console.log("✅ avatar saved")
+            }
+
+            reader.readAsDataURL(file)
+
+        })
+
+    }
 
 }
 function toggleSidebar() {
@@ -1702,7 +1735,14 @@ function cleanExportContent(text) {
 
         // ✅ avatar chữ cái đầu
         const avatar = document.getElementById("userAvatar")
-        avatar.innerText = name.charAt(0).toUpperCase()
+
+        const savedAvatar = localStorage.getItem("avatar")
+
+        if (savedAvatar) {
+            avatar.innerHTML = `<img src="${savedAvatar}" style="width:100%;height:100%;border-radius:50%">`
+        } else {
+            avatar.innerText = name.charAt(0).toUpperCase()
+        }
 
         // 🎨 màu avatar
         const colors = [
@@ -1977,7 +2017,11 @@ document.addEventListener("click", function (e) {
                 const avatar = localStorage.getItem("avatar")
 
                 if (avatar) {
-                    avatarPreview.innerHTML = `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%">`
+                avatarPreview.innerHTML = `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%">`
+
+                    // 🔥 thêm dòng này
+                    document.getElementById("userAvatar").innerHTML =
+                        `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%">`
                 } else {
                     const name = data.full_name || localStorage.getItem("username") || "U"
                     avatarPreview.innerText = name.charAt(0).toUpperCase()
@@ -1990,21 +2034,3 @@ document.addEventListener("click", function (e) {
     }
 
 
-document.getElementById("avatarInput")?.addEventListener("change", function () {
-
-    const file = this.files[0]
-    if (!file) return
-
-    const reader = new FileReader()
-
-    reader.onload = function (e) {
-
-        const preview = document.getElementById("avatarPreview")
-        preview.innerHTML = `<img src="${e.target.result}">`
-
-        localStorage.setItem("avatar", e.target.result)
-    }
-
-    reader.readAsDataURL(file)
-
-})
