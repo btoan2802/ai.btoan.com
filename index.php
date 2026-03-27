@@ -469,25 +469,38 @@
 
   <script src="./app.js"></script>
 
-  <div id="profileModal" class="profile-modal">
+    <div id="profileModal" class="profile-modal">
 
-  <div class="profile-card">
+      <div class="profile-card">
 
-    <div class="profile-title">Thông tin cá nhân</div>
+        <!-- AVATAR -->
+        <div class="avatar-upload">
+          <div id="avatarPreview" class="avatar-preview">U</div>
+          <input type="file" id="avatarInput" accept="image/*" hidden>
+          <button onclick="document.getElementById('avatarInput').click()" class="btn btn-light btn-sm mt-2">
+            Đổi ảnh
+          </button>
+        </div>
 
-    <div id="profileMsg" class="text-danger mb-2"></div>
+        <!-- TITLE -->
+        <div class="profile-title">Thông tin cá nhân</div>
 
-    <input id="pf_name" class="form-control mb-3" placeholder="Họ và tên">
+        <div id="profileMsg" class="text-danger mb-2"></div>
 
-    <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
+        <!-- NAME -->
+        <input id="pf_name" class="form-control mb-2" placeholder="Họ và tên">
 
-    <button onclick="saveProfile()" class="btn btn-primary w-100">
-      Lưu thay đổi
-    </button>
+        <!-- DOB -->
+        <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
 
-  </div>
+        <!-- SAVE -->
+        <button onclick="saveProfile()" class="btn btn-primary w-100">
+          Lưu thay đổi
+        </button>
 
-</div>
+      </div>
+
+    </div>
 
 </body>
 

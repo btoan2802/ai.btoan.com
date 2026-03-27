@@ -1925,7 +1925,6 @@ document.addEventListener("click", function (e) {
         function openProfile() {
 
             const modal = document.getElementById("profileModal")
-
             if (!modal) {
                 console.error("❌ profileModal not found")
                 return
@@ -1933,12 +1932,12 @@ document.addEventListener("click", function (e) {
 
             const hasProfile = localStorage.getItem("has_profile") === "1"
 
-            // ✅ mở modal (KHÔNG đụng chatApp nữa)
+            // ✅ mở modal
             modal.style.display = "flex"
 
             // ===== UI TEXT =====
             const title = modal.querySelector(".profile-title")
-            const btn = modal.querySelector("button")
+            const btn = modal.querySelector(".profile-save-btn") // 🔥 fix selector chuẩn
 
             if (hasProfile) {
                 if (title) title.innerText = "Chỉnh sửa thông tin"
@@ -1951,59 +1950,56 @@ document.addEventListener("click", function (e) {
             // ===== LOAD DATA =====
             loadProfileData()
         }
-async function loadProfileData() {
+        async function loadProfileData() {
 
-    const user_id = localStorage.getItem("user_id")
-    if (!user_id) return
+            const user_id = localStorage.getItem("user_id")
+            if (!user_id) return
 
-    try {
+            try {
 
-        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-        const data = await res.json()
+                const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+                const data = await res.json()
 
-        // ===== NAME =====
-        const name =
-            data.full_name ||
-            localStorage.getItem("full_name") ||
-            ""
+                // ===== INPUT =====
+                const nameInput = document.getElementById("pf_name")
+                const dobInput = document.getElementById("pf_dob")
 
-        document.getElementById("pf_name").value = name
+                if (nameInput) {
+                    nameInput.value = data.full_name || ""
+                }
 
-        // ===== DOB =====
-        if (data.dob) {
+                if (dobInput) {
+                    dobInput.value = ""
 
-            // yyyy-mm-dd → dd/mm/yyyy
-            const parts = data.dob.split("-")
+                    if (data.dob) {
+                        const parts = data.dob.split("-")
+                        if (parts.length === 3) {
+                            dobInput.value = `${parts[2]}/${parts[1]}/${parts[0]}`
+                        }
+                    }
+                }
 
-            if (parts.length === 3) {
+                // ===== AVATAR =====
+                const avatarPreview = document.getElementById("avatarPreview")
 
-                const day = parts[2].padStart(2, "0")
-                const month = parts[1].padStart(2, "0")
-                const year = parts[0]
+                if (avatarPreview) {
 
-                document.getElementById("pf_dob").value =
-                    `${day}/${month}/${year}`
+                    const avatar = localStorage.getItem("avatar")
 
-            } else {
-                document.getElementById("pf_dob").value = ""
+                    if (avatar) {
+                        avatarPreview.innerHTML = `<img src="${avatar}">`
+                    } else {
+                        // fallback chữ cái
+                        const name = data.full_name || localStorage.getItem("username") || "U"
+                        avatarPreview.innerText = name.charAt(0).toUpperCase()
+                    }
+                }
+
+            } catch (err) {
+                console.error("❌ loadProfileData error:", err)
             }
 
-        } else {
-            document.getElementById("pf_dob").value = ""
         }
-
-    } catch (e) {
-
-        console.log("loadProfileData error:", e)
-
-        // fallback tránh crash UI
-        document.getElementById("pf_name").value =
-            localStorage.getItem("full_name") || ""
-
-        document.getElementById("pf_dob").value = ""
-    }
-
-}
 async function loadProfileData() {
 
     const user_id = localStorage.getItem("user_id")
@@ -2023,3 +2019,23 @@ async function loadProfileData() {
     }
 
 }
+
+
+document.getElementById("avatarInput")?.addEventListener("change", function () {
+
+    const file = this.files[0]
+    if (!file) return
+
+    const reader = new FileReader()
+
+    reader.onload = function (e) {
+
+        const preview = document.getElementById("avatarPreview")
+        preview.innerHTML = `<img src="${e.target.result}">`
+
+        localStorage.setItem("avatar", e.target.result)
+    }
+
+    reader.readAsDataURL(file)
+
+})
