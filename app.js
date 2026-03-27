@@ -1349,7 +1349,11 @@ function newChat() {
     conversation_id = null
     history = []
     lastExportContent = ""
-    chatEl.innerHTML = ""
+    const chatEl = document.getElementById("chat")
+
+    if (chatEl) {
+        chatEl.innerHTML = ""
+    }
 
     addBotBubble("chào bạn 😄 tôi là Btoan AI.")
 
@@ -1742,99 +1746,89 @@ async function saveProfile() {
     const user_id = localStorage.getItem("user_id")
 
     if (!user_id) {
-        alert("Lỗi: chưa đăng nhập (user_id null)")
-        console.log("user_id =", user_id)
+        alert("Lỗi: chưa đăng nhập")
         return
     }
 
-    const full_name = document.getElementById("pf_name").value.trim()
-    let dob = document.getElementById("pf_dob").value.trim()
+    const nameInput = document.getElementById("pf_name")
+    const dobInput = document.getElementById("pf_dob")
+    const msg = document.getElementById("profileMsg")
 
-    console.log({ full_name, dob })
+    if (!nameInput || !dobInput || !msg) return
+
+    const full_name = nameInput.value.trim()
+    let dob = dobInput.value.trim()
+
+    console.log("📌 INPUT:", { full_name, dob })
 
     // ===== validate =====
     if (!full_name || !dob) {
-        document.getElementById("profileMsg").innerText = "Vui lòng nhập đầy đủ"
+        msg.innerText = "Vui lòng nhập đầy đủ"
         return
     }
 
-    // ===== validate format dd/mm/yyyy =====
-    // ===== validate format dd/mm/yyyy =====
+    // ===== validate dd/mm/yyyy =====
     if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
-        document.getElementById("profileMsg").innerText = "Ngày sinh phải dạng dd/mm/yyyy"
+        msg.innerText = "Ngày sinh phải dạng dd/mm/yyyy"
         return
     }
 
-    // ===== split ngày =====
-    const parts = dob.split("/")
+    const [day, month, year] = dob.split("/").map(Number)
 
-    if (parts.length !== 3) {
-        document.getElementById("profileMsg").innerText = "Sai định dạng ngày"
-        return
-    }
-
-    const [day, month, year] = parts
-
-    const d = Number(day)
-    const m = Number(month)
-    const y = Number(year)
-
-    // ===== check hợp lệ =====
     if (
-        isNaN(d) || isNaN(m) || isNaN(y) ||
-        d < 1 || d > 31 ||
-        m < 1 || m > 12 ||
-        y < 1900 || y > 2100
+        day < 1 || day > 31 ||
+        month < 1 || month > 12 ||
+        year < 1900 || year > 2100
     ) {
-        document.getElementById("profileMsg").innerText = "Ngày không hợp lệ"
+        msg.innerText = "Ngày không hợp lệ"
         return
     }
-    // convert
-    dob = `${year}-${month}-${day}`
 
-    // ===== gửi API =====
-    const res = await fetch("/ai/api/update_name.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            user_id,
-            full_name,
-            dob
-        })
-    })
+    // ===== convert sang yyyy-mm-dd =====
+    dob = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 
-    let data
     try {
-        data = await res.json()
-    } catch {
-        document.getElementById("profileMsg").innerText = "Server lỗi (không phải JSON)"
-        return
-    }
 
-    // ===== success =====
-    if (data.success) {
+        const res = await fetch("/ai/api/update_name.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                user_id,
+                full_name,
+                dob
+            })
+        })
 
-        const user_id = localStorage.getItem("user_id")
+        const data = await res.json()
+        console.log("🔥 RESPONSE:", data)
 
+        if (!data.success) {
+            msg.innerText = "Lưu thất bại"
+            return
+        }
+
+        // ===== SAVE LOCAL =====
+        localStorage.setItem("full_name", full_name)
         localStorage.setItem("has_profile", "1")
 
-        // 👉 đóng modal
-        document.getElementById("profileModal").style.display = "none"
+        // ===== UPDATE UI NGAY =====
+        const userName = document.getElementById("userName")
+        const avatar = document.getElementById("userAvatar")
 
-        // 👉 cập nhật UI ngay
+        if (userName) userName.innerText = full_name
+        if (avatar) avatar.innerText = full_name.charAt(0).toUpperCase()
+
+        // ===== ĐÓNG MODAL =====
+        const modal = document.getElementById("profileModal")
+        if (modal) modal.style.display = "none"
+
+        // ===== SYNC LẠI TOÀN BỘ =====
         checkProfile(user_id)
 
+    } catch (err) {
+        console.error("❌ saveProfile error:", err)
+        msg.innerText = "Server lỗi"
     }
-    document.getElementById("profileModal")?.addEventListener("click", (e) => {
-        if (e.target.id === "profileModal") {
-            e.target.style.display = "none"
-        }
-    })
-
-    
-
 }
 function isMobile() {
     return window.innerWidth <= 768;
