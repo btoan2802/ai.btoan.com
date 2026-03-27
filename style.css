@@ -850,3 +850,51 @@ color:white;
 .menu-item:hover {
   background: #f3f4f6;
 }
+.profile-modal{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  z-index: 99999;
+}
+
+.profile-card{
+  width: 360px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.profile-title{
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 15px;
+  text-align: center;
+}
+.user-menu{
+  position:absolute;
+  right:0;
+  top:40px;
+  background:#fff;
+  border-radius:10px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.1);
+  display:none;
+}
+
+.user-menu.show{
+  display:block;
+}
+
+.menu-item{
+  padding:10px 15px;
+  cursor:pointer;
+}
+
+.menu-item:hover{
+  background:#f5f5f5;
+}

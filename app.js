@@ -1685,46 +1685,57 @@ function cleanExportContent(text) {
         const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
         const data = await res.json()
 
+        const fullName = data.full_name?.trim()
+
         const name =
-            data.full_name?.trim() ||
+            fullName ||
             localStorage.getItem("full_name") ||
             localStorage.getItem("username") ||
             "User"
 
-        // set name
+        // ✅ set tên
         document.getElementById("userName").innerText = name
 
-        // 🔥 avatar chữ cái đầu
+        // ✅ avatar chữ cái đầu
         const avatar = document.getElementById("userAvatar")
         avatar.innerText = name.charAt(0).toUpperCase()
 
-        // đổi màu random nhẹ
+        // 🎨 màu avatar
         const colors = [
             "linear-gradient(135deg,#6366f1,#4f46e5)",
             "linear-gradient(135deg,#22c55e,#16a34a)",
             "linear-gradient(135deg,#f59e0b,#d97706)",
             "linear-gradient(135deg,#ef4444,#dc2626)"
         ]
-
         avatar.style.background = colors[name.length % colors.length]
 
-        if (data.has_profile) {
+        // 💾 lưu lại full_name để dùng sau
+        if (fullName) {
+            localStorage.setItem("full_name", fullName)
+        }
 
-            // ✅ đã có profile → vào chat
-            document.getElementById("profileBox").style.display = "none"
-            document.getElementById("chatApp").style.display = "flex"
+        // =========================
+        // 🔥 LOGIC MỚI (QUAN TRỌNG)
+        // =========================
 
-            // ✅ lưu lại để biết là EDIT mode
-            localStorage.setItem("has_profile", "1")
+        // 👉 LUÔN show chat (không dùng profileBox nữa)
+        document.getElementById("chatApp").style.display = "flex"
+
+        // 👉 nếu CHƯA có profile → bật popup
+        if (!data.has_profile) {
+
+            document.getElementById("profileModal").style.display = "flex"
+
+            localStorage.setItem("has_profile", "0")
 
         } else {
 
-            // ❌ chưa có → bắt nhập
-            document.getElementById("profileBox").style.display = "flex"
-            document.getElementById("chatApp").style.display = "none"
+            // 👉 có profile → đóng popup
+            document.getElementById("profileModal").style.display = "none"
 
-            localStorage.setItem("has_profile", "0")
+            localStorage.setItem("has_profile", "1")
         }
+
     }
 async function saveProfile() {
 
@@ -1807,22 +1818,20 @@ async function saveProfile() {
 
         const user_id = localStorage.getItem("user_id")
 
-        // ✅ đánh dấu đã có profile
         localStorage.setItem("has_profile", "1")
 
-        // ✅ đóng màn profile
-        document.getElementById("profileBox").style.display = "none"
+        // 👉 đóng modal
+        document.getElementById("profileModal").style.display = "none"
 
-        // ✅ mở lại chat
-        document.getElementById("chatApp").style.display = "flex"
-
-        // ✅ cập nhật lại tên + avatar ngay
+        // 👉 cập nhật UI ngay
         checkProfile(user_id)
 
-        // ✅ (optional) toast nhẹ cho đẹp
-        addBotBubble("✅ Đã cập nhật thông tin!")
-
     }
+    document.getElementById("profileModal")?.addEventListener("click", (e) => {
+        if (e.target.id === "profileModal") {
+            e.target.style.display = "none"
+        }
+    })
 
     
 
@@ -1939,19 +1948,70 @@ async function loadProfileData() {
     const user_id = localStorage.getItem("user_id")
     if (!user_id) return
 
+    try {
+
+        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+        const data = await res.json()
+
+        // ===== NAME =====
+        const name =
+            data.full_name ||
+            localStorage.getItem("full_name") ||
+            ""
+
+        document.getElementById("pf_name").value = name
+
+        // ===== DOB =====
+        if (data.dob) {
+
+            // yyyy-mm-dd → dd/mm/yyyy
+            const parts = data.dob.split("-")
+
+            if (parts.length === 3) {
+
+                const day = parts[2].padStart(2, "0")
+                const month = parts[1].padStart(2, "0")
+                const year = parts[0]
+
+                document.getElementById("pf_dob").value =
+                    `${day}/${month}/${year}`
+
+            } else {
+                document.getElementById("pf_dob").value = ""
+            }
+
+        } else {
+            document.getElementById("pf_dob").value = ""
+        }
+
+    } catch (e) {
+
+        console.log("loadProfileData error:", e)
+
+        // fallback tránh crash UI
+        document.getElementById("pf_name").value =
+            localStorage.getItem("full_name") || ""
+
+        document.getElementById("pf_dob").value = ""
+    }
+
+}
+async function loadProfileData() {
+
+    const user_id = localStorage.getItem("user_id")
+
     const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
     const data = await res.json()
 
-    if (data.full_name) {
-        document.getElementById("pf_name").value = data.full_name
-    }
+    document.getElementById("pf_name").value = data.full_name || ""
 
     if (data.dob) {
-        // yyyy-mm-dd → dd/mm/yyyy
-        const parts = data.dob.split("-")
-        if (parts.length === 3) {
-            document.getElementById("pf_dob").value =
-                parts[2] + "/" + parts[1] + "/" + parts[0]
-        }
+        const d = new Date(data.dob)
+        const day = String(d.getDate()).padStart(2, '0')
+        const month = String(d.getMonth() + 1).padStart(2, '0')
+        const year = d.getFullYear()
+
+        document.getElementById("pf_dob").value = `${day}/${month}/${year}`
     }
+
 }

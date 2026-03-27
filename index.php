@@ -303,7 +303,7 @@
 
 
   <!-- PROFILE -->
-  <div id="profileBox" style="display:none; align-items:center; justify-content:center; height:100vh;">
+  <!-- <div id="profileBox" style="display:none; align-items:center; justify-content:center; height:100vh;">
 
     <div class="auth-card">
 
@@ -321,7 +321,7 @@
 
     </div>
 
-  </div>
+  </div> -->
 
 
   <!-- APP -->
@@ -468,6 +468,26 @@
   <script src="login/SignUp_LogIn_Form.js"></script>
 
   <script src="./app.js"></script>
+
+  <div id="profileModal" class="profile-modal">
+
+  <div class="profile-card">
+
+    <div class="profile-title">Thông tin cá nhân</div>
+
+    <div id="profileMsg" class="text-danger mb-2"></div>
+
+    <input id="pf_name" class="form-control mb-3" placeholder="Họ và tên">
+
+    <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
+
+    <button onclick="saveProfile()" class="btn btn-primary w-100">
+      Lưu thay đổi
+    </button>
+
+  </div>
+
+</div>
 
 </body>
 
