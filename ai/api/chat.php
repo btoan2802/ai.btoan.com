@@ -147,13 +147,9 @@ if(!$res || $res->num_rows == 0){
 $messages = [];
 
 if($conversation_id){
-	    $payload["contents"] = array_merge(
-        $messages,   // 🔥 phải để trước
-        $payload["contents"]
-    );
 
     $stmt = $conn->prepare("
-        SELECT question, answer 
+        SELECT question, answer, images
         FROM chats 
         WHERE conversation_id=? AND user_id=?
         ORDER BY id ASC
@@ -165,15 +161,44 @@ if($conversation_id){
     $res = $stmt->get_result();
 
     while($row = $res->fetch_assoc()){
-        $messages[] = [
-            "role"=>"user",
-            "parts"=>[["text"=>$row["question"]]]
-        ];
-        $messages[] = [
-            "role"=>"model",
-            "parts"=>[["text"=>$row["answer"]]]
-        ];
+
+    $parts = [["text"=>$row["question"]]];
+
+    $imgs = json_decode($row["images"], true);
+
+    if (is_array($imgs)) {
+        foreach ($imgs as $img) {
+
+            if (strpos($img, "base64,") !== false) {
+                [$meta, $base64] = explode(",", $img);
+
+                $mime = str_replace("data:", "", explode(";", $meta)[0]);
+
+                $parts[] = [
+                    "inline_data" => [
+                        "mime_type" => $mime,
+                        "data" => $base64
+                    ]
+                ];
+            }
+        }
     }
+
+    $messages[] = [
+        "role"=>"user",
+        "parts"=>$parts
+    ];
+
+    $messages[] = [
+        "role"=>"model",
+        "parts"=>[["text"=>$row["answer"]]]
+    ];
+}
+    
+    $payload["contents"] = array_merge(
+                                $messages,   // 🔥 phải để trước
+                                $payload["contents"]
+                            );
 }
 
 /*
@@ -233,7 +258,24 @@ $answer = $data["candidates"][0]["content"]["parts"][0]["text"];
 /*
 Lưu DB
 */
-$images = json_encode($payload["contents"]);
+$image_list = [];
+
+$lastContent = end($input["payload"]["contents"]);
+
+if (isset($lastContent["parts"])) {
+    foreach ($lastContent["parts"] as $part) {
+
+        if (isset($part["inline_data"])) {
+
+            $mime = $part["inline_data"]["mime_type"];
+            $base64Data = $part["inline_data"]["data"];
+
+            $image_list[] = "data:$mime;base64,$base64Data";
+        }
+    }
+}
+
+$images = json_encode($image_list);
 $stmt = $conn->prepare("
 INSERT INTO chats(user_id,question,answer,conversation_id,images)
 VALUES (?,?,?,?,?)
@@ -263,10 +305,15 @@ exit;
 Nếu tất cả key fail
 */
 
+/*
+Nếu tất cả key fail
+*/
+
 echo json_encode([
-"error"=>true,
-"conversation_id"=>$conversation_id ?? null,
-"message"=>$e->getMessage()
+    "error"=>true,
+    "conversation_id"=>$conversation_id ?? null,
+    "message"=>"All API keys failed",
+    "debug"=>$debug
 ]);
 
 } catch(Throwable $e){

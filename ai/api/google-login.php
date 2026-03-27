@@ -87,7 +87,7 @@ echo json_encode([
     "success"=>true,
     "user"=>[
         "id"=>$user_db['id'],
-        "username"=>$user_db['username'],
+        "username"=>$user_db['username']?? $user_db['email'],
         "name"=>$user_db['full_name'],
         "email"=>$user_db['email']
     ]

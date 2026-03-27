@@ -148,8 +148,6 @@ function addImages(files) {
 }
 
 
-
-// ====== UI ======
 function addUserBubble(text, images = []) {
 
     const row = document.createElement("div")
@@ -158,18 +156,28 @@ function addUserBubble(text, images = []) {
     const bubble = document.createElement("div")
     bubble.className = "bubble position-relative"
 
-    bubble.innerHTML = `
-    <div class="usertxt">${text}</div>
+    let html = `<div class="usertxt">${text}</div>`
 
-    <button class="btn btn-sm btn-light copy-btn-msg">
-    <i class="bi bi-clipboard"></i>
+    if (images && images.length > 0) {
+
+        html += `<div class="mt-2 d-flex flex-wrap gap-2">`
+
+        images.forEach(img => {
+            html += `
+                <img src="${img}" 
+                     style="max-width:150px;border-radius:10px;">
+            `
+        })
+
+        html += `</div>`
+    }
+
+    html += `
+    <button class="btn btn-sm btn-light copy-btn-msg" onclick="navigator.clipboard.writeText('${text}')">
+        <i class="bi bi-clipboard"></i>
     </button>
     `
-
-    // copy
-    bubble.querySelector(".copy-btn-msg").onclick = () => {
-        navigator.clipboard.writeText(text)
-    }
+    bubble.innerHTML = html
 
     row.appendChild(bubble)
     chatEl.appendChild(row)
@@ -852,7 +860,7 @@ async function send() {
 // ====== LOGIN ======
 async function login() {
 
-    
+
 
     const username = document.getElementById("login_username").value;
     const password = document.getElementById("login_password").value;
@@ -887,8 +895,7 @@ async function login() {
         console.log("SAVE user_id =", data.user_id);
 
         localStorage.setItem("user_id", String(data.user_id));
-
-        localStorage.setItem("user_id", String(data.user_id));
+        localStorage.setItem("username", data.username)
 
 
         console.log("AFTER SAVE:", localStorage.getItem("user_id"));
@@ -1088,14 +1095,15 @@ async function loadConversation(id) {
     const res = await fetch("/ai/api/get_messages.php?conversation_id=" + id)
     const data = await res.json()
 
-    chatEl.innerHTML = ""
+    chatEl.innerHTML = "";
+    attachments.innerHTML = "";
     history = []
 
     data.forEach(m => {
 
         if (m.role === "user") {
 
-            addUserBubble(m.text, m.images ? JSON.parse(m.images) : [])
+            addUserBubble(m.text, m.images || [])
 
             history.push({
                 role: "user",
@@ -1149,26 +1157,21 @@ async function loadConversation(id) {
 // ====== PAGE LOAD ======
 document.addEventListener("paste", async (e) => {
 
-    // 🔥 chỉ xử lý nếu có ảnh
-    document.addEventListener("paste", async (e) => {
+    const items = e.clipboardData.items
 
-        const items = e.clipboardData.items
+    for (const item of items) {
+        if (item.type.indexOf("image") !== -1) {
 
-        for (const item of items) {
-            if (item.type.indexOf("image") !== -1) {
+            e.preventDefault()
 
-                e.preventDefault()
+            const file = item.getAsFile()
 
-                const file = item.getAsFile()
+            // ✅ dùng hàm chung
+            addImages([file])
 
-                // ✅ dùng hàm chung
-                addImages([file])
-
-                return
-            }
+            return
         }
-
-    })
+    }
 
 })
 
@@ -1219,42 +1222,18 @@ window.onload = function () {
 
     chatEl.addEventListener("drop", (e) => {
 
-        chatEl.addEventListener("drop", (e) => {
+        e.preventDefault()
 
-            e.preventDefault()
+        // ✅ chỉ 1 dòng
+        addImages(e.dataTransfer.files)
 
-            // ✅ chỉ 1 dòng
-            addImages(e.dataTransfer.files)
-
-        })
     })
 
     attachments = document.getElementById("attachments");
     // camera preview
     document.getElementById("fileCam")?.addEventListener("change", (e) => {
-
-        document.getElementById("fileCam")?.addEventListener("change", (e) => {
-            addImages(e.target.files)
-        })
-
+        addImages(e.target.files)
     })
-
-    const uid = localStorage.getItem("user_id");
-
-    if (uid && uid !== "undefined") {
-
-        document.getElementById("loginBox").style.display = "none";
-
-        checkProfile(uid)
-        loadHistory()
-        newChat()
-
-    } else {
-
-        document.getElementById("loginBox").style.display = "flex";
-        document.getElementById("chatApp").style.display = "none";
-
-    }
 
     document.getElementById("send")?.addEventListener("click", send)
 
@@ -1842,30 +1821,51 @@ function handleGoogleLogin(response) {
         },
         body: JSON.stringify({ token: id_token })
     })
-    .then(res => res.json())
-    .then(data => {
-        if(data.success){
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
 
-            const user_id = data.user.id;
+                const user_id = data.user.id;
 
-            // ✅ lưu đúng hệ thống bạn đang dùng
-            localStorage.setItem("user_id", user_id);
+                // ✅ lưu đúng hệ thống bạn đang dùng
+                localStorage.setItem("user_id", user_id);
+                localStorage.setItem("username", data.user.username);
+                // ✅ ẩn login
+                document.getElementById("loginBox").style.display = "none";
 
-            // ✅ ẩn login
-            document.getElementById("loginBox").style.display = "none";
+                // ✅ auto fill tên (xịn hơn)
+                document.getElementById("pf_name").value = data.user.name || "";
 
-            // ✅ auto fill tên (xịn hơn)
-            document.getElementById("pf_name").value = data.user.name || "";
+                // ✅ check profile NGAY (KHÔNG reload)
+                checkProfile(user_id);
 
-            // ✅ check profile NGAY (KHÔNG reload)
-            checkProfile(user_id);
+                // // 👉 nếu đã có profile → load app luôn
+                // loadHistory();
+                // newChat();
 
-            // // 👉 nếu đã có profile → load app luôn
-            // loadHistory();
-            // newChat();
-
-        } else {
-            alert("Login Google thất bại");
-        }
-    });
+            } else {
+                alert("Login Google thất bại");
+            }
+        });
 }
+document.addEventListener("DOMContentLoaded", () => {
+
+    const uid = localStorage.getItem("user_id");
+
+    if (uid && uid !== "undefined") {
+
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("chatApp").style.display = "flex";
+
+        checkProfile(uid)
+        loadHistory()
+        newChat()
+
+    } else {
+
+        document.getElementById("loginBox").style.display = "flex";
+        document.getElementById("chatApp").style.display = "none";
+
+    }
+
+})

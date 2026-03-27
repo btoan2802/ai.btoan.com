@@ -2,16 +2,16 @@
 
 require "db.php";
 
-$conversation_id = $_GET["conversation_id"];
+$conversation_id = intval($_GET["conversation_id"] ?? 0);
 
 $stmt = $conn->prepare("
-SELECT question, answer
+SELECT question, answer, images
 FROM chats
 WHERE conversation_id = ?
 ORDER BY id ASC
 ");
 
-$stmt->bind_param("i",$conversation_id);
+$stmt->bind_param("i", $conversation_id);
 $stmt->execute();
 
 $result = $stmt->get_result();
@@ -20,17 +20,32 @@ $data = [];
 
 while($row = $result->fetch_assoc()){
 
-    if($row["question"]){
+    // ===== USER MESSAGE =====
+    if(!empty($row["question"])){
+
+        $images = [];
+
+        if(!empty($row["images"])){
+
+            $decoded = json_decode($row["images"], true);
+
+            if(json_last_error() === JSON_ERROR_NONE && is_array($decoded)){
+                $images = $decoded;
+            }
+        }
+
         $data[] = [
-            "role"=>"user",
-            "text"=>$row["question"]
+            "role" => "user",
+            "text" => $row["question"],
+            "images" => $images
         ];
     }
 
-    if($row["answer"]){
+    // ===== AI MESSAGE =====
+    if(!empty($row["answer"])){
         $data[] = [
-            "role"=>"assistant",
-            "text"=>$row["answer"]
+            "role" => "assistant",
+            "text" => $row["answer"]
         ];
     }
 

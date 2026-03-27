@@ -206,7 +206,7 @@
 
   <!-- LOGIN -->
 
-  <div id="loginBox">
+  <div id="loginBox" style="display:none">
 
     <div class="container active">
       <div class="form-box login" id="loginForm">
@@ -326,7 +326,7 @@
 
   <!-- APP -->
 
-  <div id="chatApp">
+  <div id="chatApp" style="display:none">
 
     <div class="d-flex" style="height:100vh">
 
@@ -366,8 +366,6 @@
           <div class="ms-auto d-flex align-items-center gap-2">
 
             <span id="userName" style="font-weight:600;"></span>
-
-            
 
           </div>
 

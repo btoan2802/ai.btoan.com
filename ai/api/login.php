@@ -19,7 +19,7 @@ if(!$data){
 $username = trim($data["username"] ?? "");
 $password = trim($data["password"] ?? "");
 
-$stmt = $conn->prepare("SELECT id,password FROM users WHERE username=?");
+$stmt = $conn->prepare("SELECT id,password,username FROM users WHERE username=?");
 
 if(!$stmt){
     echo json_encode(["error"=>"SQL prepare failed"], JSON_UNESCAPED_UNICODE);
@@ -29,7 +29,7 @@ if(!$stmt){
 $stmt->bind_param("s",$username);
 $stmt->execute();
 
-$stmt->bind_result($id,$dbpass);
+$stmt->bind_result($id,$dbpass,$dbusername);
 
 if($stmt->fetch()){
 
@@ -37,7 +37,8 @@ if($stmt->fetch()){
 
         echo json_encode([
             "success"=>true,
-            "user_id"=>$id
+            "user_id"=>$id,
+            "username"=>$dbusername
         ], JSON_UNESCAPED_UNICODE);
 
     }else{

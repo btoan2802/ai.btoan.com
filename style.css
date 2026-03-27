@@ -554,8 +554,8 @@ color:white;
   top: 6px;
   right: 6px;
 
-  width: 26px;
-  height: 26px;
+  width: 26px !important;
+  height: 26px !important;
 
   display: flex;
   align-items: center;
