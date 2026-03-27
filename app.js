@@ -1756,14 +1756,21 @@ function cleanExportContent(text) {
         document.getElementById("userName").innerText = name
 
         // ✅ avatar chữ cái đầu
-        const avatar = document.getElementById("userAvatar")
+        const avatarEl = document.getElementById("userAvatar")
 
-        const savedAvatar = localStorage.getItem("avatar")
+        if (data.avatar) {
 
-        if (savedAvatar) {
-            avatar.innerHTML = `<img src="${savedAvatar}" style="width:100%;height:100%;border-radius:50%">`
+            const url = data.avatar + "?t=" + Date.now()
+
+            avatarEl.innerHTML = `
+                <img src="${url}" 
+                    style="width:100%;height:100%;border-radius:50%">
+            `
+
         } else {
-            avatar.innerText = name.charAt(0).toUpperCase()
+
+            avatarEl.innerText = name.charAt(0).toUpperCase()
+
         }
 
         // 🎨 màu avatar
