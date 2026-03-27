@@ -1758,20 +1758,20 @@ function cleanExportContent(text) {
         // ✅ avatar chữ cái đầu
         const avatarEl = document.getElementById("userAvatar")
 
-        if (data.avatar) {
+if (data.avatar) {
 
-            const url = data.avatar + "?t=" + Date.now()
+    const url = data.avatar + "?t=" + Date.now()
 
-            avatarEl.innerHTML = `
-                <img src="${url}" 
-                    style="width:100%;height:100%;border-radius:50%">
-            `
+    avatarEl.innerHTML = `
+        <img src="${url}" 
+             style="width:100%;height:100%;border-radius:50%">
+    `
 
-        } else {
+} else {
 
-            avatarEl.innerText = name.charAt(0).toUpperCase()
+    avatarEl.innerText = name.charAt(0).toUpperCase()
 
-        }
+}
 
         // 🎨 màu avatar
         const colors = [
