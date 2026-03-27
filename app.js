@@ -1944,75 +1944,50 @@ document.addEventListener("click", function (e) {
             // ===== LOAD DATA =====
             loadProfileData()
         }
-        async function loadProfileData() {
+    async function loadProfileData() {
 
-            const user_id = localStorage.getItem("user_id")
-            if (!user_id) return
+        const user_id = localStorage.getItem("user_id")
+        if (!user_id) return
 
-            try {
+        try {
 
-                const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-                const data = await res.json()
+            const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+            const data = await res.json()
 
-                // ===== INPUT =====
-                const nameInput = document.getElementById("pf_name")
-                const dobInput = document.getElementById("pf_dob")
+            const nameInput = document.getElementById("pf_name")
+            const dobInput = document.getElementById("pf_dob")
+            const avatarPreview = document.getElementById("avatarPreview")
 
-                if (nameInput) {
-                    nameInput.value = data.full_name || ""
-                }
-
-                if (dobInput) {
-                    dobInput.value = ""
-
-                    if (data.dob) {
-                        const parts = data.dob.split("-")
-                        if (parts.length === 3) {
-                            dobInput.value = `${parts[2]}/${parts[1]}/${parts[0]}`
-                        }
-                    }
-                }
-
-                // ===== AVATAR =====
-                const avatarPreview = document.getElementById("avatarPreview")
-
-                if (avatarPreview) {
-
-                    const avatar = localStorage.getItem("avatar")
-
-                    if (avatar) {
-                        avatarPreview.innerHTML = `<img src="${avatar}">`
-                    } else {
-                        // fallback chữ cái
-                        const name = data.full_name || localStorage.getItem("username") || "U"
-                        avatarPreview.innerText = name.charAt(0).toUpperCase()
-                    }
-                }
-
-            } catch (err) {
-                console.error("❌ loadProfileData error:", err)
+            // ===== NAME =====
+            if (nameInput) {
+                nameInput.value = data.full_name || ""
             }
 
+            // ===== DOB =====
+            if (dobInput && data.dob) {
+                const parts = data.dob.split("-")
+                if (parts.length === 3) {
+                    dobInput.value = `${parts[2]}/${parts[1]}/${parts[0]}`
+                }
+            }
+
+            // ===== AVATAR (🔥 QUAN TRỌNG) =====
+            if (avatarPreview) {
+
+                const avatar = localStorage.getItem("avatar")
+
+                if (avatar) {
+                    avatarPreview.innerHTML = `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%">`
+                } else {
+                    const name = data.full_name || localStorage.getItem("username") || "U"
+                    avatarPreview.innerText = name.charAt(0).toUpperCase()
+                }
+            }
+
+        } catch (err) {
+            console.error("❌ loadProfileData error:", err)
         }
-async function loadProfileData() {
-
-    const user_id = localStorage.getItem("user_id")
-
-    const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-    const data = await res.json()
-
-    document.getElementById("pf_name").value = data.full_name || ""
-
-    if (data.dob) {
-        const d = new Date(data.dob)
-        const day = String(d.getDate()).padStart(2, '0')
-        const month = String(d.getMonth() + 1).padStart(2, '0')
-        const year = d.getFullYear()
-
-        document.getElementById("pf_dob").value = `${day}/${month}/${year}`
     }
-
-}
 
 
 document.getElementById("avatarInput")?.addEventListener("change", function () {
