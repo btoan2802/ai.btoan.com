@@ -1680,31 +1680,42 @@ function cleanExportContent(text) {
         .trim()
 
 }
-async function checkProfile(user_id) {
+    async function checkProfile(user_id) {
 
-    const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-    const data = await res.json()
+        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+        const data = await res.json()
 
-    // 🔥 LUÔN set tên (fix lỗi không hiện tên)
-    const name =
-        (data.full_name && data.full_name.trim()) ||
-        localStorage.getItem("username") ||
-        "User"
+        const name =
+            data.full_name?.trim() ||
+            localStorage.getItem("full_name") ||
+            localStorage.getItem("username") ||
+            "User"
 
-    document.getElementById("userName").innerText = name
+        // set name
+        document.getElementById("userName").innerText = name
 
-    // UI hiển thị
-    if (data.has_profile) {
+        // 🔥 avatar chữ cái đầu
+        const avatar = document.getElementById("userAvatar")
+        avatar.innerText = name.charAt(0).toUpperCase()
 
-        document.getElementById("profileBox").style.display = "none"
-        document.getElementById("chatApp").style.display = "flex"
+        // đổi màu random nhẹ
+        const colors = [
+            "linear-gradient(135deg,#6366f1,#4f46e5)",
+            "linear-gradient(135deg,#22c55e,#16a34a)",
+            "linear-gradient(135deg,#f59e0b,#d97706)",
+            "linear-gradient(135deg,#ef4444,#dc2626)"
+        ]
 
-    } else {
+        avatar.style.background = colors[name.length % colors.length]
 
-        document.getElementById("profileBox").style.display = "flex"
-        document.getElementById("chatApp").style.display = "none"
+        if (data.has_profile) {
+            document.getElementById("profileBox").style.display = "none"
+            document.getElementById("chatApp").style.display = "flex"
+        } else {
+            document.getElementById("profileBox").style.display = "flex"
+            document.getElementById("chatApp").style.display = "none"
+        }
     }
-}
 async function saveProfile() {
 
     const user_id = localStorage.getItem("user_id")
@@ -1864,3 +1875,23 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 })
+
+function toggleUserMenu() {
+    const menu = document.getElementById("userMenu")
+    menu.style.display = menu.style.display === "block" ? "none" : "block"
+}
+
+// click ngoài → đóng
+document.addEventListener("click", function (e) {
+    const box = document.getElementById("userBox")
+    if (!box) return
+
+    if (!box.contains(e.target)) {
+        document.getElementById("userMenu").style.display = "none"
+    }
+})
+
+function openProfile() {
+    document.getElementById("profileBox").style.display = "flex"
+    document.getElementById("chatApp").style.display = "none"
+}

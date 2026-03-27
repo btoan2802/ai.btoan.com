@@ -363,9 +363,22 @@
 
           <div class="fw-bold">Btoan AI</div>
 
-          <div class="ms-auto d-flex align-items-center gap-2">
+          <div class="ms-auto d-flex align-items-center">
 
-            <span id="userName" style="font-weight:600;"></span>
+            <div id="userBox" class="user-box">
+
+              <div class="user-info" onclick="toggleUserMenu()">
+                <div id="userAvatar" class="avatar">U</div>
+                <div id="userName" class="user-name">User</div>
+                <div class="arrow">▾</div>
+              </div>
+
+              <div id="userMenu" class="user-menu">
+                <div class="menu-item" onclick="openProfile()">👤 Hồ sơ</div>
+                <div class="menu-item" onclick="logout()">🚪 Đăng xuất</div>
+              </div>
+
+            </div>
 
           </div>
 
