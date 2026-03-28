@@ -206,7 +206,7 @@
 
   <!-- LOGIN -->
 
-  <div id="loginBox">
+  <div id="loginBox" style="display:none">
 
     <div class="container active">
       <div class="form-box login" id="loginForm">
@@ -303,7 +303,7 @@
 
 
   <!-- PROFILE -->
-  <div id="profileBox" style="display:none; align-items:center; justify-content:center; height:100vh;">
+  <!-- <div id="profileBox" style="display:none; align-items:center; justify-content:center; height:100vh;">
 
     <div class="auth-card">
 
@@ -321,12 +321,12 @@
 
     </div>
 
-  </div>
+  </div> -->
 
 
   <!-- APP -->
 
-  <div id="chatApp">
+  <div id="chatApp" style="display:none">
 
     <div class="d-flex" style="height:100vh">
 
@@ -340,7 +340,12 @@
           Lịch sử chat
         </div>
 
-        <div id="historyList"></div>
+        <div id="historyList" style="flex:1; overflow-y:auto;"></div>
+        <div style="padding:15px; margin-top:auto;">
+          <button class="btn btn-danger w-100" onclick="logout()">
+            🚪 Đăng xuất
+          </button>
+        </div>
 
       </div>
 
@@ -358,13 +363,22 @@
 
           <div class="fw-bold">Btoan AI</div>
 
-          <div class="ms-auto d-flex align-items-center gap-2">
+          <div class="ms-auto d-flex align-items-center">
 
-            <span id="userName" style="font-weight:600;"></span>
+            <div id="userBox" class="user-box">
 
-            <button class="btn btn-sm btn-danger" onclick="logout()">
-              Đăng xuất
-            </button>
+              <div class="user-info" onclick="toggleUserMenu()">
+                <div id="userAvatar" class="avatar">U</div>
+                <div id="userName" class="user-name">User</div>
+                <div class="arrow">▾</div>
+              </div>
+
+              <div id="userMenu" class="user-menu">
+                <div class="menu-item" onclick="openProfile()">👤 Hồ sơ</div>
+                <div class="menu-item" onclick="logout()">🚪 Đăng xuất</div>
+              </div>
+
+            </div>
 
           </div>
 
@@ -454,6 +468,39 @@
   <script src="login/SignUp_LogIn_Form.js"></script>
 
   <script src="./app.js"></script>
+
+    <div id="profileModal" class="profile-modal">
+
+      <div class="profile-card">
+
+        <!-- AVATAR -->
+        <div class="avatar-upload">
+          <div id="avatarPreview" class="avatar-preview">U</div>
+          <input type="file" id="avatarInput" accept="image/*" style="display:none">
+          <button onclick="document.getElementById('avatarInput').click()" class="btn btn-light btn-sm mt-2">
+            Đổi ảnh
+          </button>
+        </div>
+
+        <!-- TITLE -->
+        <div class="profile-title">Thông tin cá nhân</div>
+
+        <div id="profileMsg" class="text-danger mb-2"></div>
+
+        <!-- NAME -->
+        <input id="pf_name" class="form-control mb-2" placeholder="Họ và tên">
+
+        <!-- DOB -->
+        <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
+
+        <!-- SAVE -->
+        <button onclick="saveProfile()" class="btn btn-primary w-100">
+          Lưu thay đổi
+        </button>
+
+      </div>
+
+    </div>
 
 </body>
 

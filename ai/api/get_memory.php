@@ -2,7 +2,8 @@
 
 header("Content-Type: application/json");
 
-$conn = new mysqli("localhost","btoan","toanhotface","btoan_ai");
+require "db.php";
+
 
 if ($conn->connect_error) {
     echo json_encode(["error"=>"DB connect fail"]);
