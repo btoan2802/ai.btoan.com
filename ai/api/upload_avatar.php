@@ -30,7 +30,7 @@ if (!in_array($ext, $allowed)) {
 $filename = "avatar_" . $user_id . "_" . time() . "." . $ext;
 
 // 🔥 PATH REAL (filesystem)
-$uploadDir = __DIR__ . "/../uploads/avatars/";
+$uploadDir = $_SERVER['DOCUMENT_ROOT'] . "/uploads/avatars/";
 
 if (!is_dir($uploadDir)) {
     mkdir($uploadDir, 0777, true);
@@ -45,7 +45,7 @@ if (!move_uploaded_file($file["tmp_name"], $path)) {
 }
 
 // 🔥 URL PUBLIC (browser dùng)
-$url = "/ai/uploads/avatars/" . $filename;
+$url = "/uploads/avatars/" . $filename;
 $url = str_replace("\\", "/", $url);
 
 // ===== SAVE DB =====
