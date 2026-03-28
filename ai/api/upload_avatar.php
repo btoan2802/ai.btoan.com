@@ -13,8 +13,8 @@ $endpoint = "https://cd15eba0ab1a0ea99b7da632530e8924.r2.cloudflarestorage.com";
 $publicUrl = "https://pub-26804f759e1e4ef3b2c251c9c3fe708b.r2.dev";
 
 // 🔐 THAY KEY CỦA BẠN
-$accessKey = "YOUR_ACCESS_KEY";
-$secretKey = "YOUR_SECRET_KEY";
+$accessKey = "6fc950e7d94074f3fc93b5bd7756ce68";
+$secretKey = "cf9b9014fef7fac8965d785594ad4cae43edb5658ed7d36f354f19cc6f1611a5";
 
 // ===== INIT S3 =====
 $s3 = new S3Client([
