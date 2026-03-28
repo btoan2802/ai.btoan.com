@@ -5,7 +5,6 @@ ini_set('display_errors', 1);
 require "db.php";
 require __DIR__ . "/../../vendor/autoload.php";
 
-
 use Aws\S3\S3Client;
 
 // ===== CONFIG =====
