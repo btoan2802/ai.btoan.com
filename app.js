@@ -710,11 +710,23 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
     // 🔥 export docx
     if (userText.toLowerCase().includes("xuất file docx") || userText.trim() === "/export docx") {
-        if (!lastExportContent) {
+        let contentToExport = lastExportContent || localStorage.getItem("lastExportContent") || ""
+
+        if (!contentToExport) {
+            contentToExport = getLastBotMessageText()
+        }
+
+        if (!contentToExport || !isValidForExport(contentToExport)) {
             addBotBubble("❌ chưa có nội dung để xuất")
+            isSending = false
             return
         }
-        return exportDOCX(lastExportContent)
+
+        lastExportContent = contentToExport
+        localStorage.setItem("lastExportContent", contentToExport)
+
+        isSending = false
+        return exportDOCX(contentToExport)
     }
 
     addUserBubble(userText, images)
@@ -1053,6 +1065,7 @@ async function loadConversation(id) {
     chatEl.innerHTML = "";
     attachments.innerHTML = "";
     history = []
+    lastExportContent = ""
 
     data.forEach(m => {
 
@@ -1093,6 +1106,12 @@ async function loadConversation(id) {
                     exportType = parts[1].trim().toLowerCase()
                 }
 
+                // nếu nội dung đủ tốt để export thì lưu lại
+                if (isValidForExport(text)) {
+                    lastExportContent = text
+                    localStorage.setItem("lastExportContent", text)
+                }
+
                 addBotBubble(text, exportType)
             }
 
@@ -1107,6 +1126,14 @@ async function loadConversation(id) {
 
     scrollToBottom()
 
+}
+
+function getLastBotMessageText() {
+    const botBubbles = [...document.querySelectorAll(".msgrow.bot .message-content")]
+    if (!botBubbles.length) return ""
+
+    const last = botBubbles[botBubbles.length - 1]
+    return (last.innerText || "").trim()
 }
 
 // ====== PAGE LOAD ======
