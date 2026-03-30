@@ -301,7 +301,7 @@ function addBotBubble(text, exportType = null) {
 
     const content = document.createElement("div")
     content.className = "message-content"
-    content.innerHTML = marked.parse(text)
+    content.innerHTML = marked.parse(normalizeAssistantText(text))
     bubble.appendChild(content)
 
     bubble.appendChild(createMessageActions({ text, exportType }))
@@ -384,9 +384,8 @@ function streamBot(text, exportType = null) {
     const timer = setInterval(() => {
 
         // ❗ CHỈ render content → KHÔNG đụng footer
-        content.innerHTML = marked.parse(text.substring(0, i))
+        content.innerHTML = marked.parse(normalizeAssistantText(text.substring(0, i)))
             .replace(/language-j\b/g, "language-java")
-
         /* highlight realtime */
         content.querySelectorAll("pre code").forEach(el => {
             hljs.highlightElement(el)
@@ -1743,6 +1742,65 @@ function extractExportContent(text) {
     })
 
     return filtered.join("\n").trim()
+}
+
+function normalizeAssistantText(text) {
+    let t = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+
+    // bảo vệ code block
+    const codeBlocks = []
+    t = t.replace(/```[\s\S]*?```/g, (m) => {
+        codeBlocks.push(m)
+        return `__CODE_BLOCK_${codeBlocks.length - 1}__`
+    })
+
+    // đổi kiểu "cm\n2" => "cm²", "m\n3" => "m³"
+    t = t.replace(/([^\W\d_]+)\s*\n\s*2\b/gu, "$1²")
+    t = t.replace(/([^\W\d_]+)\s*\n\s*3\b/gu, "$1³")
+
+    // gộp newline đơn giữa 2 dòng thường
+    const lines = t.split("\n")
+    const out = []
+
+    const isStructural = (line) => {
+        const s = line.trim()
+        if (!s) return true
+        if (/^[-*+]\s+/.test(s)) return true
+        if (/^\d+\.\s+/.test(s)) return true
+        if (/^#{1,6}\s+/.test(s)) return true
+        if (/^>\s?/.test(s)) return true
+        if (/^\|.*\|$/.test(s)) return true
+        if (/^---+$/.test(s)) return true
+        if (/^__CODE_BLOCK_\d+__$/.test(s)) return true
+        return false
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+        const cur = lines[i]
+        const prev = out.length ? out[out.length - 1] : null
+
+        if (
+            prev !== null &&
+            prev.trim() !== "" &&
+            cur.trim() !== "" &&
+            !isStructural(prev) &&
+            !isStructural(cur)
+        ) {
+            out[out.length - 1] = prev.replace(/\s+$/, "") + " " + cur.replace(/^\s+/, "")
+        } else {
+            out.push(cur)
+        }
+    }
+
+    t = out.join("\n")
+        .replace(/[ \t]+/g, " ")
+        .replace(/\n{3,}/g, "\n\n")
+        .trim()
+
+    // trả lại code block
+    t = t.replace(/__CODE_BLOCK_(\d+)__/g, (_, i) => codeBlocks[Number(i)])
+
+    return t
 }
 
 async function searchHistory(q) {
