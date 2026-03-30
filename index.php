@@ -438,7 +438,7 @@
 
         <div id="attachments"></div>
         <div class="text-center small p-2">
-          © AI được thành lập bởi Dev Nguyễn Bảo Toàn
+          Btoan AI có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng. Mọi thắc mắc liên hệ <a style="color: black;" href="https://github.com/btoan2802" target="_blank">admin</a>
         </div>
 
       </div>
