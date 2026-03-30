@@ -780,9 +780,23 @@ if (rawReply.includes("[EXPORT]")) {
     reply = extractExportContent(parts[0].trim())
     exportType = parts[1].trim().toLowerCase()
 
-    if (!userWantsExport(userText)) {
-        exportType = null
+if (rawReply.includes("[EXPORT]")) {
+    const parts = rawReply.split("[EXPORT]")
+    reply = extractExportContent(parts[0].trim())
+    exportType = parts[1].trim().toLowerCase()
+
+    if (isValidForExport(reply)) {
+        lastExportContent = reply
+        localStorage.setItem("lastExportContent", reply)
     }
+} else {
+    lastAIAnswer = reply
+
+    if (isValidForExport(reply)) {
+        lastExportContent = reply
+        localStorage.setItem("lastExportContent", reply)
+    }
+}
 
     if (isValidForExport(reply)) {
         lastExportContent = reply
@@ -1744,8 +1758,25 @@ function extractExportContent(text) {
     return filtered.join("\n").trim()
 }
 
+function hasStructuredMarkdown(text) {
+    const t = String(text || "")
+    return (
+        /```/.test(t) ||
+        /^\s*[-*+]\s+/m.test(t) ||
+        /^\s*\d+\.\s+/m.test(t) ||
+        /^\s*#{1,6}\s+/m.test(t) ||
+        /^\s*>\s?/m.test(t) ||
+        /^\s*\|.*\|\s*$/m.test(t)
+    )
+}
+
 function normalizeAssistantText(text) {
-    let t = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n")
+    let t = String(text || "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .trim()
+
+    if (!t) return ""
 
     // bảo vệ code block
     const codeBlocks = []
@@ -1754,45 +1785,53 @@ function normalizeAssistantText(text) {
         return `__CODE_BLOCK_${codeBlocks.length - 1}__`
     })
 
-    // đổi kiểu "cm\n2" => "cm²", "m\n3" => "m³"
-    t = t.replace(/([^\W\d_]+)\s*\n\s*2\b/gu, "$1²")
-    t = t.replace(/([^\W\d_]+)\s*\n\s*3\b/gu, "$1³")
+    // nếu là markdown có cấu trúc thì giữ gần nguyên bản
+    if (!hasStructuredMarkdown(t)) {
+        const lines = t.split("\n").map(x => x.trim())
+        const out = []
 
-    // gộp newline đơn giữa 2 dòng thường
-    const lines = t.split("\n")
-    const out = []
+        const shouldJoin = (prev, cur) => {
+            if (!prev || !cur) return false
+            if (!prev.trim() || !cur.trim()) return false
 
-    const isStructural = (line) => {
-        const s = line.trim()
-        if (!s) return true
-        if (/^[-*+]\s+/.test(s)) return true
-        if (/^\d+\.\s+/.test(s)) return true
-        if (/^#{1,6}\s+/.test(s)) return true
-        if (/^>\s?/.test(s)) return true
-        if (/^\|.*\|$/.test(s)) return true
-        if (/^---+$/.test(s)) return true
-        if (/^__CODE_BLOCK_\d+__$/.test(s)) return true
-        return false
-    }
+            // không gộp khi dòng trước kết thúc bằng dấu kết câu / toán rõ ràng
+            if (/[.!?;:]$/.test(prev)) return false
+            if (/[=+\-×÷/]$/.test(prev)) return false
 
-    for (let i = 0; i < lines.length; i++) {
-        const cur = lines[i]
-        const prev = out.length ? out[out.length - 1] : null
+            // không gộp khi dòng sau bắt đầu kiểu item / công thức đặc biệt
+            if (/^[-*+]\s+/.test(cur)) return false
+            if (/^\d+\.\s+/.test(cur)) return false
+            if (/^[=+\-×÷/]/.test(cur)) return false
 
-        if (
-            prev !== null &&
-            prev.trim() !== "" &&
-            cur.trim() !== "" &&
-            !isStructural(prev) &&
-            !isStructural(cur)
-        ) {
-            out[out.length - 1] = prev.replace(/\s+$/, "") + " " + cur.replace(/^\s+/, "")
-        } else {
-            out.push(cur)
+            // không gộp nếu 2 dòng đều rất ngắn, thường là xuống dòng có chủ đích trong toán/thơ
+            if (prev.length <= 12 && cur.length <= 12) return false
+
+            return true
         }
+
+        for (const line of lines) {
+            if (!line) {
+                if (out.length && out[out.length - 1] !== "") out.push("")
+                continue
+            }
+
+            const prev = out.length ? out[out.length - 1] : null
+            if (shouldJoin(prev, line)) {
+                out[out.length - 1] = prev.replace(/\s+$/, "") + " " + line.replace(/^\s+/, "")
+            } else {
+                out.push(line)
+            }
+        }
+
+        t = out.join("\n")
     }
 
-    t = out.join("\n")
+    // gộp kiểu đơn vị/số mũ chung, không hardcode nhiều đơn vị
+    t = t.replace(/([A-Za-zÀ-ỹ])\s*\n\s*2\b/g, "$1²")
+    t = t.replace(/([A-Za-zÀ-ỹ])\s*\n\s*3\b/g, "$1³")
+
+    // dọn khoảng trắng dư
+    t = t
         .replace(/[ \t]+/g, " ")
         .replace(/\n{3,}/g, "\n\n")
         .trim()

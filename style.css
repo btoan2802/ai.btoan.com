@@ -1011,3 +1011,25 @@ color:white;
   display: none !important;
 }
 
+
+.message-content{
+  line-height: 1.75;
+  white-space: normal;
+}
+
+.message-content p{
+  margin: 0 0 12px;
+}
+
+.message-content br + br{
+  display: block;
+  content: "";
+  margin-top: 10px;
+}
+
+.message-content mjx-container{
+  margin: 8px 0 !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+}
