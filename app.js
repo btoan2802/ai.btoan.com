@@ -1785,53 +1785,58 @@ function normalizeAssistantText(text) {
         return `__CODE_BLOCK_${codeBlocks.length - 1}__`
     })
 
-    // nếu là markdown có cấu trúc thì giữ gần nguyên bản
-    if (!hasStructuredMarkdown(t)) {
-        const lines = t.split("\n").map(x => x.trim())
-        const out = []
+    const lines = t.split("\n").map(x => x.trim())
+    const out = []
 
-        const shouldJoin = (prev, cur) => {
-            if (!prev || !cur) return false
-            if (!prev.trim() || !cur.trim()) return false
-
-            // không gộp khi dòng trước kết thúc bằng dấu kết câu / toán rõ ràng
-            if (/[.!?;:]$/.test(prev)) return false
-            if (/[=+\-×÷/]$/.test(prev)) return false
-
-            // không gộp khi dòng sau bắt đầu kiểu item / công thức đặc biệt
-            if (/^[-*+]\s+/.test(cur)) return false
-            if (/^\d+\.\s+/.test(cur)) return false
-            if (/^[=+\-×÷/]/.test(cur)) return false
-
-            // không gộp nếu 2 dòng đều rất ngắn, thường là xuống dòng có chủ đích trong toán/thơ
-            if (prev.length <= 12 && cur.length <= 12) return false
-
-            return true
-        }
-
-        for (const line of lines) {
-            if (!line) {
-                if (out.length && out[out.length - 1] !== "") out.push("")
-                continue
-            }
-
-            const prev = out.length ? out[out.length - 1] : null
-            if (shouldJoin(prev, line)) {
-                out[out.length - 1] = prev.replace(/\s+$/, "") + " " + line.replace(/^\s+/, "")
-            } else {
-                out.push(line)
-            }
-        }
-
-        t = out.join("\n")
+    const isStructural = (line) => {
+        if (!line) return true
+        if (/^[-*+]\s+/.test(line)) return true
+        if (/^\d+\.\s+/.test(line)) return true
+        if (/^#{1,6}\s+/.test(line)) return true
+        if (/^>\s?/.test(line)) return true
+        if (/^\|.*\|$/.test(line)) return true
+        if (/^__CODE_BLOCK_\d+__$/.test(line)) return true
+        return false
     }
 
-    // gộp kiểu đơn vị/số mũ chung, không hardcode nhiều đơn vị
-    t = t.replace(/([A-Za-zÀ-ỹ])\s*\n\s*2\b/g, "$1²")
-    t = t.replace(/([A-Za-zÀ-ỹ])\s*\n\s*3\b/g, "$1³")
+    const isOrphanMathLine = (line) => {
+        return /^([.)]|2|3|cm|mm|dm|m|km|cm2|m2|km2|cm3|m3|km3|²|³)$/i.test(line)
+    }
 
-    // dọn khoảng trắng dư
-    t = t
+    const shouldJoin = (prev, cur) => {
+        if (!prev || !cur) return false
+        if (isStructural(prev) || isStructural(cur)) return false
+
+        // dòng mồ côi kiểu "cm", "2", ".", ")" thì gộp luôn
+        if (isOrphanMathLine(cur)) return true
+
+        // không gộp nếu dòng trước kết thúc kiểu list/kết đoạn rõ ràng
+        if (/[!?;:]$/.test(prev)) return false
+
+        return true
+    }
+
+    for (const line of lines) {
+        if (!line) {
+            if (out.length && out[out.length - 1] !== "") out.push("")
+            continue
+        }
+
+        const prev = out.length ? out[out.length - 1] : null
+
+        if (shouldJoin(prev, line)) {
+            out[out.length - 1] = prev.replace(/\s+$/, "") + " " + line.replace(/^\s+/, "")
+        } else {
+            out.push(line)
+        }
+    }
+
+    t = out.join("\n")
+        // đổi mũ sau khi đã gộp dòng
+        .replace(/\b([a-zA-ZÀ-ỹ]+)\s+2\b/gu, "$1²")
+        .replace(/\b([a-zA-ZÀ-ỹ]+)\s+3\b/gu, "$1³")
+        // dọn kiểu "cm² ." => "cm²."
+        .replace(/\s+([.,;:!?])/g, "$1")
         .replace(/[ \t]+/g, " ")
         .replace(/\n{3,}/g, "\n\n")
         .trim()
