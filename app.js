@@ -748,9 +748,6 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
         let rawReply = reply   // 🔥 giữ bản gốc
 
-        let exportType = null
-        let rawReply = reply
-
         if (rawReply.includes("[EXPORT]")) {
             const parts = rawReply.split("[EXPORT]")
             reply = parts[0].trim()
