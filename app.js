@@ -22,19 +22,22 @@ const systemInstruction = `
 Bạn đang chạy trong một ứng dụng CÓ THỂ tạo và xuất file thật cho người dùng.
 
 QUY TẮC XUẤT FILE:
-- Nếu người dùng muốn xuất file, tải file, file Word, DOCX, PDF, văn bản để tải về, hoặc yêu cầu tương đương:
-  1. Hãy tạo NỘI DUNG ĐẦY ĐỦ trước
-  2. Ở DÒNG CUỐI CÙNG thêm đúng định dạng:
+- Nếu người dùng muốn xuất file, tải file, file Word, DOCX, PDF, TXT, văn bản để tải về, hoặc yêu cầu tương đương:
+  1. Hãy tạo RA NỘI DUNG CUỐI CÙNG để đưa vào file
+  2. KHÔNG viết lời mở đầu, không giải thích, không nói "Tôi sẽ xuất file", không nói "Đây là nội dung", không thêm nhận xét
+  3. Chỉ trả đúng phần nội dung cần nằm trong file
+  4. Ở DÒNG CUỐI CÙNG thêm đúng định dạng:
      [EXPORT] docx
      hoặc
      [EXPORT] pdf
      hoặc
      [EXPORT] txt
 
-- KHÔNG được trả lời rằng bạn không thể tạo file, không thể xuất Word, không thể tải file.
-- KHÔNG được chỉ hướng dẫn người dùng copy sang Word nếu yêu cầu là xuất file.
 - Nếu yêu cầu là xuất file Word thì luôn dùng:
   [EXPORT] docx
+
+- KHÔNG được trả lời rằng bạn không thể tạo file.
+- KHÔNG được bảo người dùng copy thủ công sang Word.
 
 Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
 
@@ -1635,7 +1638,7 @@ async function exportFile(content) {
 }
 async function exportDOCX(content) {
 
-    const clean = fixLatex(cleanExportContent(content))
+    const clean = fixLatex(extractExportContent(cleanExportContent(content)))
 
     const res = await fetch("/ai/api/upload.php", {
         method: "POST",
@@ -1664,12 +1667,54 @@ async function exportDOCX(content) {
         return
     }
 
-    addBotBubble(`
-📄 File DOCX đã sẵn sàng:
+    const row = document.createElement("div")
+    row.className = "msgrow bot"
 
-👉 <a href="${data.url}" target="_blank">Tải file Word</a>
-`, "docx")
+    const bubble = document.createElement("div")
+    bubble.className = "bubble"
+
+    bubble.innerHTML = `
+        <div class="message-content">
+            <div>📄 File DOCX đã sẵn sàng:</div>
+            <div class="mt-2">
+                <a href="${data.url}" target="_blank">👉 Tải file Word</a>
+            </div>
+        </div>
+    `
+
+    row.appendChild(bubble)
+    chatEl.appendChild(row)
+    scrollToBottom()
 }
+
+function extractExportContent(text) {
+    let clean = String(text || "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
+        .trim()
+
+    const lines = clean.split("\n").map(x => x.trim())
+
+    const filtered = lines.filter(line => {
+        if (!line) return true
+
+        const lower = line.toLowerCase()
+
+        if (lower.startsWith("tuyệt vời")) return false
+        if (lower.startsWith("đây là nội dung")) return false
+        if (lower.startsWith("dưới đây là")) return false
+        if (lower.startsWith("tôi sẽ xuất")) return false
+        if (lower.startsWith("tôi hiểu rằng")) return false
+        if (lower.startsWith("chào bạn")) return false
+        if (lower.includes("thành file word cho bạn")) return false
+        if (lower.includes("nội dung đầy đủ mà bạn yêu cầu")) return false
+
+        return true
+    })
+
+    return filtered.join("\n").trim()
+}
+
 async function searchHistory(q) {
 
     const res = await fetch("/ai/api/search_history.php?q=" + encodeURIComponent(q) + "&user_id=" + localStorage.getItem("user_id"))
