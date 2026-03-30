@@ -67,44 +67,63 @@ if($ext === "docx"){
 
         $phpWord = new PhpWord();
 
-        // 🔥 style mặc định
-        $phpWord->setDefaultFontName('Arial');
-        $phpWord->setDefaultFontSize(12);
+        // font mặc định đẹp hơn Word
+        $phpWord->setDefaultFontName('Times New Roman');
+        $phpWord->setDefaultFontSize(13);
 
         $section = $phpWord->addSection([
-            'marginTop' => 800,
-            'marginBottom' => 800,
-            'marginLeft' => 800,
-            'marginRight' => 800
+            'marginTop' => 1200,
+            'marginBottom' => 1200,
+            'marginLeft' => 1400,
+            'marginRight' => 1400
         ]);
 
-        // ===== markdown → HTML =====
-        $Parsedown = new Parsedown();
-        $content = normalizeMarkdown($content);
+        // chuẩn hóa xuống dòng
+        $content = str_replace(["\r\n", "\r"], "\n", $content);
+        $content = trim($content);
 
-        $Parsedown = new Parsedown();
-        $Parsedown->setSafeMode(true);
+        // style đoạn văn thường
+        $paragraphStyle = [
+            'spaceAfter' => 180,
+            'lineHeight' => 1.35
+        ];
 
-        $html = $Parsedown->text($content);
+        // style dòng thơ
+        $poemLineStyle = [
+            'spaceAfter' => 0,
+            'lineHeight' => 1.15
+        ];
 
-        // ===== FIX HTML cho Word =====
-        $html = preg_replace('/<ul>/', '<ul style="margin-left:20px;">', $html);
-        $html = preg_replace('/<li>/', '<li style="margin-bottom:5px;">', $html);
+        // tách theo khối rỗng: mỗi khối là 1 đoạn / 1 khổ thơ
+        $blocks = preg_split("/\n\s*\n/u", $content);
 
-        // 🔥 heading đẹp hơn
-        $html = preg_replace('/<h1>/', '<h1 style="font-size:20px; font-weight:bold;">', $html);
-        $html = preg_replace('/<h2>/', '<h2 style="font-size:18px; font-weight:bold;">', $html);
-        $html = preg_replace('/<h3>/', '<h3 style="font-size:16px; font-weight:bold;">', $html);
+        foreach($blocks as $block){
+            $block = trim($block);
+            if($block === '') continue;
 
-        // ===== wrap HTML =====
-        $html = "
-        <div style='font-family:Arial; font-size:12px; line-height:1.6'>
-            {$html}
-        </div>
-        ";
+            $lines = preg_split("/\n/u", $block);
 
-        libxml_use_internal_errors(true);
-        Html::addHtml($section, $html, false, false);
+            // nếu 1 block có nhiều dòng => coi như thơ / nội dung xuống dòng
+            if(count($lines) > 1){
+
+                foreach($lines as $line){
+                    $line = trim($line);
+
+                    if($line === ''){
+                        continue;
+                    }
+
+                    $section->addText($line, [], $poemLineStyle);
+                }
+
+                // cách giữa các khổ
+                $section->addTextBreak(1);
+
+            }else{
+                // đoạn văn bình thường
+                $section->addText($block, [], $paragraphStyle);
+            }
+        }
 
         $filePath = $dir . $filename . ".docx";
 

@@ -1687,13 +1687,11 @@ function isValidForExport(text) {
     return true
 }
 function cleanExportContent(text) {
-
-    return text
-        .replace(/chào bạn.*?\n/gi, "")
-        .replace(/tôi sẽ giúp.*?\n/gi, "")
+    return String(text || "")
+        .replace(/\r\n/g, "\n")
+        .replace(/\r/g, "\n")
         .replace(/👉|📄|🔎/g, "")
         .trim()
-
 }
     async function checkProfile(user_id) {
 
