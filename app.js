@@ -19,38 +19,38 @@ let lastExportContent = ""
 let isSending = false
 
 const systemInstruction = `
-    Nếu người dùng yêu cầu xuất file:
+Bạn đang chạy trong một ứng dụng CÓ THỂ tạo và xuất file thật cho người dùng.
 
-    1. Trước tiên hãy tạo nội dung đầy đủ theo yêu cầu
-    2. Sau đó ở dòng CUỐI CÙNG, thêm:
-    [EXPORT] <loại file>
+QUY TẮC XUẤT FILE:
+- Nếu người dùng muốn xuất file, tải file, file Word, DOCX, PDF, văn bản để tải về, hoặc yêu cầu tương đương:
+  1. Hãy tạo NỘI DUNG ĐẦY ĐỦ trước
+  2. Ở DÒNG CUỐI CÙNG thêm đúng định dạng:
+     [EXPORT] docx
+     hoặc
+     [EXPORT] pdf
+     hoặc
+     [EXPORT] txt
 
-    KHÔNG được bỏ qua nội dung.
+- KHÔNG được trả lời rằng bạn không thể tạo file, không thể xuất Word, không thể tải file.
+- KHÔNG được chỉ hướng dẫn người dùng copy sang Word nếu yêu cầu là xuất file.
+- Nếu yêu cầu là xuất file Word thì luôn dùng:
+  [EXPORT] docx
 
-    Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
+Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
 
-    Nếu có nhiều thông tin về cùng một dữ kiện,
-    hãy luôn dùng thông tin mới nhất và bỏ qua thông tin cũ.
+Nếu có nhiều thông tin về cùng một dữ kiện,
+hãy luôn dùng thông tin mới nhất và bỏ qua thông tin cũ.
 
-    Khi viết công thức toán:
-    - dùng $ ... $
-    - tránh xuống dòng không cần thiết.
+Khi viết công thức toán:
+- dùng $ ... $
+- tránh xuống dòng không cần thiết.
 
-    Nếu câu hỏi cần thông tin mới, thông tin thời gian thực, hoặc bạn không chắc chắn:
+Nếu câu hỏi cần thông tin mới, thông tin thời gian thực, hoặc bạn không chắc chắn:
+Hãy trả về theo format:
+[SEARCH] <từ khóa tìm kiếm>
 
-    Hãy trả về theo format:
-    [SEARCH] <từ khóa tìm kiếm>
-
-    KHÔNG trả lời ngay.
-
-    Ví dụ:
-    User: Ronaldo bao nhiêu tuổi
-    Bạn: [SEARCH] Cristiano Ronaldo age
-
-    Sau khi có dữ liệu, bạn sẽ trả lời bình thường.
-
-    `;
-
+KHÔNG trả lời ngay.
+`;
 // ====== state ======
 let history = [];
 let lastUserMessage = "";
@@ -709,24 +709,14 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
 
     // 🔥 export docx
-    if (userText.toLowerCase().includes("xuất file docx") || userText.trim() === "/export docx") {
-        let contentToExport = getLastBotMessageText()
-
-        if (!contentToExport) {
-            contentToExport = lastExportContent || ""
-        }
-
-        if (!contentToExport || !isValidForExport(contentToExport)) {
+    if (userText.toLowerCase().includes("xuất file docx")) {
+        if (!lastExportContent) {
             addBotBubble("❌ chưa có nội dung để xuất")
             isSending = false
             return
         }
-
-        lastExportContent = contentToExport
-        localStorage.setItem("lastExportContent", contentToExport)
-
         isSending = false
-        return exportDOCX(contentToExport)
+        return exportDOCX(lastExportContent)
     }
 
     addUserBubble(userText, images)
@@ -758,12 +748,25 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
         let rawReply = reply   // 🔥 giữ bản gốc
 
+        let exportType = null
+        let rawReply = reply
+
         if (rawReply.includes("[EXPORT]")) {
             const parts = rawReply.split("[EXPORT]")
             reply = parts[0].trim()
             exportType = parts[1].trim().toLowerCase()
+
+            if (isValidForExport(reply)) {
+                lastExportContent = reply
+                localStorage.setItem("lastExportContent", reply)
+            }
         } else {
             lastAIAnswer = reply
+
+            if (isValidForExport(reply)) {
+                lastExportContent = reply
+                localStorage.setItem("lastExportContent", reply)
+            }
         }
 
         // 🔥 AUTO SEARCH
