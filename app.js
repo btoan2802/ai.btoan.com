@@ -183,6 +183,42 @@ function addUserBubble(text, images = []) {
     chatEl.appendChild(row)
 }
 
+function createMessageActions({ text, exportType = null, onExport = null }) {
+    const actions = document.createElement("div")
+    actions.className = "message-actions"
+
+    if (exportType) {
+        const exportBtn = document.createElement("button")
+        exportBtn.className = "message-action-btn message-action-btn-primary"
+        exportBtn.type = "button"
+        exportBtn.innerHTML = `<span class="message-action-icon">📄</span><span>Tải ${exportType.toUpperCase()}</span>`
+        exportBtn.onclick = () => {
+            if (typeof onExport === "function") return onExport()
+            if (exportType === "docx") {
+                exportDOCX(text)
+            } else {
+                exportFile(text)
+            }
+        }
+        actions.appendChild(exportBtn)
+    }
+
+    const copyAllBtn = document.createElement("button")
+    copyAllBtn.className = "message-action-btn message-action-btn-secondary"
+    copyAllBtn.type = "button"
+    copyAllBtn.innerHTML = `<span class="message-action-icon">⧉</span><span>Copy</span>`
+    copyAllBtn.onclick = () => {
+        navigator.clipboard.writeText(text)
+        copyAllBtn.innerHTML = `<span class="message-action-icon">✓</span><span>Đã copy</span>`
+        setTimeout(() => {
+            copyAllBtn.innerHTML = `<span class="message-action-icon">⧉</span><span>Copy</span>`
+        }, 1200)
+    }
+
+    actions.appendChild(copyAllBtn)
+    return actions
+}
+
 function addBotBubble(text, exportType = null) {
     if (!chatEl) return
 
@@ -192,78 +228,12 @@ function addBotBubble(text, exportType = null) {
     const bubble = document.createElement("div")
     bubble.className = "bubble position-relative"
 
-    /* markdown render */
-    let html = marked.parse(text)
+    const content = document.createElement("div")
+    content.className = "message-content"
+    content.innerHTML = marked.parse(text)
+    bubble.appendChild(content)
 
-    // 🔥 nếu có export → thêm nút cuối
-    if (exportType) {
-
-        html += `
-        <div class="mt-2 d-flex gap-2">
-            <button class="btn btn-sm btn-success export-btn">
-                📄 ${exportType.toUpperCase()}
-            </button>
-
-        </div>
-        `
-    }
-
-    bubble.innerHTML = html
-
-    if (exportType) {
-
-        const btn = bubble.querySelector(".export-btn")
-
-        btn.onclick = () => {
-            if (exportType === "docx") {
-                exportDOCX(text)
-            } else {
-                exportFile(text)
-            }
-        }
-
-    }
-
-    /* 🔥 TẠO BUTTON TRƯỚC */
-    const copyAllBtn = document.createElement("button")
-    copyAllBtn.className = "copy-btn-clean"
-    copyAllBtn.innerText = "Copy"
-
-    copyAllBtn.onclick = () => {
-
-        navigator.clipboard.writeText(text)
-
-        copyAllBtn.innerText = "Copied ✓"
-
-        setTimeout(() => {
-            copyAllBtn.innerText = "Copy"
-        }, 1200)
-    }
-
-    // /* 🔥 onclick CHỈ 1 LẦN */
-    // copyAllBtn.onclick = ()=>{
-
-    //   const temp = document.createElement("textarea")
-    //   temp.value = text
-    //   document.body.appendChild(temp)
-    //   temp.select()
-    //   document.execCommand("copy")
-    //   document.body.removeChild(temp)
-
-    //   copyAllBtn.innerHTML = `<i class="bi bi-check"></i>`
-
-    //   setTimeout(()=>{
-    //     copyAllBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
-    //   },1500)
-    // }
-
-    const footer = document.createElement("div")
-    footer.style.display = "flex"
-    footer.style.justifyContent = "flex-end"
-    footer.style.marginTop = "6px"
-
-    footer.appendChild(copyAllBtn)
-    bubble.appendChild(footer)
+    bubble.appendChild(createMessageActions({ text, exportType }))
 
     row.appendChild(bubble)
     chatEl.appendChild(row)
@@ -332,26 +302,8 @@ function streamBot(text, exportType = null) {
     // 🔥 tách content riêng (KHÔNG bị reset)
     const content = document.createElement("div")
 
-    // 🔥 nút copy luôn tồn tại
-    const copyAllBtn = document.createElement("button")
-    copyAllBtn.className = "copy-btn-clean"
-    copyAllBtn.innerText = "Copy"
-
-    copyAllBtn.onclick = () => {
-        navigator.clipboard.writeText(text)
-        copyAllBtn.innerText = "Copied ✓"
-        setTimeout(() => copyAllBtn.innerText = "Copy", 1200)
-    }
-
-    const footer = document.createElement("div")
-    footer.style.display = "flex"
-    footer.style.justifyContent = "flex-end"
-    footer.style.marginTop = "6px"
-
-    footer.appendChild(copyAllBtn)
-
     bubble.appendChild(content)
-    bubble.appendChild(footer)
+    bubble.appendChild(createMessageActions({ text }))
 
     row.appendChild(bubble)
     chatEl.appendChild(row)
