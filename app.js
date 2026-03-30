@@ -1,4 +1,4 @@
-// ====== cấu hình ======
+﻿// ====== cấu hình ======
 const WORKER_URL = "/ai/api/chat.php";
 const MODEL = "gemini-2.5-flash";
 const TEMPERATURE = 0.5;
@@ -22,22 +22,40 @@ const systemInstruction = `
 Bạn đang chạy trong một ứng dụng CÓ THỂ tạo và xuất file thật cho người dùng.
 
 QUY TẮC XUẤT FILE:
-- Nếu người dùng muốn xuất file, tải file, file Word, DOCX, PDF, TXT, văn bản để tải về, hoặc yêu cầu tương đương:
-  1. Hãy tạo RA NỘI DUNG CUỐI CÙNG để đưa vào file
-  2. KHÔNG viết lời mở đầu, không giải thích, không nói "Tôi sẽ xuất file", không nói "Đây là nội dung", không thêm nhận xét
-  3. Chỉ trả đúng phần nội dung cần nằm trong file
-  4. Ở DÒNG CUỐI CÙNG thêm đúng định dạng:
-     [EXPORT] docx
-     hoặc
-     [EXPORT] pdf
-     hoặc
-     [EXPORT] txt
 
-- Nếu yêu cầu là xuất file Word thì luôn dùng:
-  [EXPORT] docx
+CHỈ được thêm [EXPORT] khi người dùng NÓI RÕ RÀNG rằng họ muốn xuất file hoặc tải file.
 
-- KHÔNG được trả lời rằng bạn không thể tạo file.
-- KHÔNG được bảo người dùng copy thủ công sang Word.
+Chỉ coi là yêu cầu xuất file nếu trong ý người dùng có một trong các ý sau:
+- xuất file
+- tải file
+- file Word
+- DOCX
+- PDF
+- TXT
+- lưu ra file
+- tạo file để tải
+- download file
+
+Nếu người dùng chỉ yêu cầu viết nội dung, làm bài, soạn bài, viết thơ, viết văn, trả lời câu hỏi, hoặc tạo nội dung thông thường mà KHÔNG nói rõ muốn xuất/tải file:
+- KHÔNG được thêm [EXPORT]
+- KHÔNG được tự suy diễn là cần xuất file
+
+Nếu người dùng nói rõ muốn xuất file:
+1. Hãy tạo ra NỘI DUNG CUỐI CÙNG để đưa vào file
+2. KHÔNG viết lời mở đầu, không giải thích, không nói "Tôi sẽ xuất file", không nói "Đây là nội dung", không thêm nhận xét
+3. Chỉ trả đúng phần nội dung cần nằm trong file
+4. Ở DÒNG CUỐI CÙNG thêm đúng định dạng:
+   [EXPORT] docx
+   hoặc
+   [EXPORT] pdf
+   hoặc
+   [EXPORT] txt
+
+Nếu yêu cầu là file Word thì dùng:
+[EXPORT] docx
+
+KHÔNG được trả lời rằng bạn không thể tạo file.
+KHÔNG được bảo người dùng copy thủ công sang Word.
 
 Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
 
@@ -87,6 +105,24 @@ function detectThinking(userText) {
     }
 
     return false
+}
+
+function userWantsExport(text = "") {
+    const t = String(text || "").toLowerCase()
+
+    return [
+        "xuất file",
+        "tải file",
+        "file word",
+        "docx",
+        "pdf",
+        "txt",
+        "lưu file",
+        "tạo file",
+        "download file",
+        "xuất word",
+        "xuất docx"
+    ].some(k => t.includes(k))
 }
 
 document.addEventListener("touchend", (e) => {
@@ -711,17 +747,6 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
     }
 
 
-    // 🔥 export docx
-    if (userText.toLowerCase().includes("xuất file docx")) {
-        if (!lastExportContent) {
-            addBotBubble("❌ chưa có nội dung để xuất")
-            isSending = false
-            return
-        }
-        isSending = false
-        return exportDOCX(lastExportContent)
-    }
-
     addUserBubble(userText, images)
     scrollToBottom()
 
@@ -751,23 +776,27 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
         let rawReply = reply   // 🔥 giữ bản gốc
 
-        if (rawReply.includes("[EXPORT]")) {
-            const parts = rawReply.split("[EXPORT]")
-            reply = parts[0].trim()
-            exportType = parts[1].trim().toLowerCase()
+if (rawReply.includes("[EXPORT]")) {
+    const parts = rawReply.split("[EXPORT]")
+    reply = extractExportContent(parts[0].trim())
+    exportType = parts[1].trim().toLowerCase()
 
-            if (isValidForExport(reply)) {
-                lastExportContent = reply
-                localStorage.setItem("lastExportContent", reply)
-            }
-        } else {
-            lastAIAnswer = reply
+    if (!userWantsExport(userText)) {
+        exportType = null
+    }
 
-            if (isValidForExport(reply)) {
-                lastExportContent = reply
-                localStorage.setItem("lastExportContent", reply)
-            }
-        }
+    if (isValidForExport(reply)) {
+        lastExportContent = reply
+        localStorage.setItem("lastExportContent", reply)
+    }
+} else {
+    lastAIAnswer = reply
+
+    if (isValidForExport(reply)) {
+        lastExportContent = reply
+        localStorage.setItem("lastExportContent", reply)
+    }
+}
 
         // 🔥 AUTO SEARCH
         if (reply.startsWith("[SEARCH]")) {
@@ -1077,7 +1106,7 @@ async function loadConversation(id) {
                 const base64Data = m.text.split("||")[1]
                 const content = atob(base64Data)
 
-                const clean = fixLatex(cleanExportContent(content))
+                const clean = fixLatex(extractExportContent(cleanExportContent(content)))
 
                 const base64Encoded = btoa(unescape(encodeURIComponent(clean)))
                 const url = "data:text/plain;base64," + base64Encoded
@@ -1704,6 +1733,7 @@ function extractExportContent(text) {
         if (lower.startsWith("đây là nội dung")) return false
         if (lower.startsWith("dưới đây là")) return false
         if (lower.startsWith("tôi sẽ xuất")) return false
+        if (lower.startsWith("được thôi")) return false
         if (lower.startsWith("tôi hiểu rằng")) return false
         if (lower.startsWith("chào bạn")) return false
         if (lower.includes("thành file word cho bạn")) return false
@@ -2119,5 +2149,6 @@ document.addEventListener("click", function (e) {
         console.error("❌ loadProfileData error:", err)
     }
 }
+
 
 
