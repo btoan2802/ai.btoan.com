@@ -54,6 +54,16 @@ const systemInstruction = `
 // ====== state ======
 let history = [];
 let lastUserMessage = "";
+
+function escapeHtml(str = "") {
+    return str
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;")
+}
+
 function detectThinking(userText) {
 
     const keywords = [
@@ -149,17 +159,15 @@ function addImages(files) {
 
 
 function addUserBubble(text, images = []) {
-
     const row = document.createElement("div")
     row.className = "msgrow me"
 
     const bubble = document.createElement("div")
     bubble.className = "bubble position-relative"
 
-    let html = `<div class="usertxt">${text}</div>`
+    let html = `<div class="usertxt">${escapeHtml(text).replace(/\n/g, "<br>")}</div>`
 
     if (images && images.length > 0) {
-
         html += `<div class="mt-2 d-flex flex-wrap gap-2">`
 
         images.forEach(img => {
@@ -173,11 +181,23 @@ function addUserBubble(text, images = []) {
     }
 
     html += `
-    <button class="btn btn-sm btn-light copy-btn-msg" onclick="navigator.clipboard.writeText('${text}')">
-        <i class="bi bi-clipboard"></i>
-    </button>
+        <button class="copy-btn-msg" type="button">
+            <i class="bi bi-clipboard"></i>
+        </button>
     `
+
     bubble.innerHTML = html
+
+    const copyBtn = bubble.querySelector(".copy-btn-msg")
+    if (copyBtn) {
+        copyBtn.onclick = async () => {
+            await navigator.clipboard.writeText(text || "")
+            copyBtn.innerHTML = `<i class="bi bi-check"></i>`
+            setTimeout(() => {
+                copyBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
+            }, 1200)
+        }
+    }
 
     row.appendChild(bubble)
     chatEl.appendChild(row)
@@ -191,7 +211,10 @@ function createMessageActions({ text, exportType = null, onExport = null }) {
         const exportBtn = document.createElement("button")
         exportBtn.className = "message-action-btn message-action-btn-primary"
         exportBtn.type = "button"
-        exportBtn.innerHTML = `<span class="message-action-icon">📄</span><span>Tải ${exportType.toUpperCase()}</span>`
+        exportBtn.innerHTML = `
+            <i class="bi bi-download message-action-icon"></i>
+            <span>Tải ${exportType.toUpperCase()}</span>
+        `
         exportBtn.onclick = () => {
             if (typeof onExport === "function") return onExport()
             if (exportType === "docx") {
@@ -206,12 +229,21 @@ function createMessageActions({ text, exportType = null, onExport = null }) {
     const copyAllBtn = document.createElement("button")
     copyAllBtn.className = "message-action-btn message-action-btn-secondary"
     copyAllBtn.type = "button"
-    copyAllBtn.innerHTML = `<span class="message-action-icon">⧉</span><span>Copy</span>`
-    copyAllBtn.onclick = () => {
-        navigator.clipboard.writeText(text)
-        copyAllBtn.innerHTML = `<span class="message-action-icon">✓</span><span>Đã copy</span>`
+    copyAllBtn.innerHTML = `
+        <i class="bi bi-clipboard message-action-icon"></i>
+        <span>Copy</span>
+    `
+    copyAllBtn.onclick = async () => {
+        await navigator.clipboard.writeText(text || "")
+        copyAllBtn.innerHTML = `
+            <i class="bi bi-check2 message-action-icon"></i>
+            <span>Đã copy</span>
+        `
         setTimeout(() => {
-            copyAllBtn.innerHTML = `<span class="message-action-icon">⧉</span><span>Copy</span>`
+            copyAllBtn.innerHTML = `
+                <i class="bi bi-clipboard message-action-icon"></i>
+                <span>Copy</span>
+            `
         }, 1200)
     }
 
@@ -361,30 +393,6 @@ function streamBot(text, exportType = null) {
             /* math */
             if (window.MathJax) {
                 MathJax.typesetPromise([bubble])
-            }
-
-            /* export */
-            if (exportType) {
-
-                const wrap = document.createElement("div")
-                wrap.style.display = "flex"
-                wrap.style.gap = "6px"
-                wrap.style.marginTop = "6px"
-
-                const btn = document.createElement("button")
-                btn.className = "btn btn-sm btn-success"
-                btn.innerText = "⬇️ Tải file " + exportType.toUpperCase()
-
-                btn.onclick = () => {
-                    if (exportType === "docx") {
-                        exportDOCX(text)
-                    } else {
-                        exportFile(text)
-                    }
-                }
-                wrap.appendChild(btn)
-
-                footer.appendChild(wrap)
             }
 
         }
@@ -1307,10 +1315,6 @@ document.getElementById("pickCamera")?.addEventListener("click", async () => {
             addImages([file])
         }
 
-        if (path) {
-            console.log("Ảnh từ Flutter:", path)
-            // TODO: nếu muốn preview thì xử lý thêm ở đây
-        }
 
     } else {
         // fallback cho trình duyệt

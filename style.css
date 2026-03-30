@@ -133,9 +133,8 @@ body{
   background: #ffffff;
   border: 1px solid var(--stroke);
   border-radius: 18px;
-  padding: 14px 16px;
+  padding: 16px 18px;
   max-width: 100%;
-
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
 }
 
@@ -935,71 +934,80 @@ color:white;
 }
 
 .message-content + .message-actions,
-.message-actions{
-  margin-top: 12px;
+.message-actions {
+  margin-top: 14px;
 }
 
-.message-actions{
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap;
-  padding-top: 2px;
+.message-actions {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
-.message-action-btn{
-  appearance:none;
-  border:none;
-  border-radius: 12px;
-  display:inline-flex;
-  align-items:center;
-  gap:6px;
-  min-height: 36px;
-  padding: 8px 12px;
+.message-action-btn {
+  appearance: none;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
   font-size: 13px;
   font-weight: 600;
   line-height: 1;
-  cursor:pointer;
-  transition: transform .15s ease, box-shadow .15s ease, background .15s ease, border-color .15s ease;
+  cursor: pointer;
+  transition: all .18s ease;
 }
 
-.message-action-btn:hover{
+.message-action-btn:hover {
   transform: translateY(-1px);
 }
 
-.message-action-btn-primary{
-  background: linear-gradient(135deg, #5b7cff 0%, #7f8cff 100%);
-  color:#fff;
-  box-shadow: 0 8px 18px rgba(91, 124, 255, 0.22);
+.message-action-btn-primary {
+  border: none;
+  background: #4f46e5;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.20);
 }
 
-.message-action-btn-primary:hover{
-  box-shadow: 0 10px 22px rgba(91, 124, 255, 0.28);
+.message-action-btn-primary:hover {
+  background: #4338ca;
+  box-shadow: 0 8px 18px rgba(79, 70, 229, 0.24);
 }
 
-.message-action-btn-secondary{
-  background:#f8fafc;
-  color:#475569;
-  border:1px solid #dbe3ef;
+.message-action-btn-secondary {
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #4b5563;
 }
 
-.message-action-btn-secondary:hover{
-  background:#f1f5f9;
+.message-action-btn-secondary:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
 }
 
-.message-action-icon{
+.message-action-icon {
   font-size: 13px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
 }
 
-@media (max-width: 768px){
-  .message-actions{
-    justify-content:flex-start;
+@media (max-width: 768px) {
+  .message-actions {
+    gap: 8px;
   }
 
-  .message-action-btn{
-    min-height: 34px;
-    padding: 8px 11px;
+  .message-action-btn {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 12px;
   }
 }
+.copy-btn,
+.copy-btn-clean {
+  display: none !important;
+}
+
