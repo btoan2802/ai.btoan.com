@@ -335,7 +335,7 @@ function streamBot(text, exportType = null) {
     const content = document.createElement("div")
 
     bubble.appendChild(content)
-    bubble.appendChild(createMessageActions({ text }))
+    bubble.appendChild(createMessageActions({ text, exportType }))
 
     row.appendChild(bubble)
     chatEl.appendChild(row)
@@ -710,10 +710,10 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
     // 🔥 export docx
     if (userText.toLowerCase().includes("xuất file docx") || userText.trim() === "/export docx") {
-        let contentToExport = lastExportContent || localStorage.getItem("lastExportContent") || ""
+        let contentToExport = getLastBotMessageText()
 
         if (!contentToExport) {
-            contentToExport = getLastBotMessageText()
+            contentToExport = lastExportContent || ""
         }
 
         if (!contentToExport || !isValidForExport(contentToExport)) {
@@ -750,17 +750,6 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
     try {
 
         let reply = await callGemini(userText, images, files)
-        // 🔥 FORCE EXPORT FORMAT
-        // 🔥 detect export trực tiếp từ user
-        if (userText.toLowerCase().includes("xuất file docx")) {
-            if (!lastExportContent) {
-                addBotBubble("❌ chưa có nội dung để xuất")
-                isSending = false   // 🔥 THÊM
-                return
-            }
-            isSending = false
-            return exportDOCX(lastExportContent)
-        }
 
         // 🔥 AI quyết định export
         // 🔥 AI quyết định export (ĐÚNG LOGIC)
@@ -1107,10 +1096,15 @@ async function loadConversation(id) {
                 }
 
                 // nếu nội dung đủ tốt để export thì lưu lại
-                if (isValidForExport(text)) {
-                    lastExportContent = text
-                    localStorage.setItem("lastExportContent", text)
-                }
+if (
+    isValidForExport(text) &&
+    !text.includes("📄 File đã xuất trước đó") &&
+    !text.includes("📄 File DOCX đã sẵn sàng") &&
+    !text.includes("📄 File đã sẵn sàng")
+) {
+    lastExportContent = text
+    localStorage.setItem("lastExportContent", text)
+}
 
                 addBotBubble(text, exportType)
             }
@@ -1129,11 +1123,25 @@ async function loadConversation(id) {
 }
 
 function getLastBotMessageText() {
-    const botBubbles = [...document.querySelectorAll(".msgrow.bot .message-content")]
-    if (!botBubbles.length) return ""
+    const botMessages = [...document.querySelectorAll(".msgrow.bot .bubble")]
+    if (!botMessages.length) return ""
 
-    const last = botBubbles[botBubbles.length - 1]
-    return (last.innerText || "").trim()
+    for (let i = botMessages.length - 1; i >= 0; i--) {
+        const content = botMessages[i].querySelector(".message-content")
+        if (!content) continue
+
+        const text = (content.innerText || "").trim()
+
+        if (!text) continue
+        if (text.includes("đang trả lời")) continue
+        if (text.includes("❌")) continue
+        if (text.includes("📄 File DOCX đã sẵn sàng")) continue
+        if (text.includes("📄 File đã sẵn sàng")) continue
+
+        return text
+    }
+
+    return ""
 }
 
 // ====== PAGE LOAD ======
@@ -1636,7 +1644,7 @@ async function exportDOCX(content) {
         },
         body: JSON.stringify({
             content: clean,
-            ext: "docx"   // 🔥 QUAN TRỌNG
+            ext: "docx"
         })
     })
 
@@ -1656,9 +1664,11 @@ async function exportDOCX(content) {
         return
     }
 
-    // 🔥 mở + tải file Word thật
-    window.open(data.url, "_blank")
+    addBotBubble(`
+📄 File DOCX đã sẵn sàng:
 
+👉 <a href="${data.url}" target="_blank">Tải file Word</a>
+`, "docx")
 }
 async function searchHistory(q) {
 
