@@ -269,4 +269,64 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("globalSearchInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") searchWorkspace();
   });
+
+  document.getElementById("newFileBtn").onclick = async () => {
+  const path = prompt("Nhập tên file, ví dụ: src/index.html");
+  if (!path) return;
+
+  try {
+    await api("/ai/api/workspace/create_file.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, content: "" })
+    });
+
+    await loadTree();
+    await openFile(path);
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+document.getElementById("newFolderBtn").onclick = async () => {
+  const path = prompt("Nhập tên folder, ví dụ: src/components");
+  if (!path) return;
+
+  try {
+    await api("/ai/api/workspace/create_folder.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path })
+    });
+
+    await loadTree();
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+document.getElementById("uploadWorkspaceFile").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const fd = new FormData();
+  fd.append("file", file);
+
+  try {
+    const res = await fetch("/ai/api/workspace/upload.php", {
+      method: "POST",
+      body: fd
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "Upload lỗi");
+
+    await loadTree();
+    await openFile(data.path);
+  } catch (err) {
+    alert(err.message);
+  }
+
+  e.target.value = "";
+});
+
 });

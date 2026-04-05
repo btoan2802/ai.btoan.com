@@ -1,7 +1,25 @@
 <?php
 header("Content-Type: application/json; charset=utf-8");
+session_start();
 
-define("WORKSPACE_ROOT", realpath(__DIR__ . "/../../.."));
+if (empty($_SESSION["user_id"])) {
+    http_response_code(401);
+    echo json_encode(["error" => "Chưa đăng nhập"], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+define("WORKSPACE_BASE", realpath(__DIR__ . "/../../../uploads") . "/workspaces");
+
+if (!is_dir(WORKSPACE_BASE)) {
+    mkdir(WORKSPACE_BASE, 0777, true);
+}
+
+$userId = (int)$_SESSION["user_id"];
+define("WORKSPACE_ROOT", WORKSPACE_BASE . "/user_" . $userId);
+
+if (!is_dir(WORKSPACE_ROOT)) {
+    mkdir(WORKSPACE_ROOT, 0777, true);
+}
 
 function json_out($data, $code = 200) {
     http_response_code($code);
@@ -11,6 +29,7 @@ function json_out($data, $code = 200) {
 
 function normalize_rel_path($path) {
     $path = str_replace("\\", "/", trim((string)$path));
+    $path = preg_replace('#/+#', '/', $path);
     $path = ltrim($path, "/");
     return $path;
 }
@@ -23,9 +42,20 @@ function abs_path_from_rel($rel) {
     }
 
     $full = WORKSPACE_ROOT . "/" . $rel;
-    $dir = realpath(dirname($full));
+    $parent = realpath(dirname($full));
 
-    if ($dir === false || strpos($dir, WORKSPACE_ROOT) !== 0) {
+    if ($parent === false) {
+        $baseParent = dirname($full);
+        if (strpos(str_replace("\\", "/", $baseParent), str_replace("\\", "/", WORKSPACE_ROOT)) !== 0) {
+            json_out(["error" => "Đường dẫn không hợp lệ"], 400);
+        }
+        return $full;
+    }
+
+    $parent = str_replace("\\", "/", $parent);
+    $root = str_replace("\\", "/", WORKSPACE_ROOT);
+
+    if (strpos($parent, $root) !== 0) {
         json_out(["error" => "Đường dẫn không hợp lệ"], 400);
     }
 
@@ -38,11 +68,11 @@ function is_hidden_name($name) {
 
 function is_allowed_text_file($path) {
     $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-    $allowed = ["php", "js", "css", "html", "json", "md", "txt", "sql", "xml"];
+    $allowed = ["php", "js", "css", "html", "json", "md", "txt", "sql", "xml", "py", "java", "cpp", "c", "cs", "ts", "tsx", "jsx", "yml", "yaml"];
     return in_array($ext, $allowed, true);
 }
 
 function skip_name($name) {
-    $skip = [".git", "vendor", "node_modules", "uploads"];
+    $skip = [".git", "vendor", "node_modules"];
     return in_array($name, $skip, true);
 }
