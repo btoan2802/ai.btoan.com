@@ -76,8 +76,8 @@ try {
     }
 
     $API_KEYS = [
-        "KEY_1_CUA_BAN",
-        "KEY_2_CUA_BAN"
+        "AIzaSyBJ2WYYtpa6KJGCae1VMbg5Z-QU5DAiLHg",
+        "AIzaSyATX9o2tDCDIboBXiUBsOq2dBrXc2-UAGc"
     ];
 
     $API_KEYS = array_values(array_filter($API_KEYS, fn($v) => is_string($v) && trim($v) !== ""));
