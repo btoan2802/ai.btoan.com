@@ -332,13 +332,9 @@ function initMonaco() {
       fontFamily: "JetBrains Mono, Consolas, monospace",
       tabSize: 2
     });
+    
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, function () {
-      editor.getAction("editor.action.commentLine").run();
-    });
-
-    editor.addCommand(monaco.KeyMod.Shift | monaco.Alt | monaco.KeyCode.KeyA, function () {
-      editor.getAction("editor.action.blockComment").run();
-    });
+  editor.getAction("editor.action.commentLine").run();
 });
 
 editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, function () {
