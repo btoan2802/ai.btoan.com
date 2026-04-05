@@ -2,7 +2,15 @@
 header("Content-Type: application/json; charset=utf-8");
 session_start();
 
-if (empty($_SESSION["user_id"])) {
+$userId = 0;
+
+if (!empty($_SESSION["user_id"])) {
+    $userId = (int)$_SESSION["user_id"];
+} elseif (!empty($_SERVER["HTTP_X_USER_ID"])) {
+    $userId = (int)$_SERVER["HTTP_X_USER_ID"];
+}
+
+if ($userId <= 0) {
     http_response_code(401);
     echo json_encode(["error" => "Chưa đăng nhập"], JSON_UNESCAPED_UNICODE);
     exit;

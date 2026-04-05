@@ -4,7 +4,18 @@ let currentFile = null;
 const models = {};
 
 function api(url, options = {}) {
-  return fetch(url, options).then(async (res) => {
+  const headers = new Headers(options.headers || {});
+  const userId = localStorage.getItem("user_id");
+
+  if (userId) {
+    headers.set("X-User-Id", userId);
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+    credentials: "same-origin"
+  }).then(async (res) => {
     const data = await res.json();
     if (!res.ok || data.error) {
       throw new Error(data.error || "API error");
@@ -261,10 +272,15 @@ function initMonaco() {
 document.addEventListener("DOMContentLoaded", () => {
   initMonaco();
 
-  document.getElementById("reloadTreeBtn").onclick = loadTree;
-  document.getElementById("saveFileBtn").onclick = saveCurrentFile;
-  document.getElementById("globalSearchBtn").onclick = searchWorkspace;
-  document.getElementById("aiEditBtn").onclick = aiEditCurrentFile;
+  const reloadTreeBtn = document.getElementById("reloadTreeBtn");
+  const saveFileBtn = document.getElementById("saveFileBtn");
+  const globalSearchBtn = document.getElementById("globalSearchBtn");
+  const aiEditBtn = document.getElementById("aiEditBtn");
+
+  if (reloadTreeBtn) reloadTreeBtn.onclick = loadTree;
+  if (saveFileBtn) saveFileBtn.onclick = saveCurrentFile;
+  if (globalSearchBtn) globalSearchBtn.onclick = searchWorkspace;
+  if (aiEditBtn) aiEditBtn.onclick = aiEditCurrentFile;
 
   document.getElementById("globalSearchInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") searchWorkspace();
