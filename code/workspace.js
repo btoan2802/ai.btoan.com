@@ -282,9 +282,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (globalSearchBtn) globalSearchBtn.onclick = searchWorkspace;
   if (aiEditBtn) aiEditBtn.onclick = aiEditCurrentFile;
 
-  document.getElementById("globalSearchInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter") searchWorkspace();
-  });
+  const globalSearchInput = document.getElementById("globalSearchInput");
+    if (globalSearchInput) {
+      globalSearchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") searchWorkspace();
+      });
+    }
 
   document.getElementById("newFileBtn").onclick = async () => {
   const path = prompt("Nhập tên file, ví dụ: src/index.html");
@@ -329,10 +332,14 @@ document.getElementById("uploadWorkspaceFile").addEventListener("change", async 
   fd.append("file", file);
 
   try {
-    const res = await fetch("/ai/api/workspace/upload.php", {
-      method: "POST",
-      body: fd
-    });
+  const userId = localStorage.getItem("user_id");
+
+  const res = await fetch("/ai/api/workspace/upload.php", {
+    method: "POST",
+    body: fd,
+    headers: userId ? { "X-User-Id": userId } : {},
+    credentials: "same-origin"
+  });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "Upload lỗi");
 

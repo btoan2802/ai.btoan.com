@@ -22,7 +22,6 @@ if (!is_dir(WORKSPACE_BASE)) {
     mkdir(WORKSPACE_BASE, 0777, true);
 }
 
-$userId = (int)$_SESSION["user_id"];
 define("WORKSPACE_ROOT", WORKSPACE_BASE . "/user_" . $userId);
 
 if (!is_dir(WORKSPACE_ROOT)) {
