@@ -12,7 +12,7 @@ function api(url, options = {}) {
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45000);
+  const timeout = setTimeout(() => controller.abort("timeout"), 120000);
 
   return fetch(url, {
     ...options,
@@ -36,9 +36,14 @@ function api(url, options = {}) {
 
       return data;
     })
+    .catch((err) => {
+      if (err.name === "AbortError") {
+        throw new Error("Yêu cầu AI bị timeout sau 120 giây");
+      }
+      throw err;
+    })
     .finally(() => clearTimeout(timeout));
 }
-
 function getLanguageFromPath(path) {
   const ext = path.split(".").pop().toLowerCase();
   const map = {
