@@ -11,26 +11,32 @@ function api(url, options = {}) {
     headers.set("X-User-Id", userId);
   }
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+
   return fetch(url, {
     ...options,
     headers,
-    credentials: "same-origin"
-  }).then(async (res) => {
-    const raw = await res.text();
+    credentials: "same-origin",
+    signal: controller.signal
+  })
+    .then(async (res) => {
+      const raw = await res.text();
 
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (e) {
-      throw new Error(raw.slice(0, 800));
-    }
+      let data;
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        throw new Error(raw.slice(0, 800));
+      }
 
-    if (!res.ok || data.error) {
-      throw new Error(data.error || "API error");
-    }
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "API error");
+      }
 
-    return data;
-  });
+      return data;
+    })
+    .finally(() => clearTimeout(timeout));
 }
 
 function getLanguageFromPath(path) {
@@ -285,80 +291,90 @@ document.addEventListener("DOMContentLoaded", () => {
   const saveFileBtn = document.getElementById("saveFileBtn");
   const globalSearchBtn = document.getElementById("globalSearchBtn");
   const aiEditBtn = document.getElementById("aiEditBtn");
+  const globalSearchInput = document.getElementById("globalSearchInput");
+  const newFileBtn = document.getElementById("newFileBtn");
+  const newFolderBtn = document.getElementById("newFolderBtn");
+  const uploadWorkspaceFile = document.getElementById("uploadWorkspaceFile");
 
   if (reloadTreeBtn) reloadTreeBtn.onclick = loadTree;
   if (saveFileBtn) saveFileBtn.onclick = saveCurrentFile;
   if (globalSearchBtn) globalSearchBtn.onclick = searchWorkspace;
   if (aiEditBtn) aiEditBtn.onclick = aiEditCurrentFile;
 
-  const globalSearchInput = document.getElementById("globalSearchInput");
-    if (globalSearchInput) {
-      globalSearchInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") searchWorkspace();
-      });
-    }
-
-  document.getElementById("newFileBtn").onclick = async () => {
-  const path = prompt("Nhập tên file, ví dụ: src/index.html");
-  if (!path) return;
-
-  try {
-    await api("/ai/api/workspace/create_file.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path, content: "" })
+  if (globalSearchInput) {
+    globalSearchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") searchWorkspace();
     });
-
-    await loadTree();
-    await openFile(path);
-  } catch (e) {
-    alert(e.message);
   }
-};
 
-document.getElementById("newFolderBtn").onclick = async () => {
-  const path = prompt("Nhập tên folder, ví dụ: src/components");
-  if (!path) return;
+  if (newFileBtn) {
+    newFileBtn.onclick = async () => {
+      const path = prompt("Nhập tên file, ví dụ: src/index.html");
+      if (!path) return;
 
-  try {
-    await api("/ai/api/workspace/create_folder.php", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ path })
+      try {
+        await api("/ai/api/workspace/create_file.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path, content: "" })
+        });
+
+        await loadTree();
+        await openFile(path);
+      } catch (e) {
+        alert(e.message);
+      }
+    };
+  }
+
+  if (newFolderBtn) {
+    newFolderBtn.onclick = async () => {
+      const path = prompt("Nhập tên folder, ví dụ: src/components");
+      if (!path) return;
+
+      try {
+        await api("/ai/api/workspace/create_folder.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path })
+        });
+
+        await loadTree();
+      } catch (e) {
+        alert(e.message);
+      }
+    };
+  }
+
+  if (uploadWorkspaceFile) {
+    uploadWorkspaceFile.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const fd = new FormData();
+      fd.append("file", file);
+
+      try {
+        const userId = localStorage.getItem("user_id");
+        const res = await fetch("/ai/api/workspace/upload.php", {
+          method: "POST",
+          body: fd,
+          headers: userId ? { "X-User-Id": userId } : {},
+          credentials: "same-origin"
+        });
+
+        const raw = await res.text();
+        const data = JSON.parse(raw);
+
+        if (!res.ok || data.error) throw new Error(data.error || "Upload lỗi");
+
+        await loadTree();
+        await openFile(data.path);
+      } catch (err) {
+        alert(err.message);
+      }
+
+      e.target.value = "";
     });
-
-    await loadTree();
-  } catch (e) {
-    alert(e.message);
   }
-};
-
-document.getElementById("uploadWorkspaceFile").addEventListener("change", async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const fd = new FormData();
-  fd.append("file", file);
-
-  try {
-  const userId = localStorage.getItem("user_id");
-
-  const res = await fetch("/ai/api/workspace/upload.php", {
-    method: "POST",
-    body: fd,
-    headers: userId ? { "X-User-Id": userId } : {},
-    credentials: "same-origin"
-  });
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || "Upload lỗi");
-
-    await loadTree();
-    await openFile(data.path);
-  } catch (err) {
-    alert(err.message);
-  }
-
-  e.target.value = "";
-});
-
 });

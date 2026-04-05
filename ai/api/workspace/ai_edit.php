@@ -1,4 +1,6 @@
 <?php
+ini_set('max_execution_time', 120);
+set_time_limit(120);
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 ob_start();
@@ -41,6 +43,47 @@ try {
     }
 
     $ext = strtolower(pathinfo($full, PATHINFO_EXTENSION));
+
+    if ($ext === "html") {
+        if (preg_match('/(?:đổi|thay)\s+title\s+(?:thành|bằng)\s+(.+)/iu', $instruction, $m)) {
+            $newTitle = trim($m[1], " \t\n\r\0\x0B\"'");
+            $safeTitle = htmlspecialchars($newTitle, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+
+            if (preg_match('/<title\b[^>]*>.*?<\/title>/isu', $content)) {
+                $updated = preg_replace(
+                    '/<title\b[^>]*>.*?<\/title>/isu',
+                    '<title>' . $safeTitle . '</title>',
+                    $content,
+                    1
+                );
+            } elseif (preg_match('/<head\b[^>]*>/isu', $content)) {
+                $updated = preg_replace(
+                    '/<head\b[^>]*>/isu',
+                    '$0' . "\n    <title>" . $safeTitle . '</title>',
+                    $content,
+                    1
+                );
+            } else {
+                $updated = $content;
+            }
+
+            if ($updated !== null && $updated !== $content) {
+                if (ob_get_length()) ob_clean();
+                json_out([
+                    "path" => normalize_rel_path($path),
+                    "content" => $updated
+                ]);
+            }
+        }
+    }
+
+    $maxChars = 12000;
+    if (mb_strlen($content) > $maxChars) {
+        if (ob_get_length()) ob_clean();
+        json_out([
+            "error" => "File quá dài để AI sửa trực tiếp. Hãy chia file nhỏ hơn hoặc chọn cách sửa theo patch."
+        ], 400);
+    }
 
     $API_KEYS = [
         "AIzaSyBJ2WYYtpa6KJGCae1VMbg5Z-QU5DAiLHg",
@@ -106,7 +149,8 @@ PROMPT;
             CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => ["Content-Type: application/json"],
             CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            CURLOPT_TIMEOUT => 120,
+            CURLOPT_TIMEOUT => 45,
+            CURLOPT_CONNECTTIMEOUT => 15,
         ]);
 
         $res = curl_exec($ch);

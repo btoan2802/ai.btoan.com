@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Btoan AI Code</title>
 
-  <link rel="icon" href="favicon.ico">
+  <link rel="icon" href="/favicon.ico">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link rel="stylesheet" href="./code.css">
@@ -38,6 +38,8 @@
         </div>
 
         <input id="globalSearchInput" class="search-input" placeholder="Tìm file hoặc nội dung...">
+        <button id="globalSearchBtn" class="search-btn">Search</button>
+        
         <div id="fileTree" class="file-tree"></div>
       </aside>
 
