@@ -2,8 +2,7 @@
 ini_set('max_execution_time', 120);
 set_time_limit(120);
 ini_set('display_errors', '0');
-error_reporting(E_ALL);
-ob_start();
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);ob_start();
 
 require __DIR__ . "/_bootstrap.php";
 
@@ -156,7 +155,6 @@ PROMPT;
         $res = curl_exec($ch);
         $err = curl_error($ch);
         $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         if ($err) {
             $lastError = $err;
