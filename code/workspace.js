@@ -14,8 +14,28 @@ function api(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("timeout"), 120000);
 
-  return fetch(url, {
+  let finalUrl = url;
+  let finalBody = options.body;
+
+  // GET => thêm user_id vào query
+  if ((!options.method || options.method.toUpperCase() === "GET") && userId) {
+    const sep = finalUrl.includes("?") ? "&" : "?";
+    finalUrl += `${sep}user_id=${encodeURIComponent(userId)}`;
+  }
+
+  // JSON => thêm user_id vào body
+  const contentType = headers.get("Content-Type") || "";
+  if (userId && contentType.includes("application/json") && typeof finalBody === "string") {
+    try {
+      const parsed = JSON.parse(finalBody);
+      parsed.user_id = userId;
+      finalBody = JSON.stringify(parsed);
+    } catch (e) {}
+  }
+
+  return fetch(finalUrl, {
     ...options,
+    body: finalBody,
     headers,
     credentials: "same-origin",
     signal: controller.signal
@@ -44,6 +64,7 @@ function api(url, options = {}) {
     })
     .finally(() => clearTimeout(timeout));
 }
+
 function getLanguageFromPath(path) {
   const ext = path.split(".").pop().toLowerCase();
   const map = {
@@ -335,6 +356,8 @@ if (agentInput) {
       if (!files.length) return;
 
       const fd = new FormData();
+      const userId = localStorage.getItem("user_id");
+      if (userId) fd.append("user_id", userId);
 
       files.forEach((file) => {
         const relPath = file.webkitRelativePath || file.name;
@@ -346,7 +369,6 @@ if (agentInput) {
         const res = await fetch("/ai/api/workspace/upload_folder.php", {
           method: "POST",
           body: fd,
-          headers: userId ? { "X-User-Id": userId } : {},
           credentials: "same-origin"
         });
 
@@ -430,13 +452,14 @@ if (agentInput) {
 
       const fd = new FormData();
       fd.append("file", file);
+      const userId = localStorage.getItem("user_id");
+      if (userId) fd.append("user_id", userId);
 
       try {
         const userId = localStorage.getItem("user_id");
         const res = await fetch("/ai/api/workspace/upload.php", {
           method: "POST",
           body: fd,
-          headers: userId ? { "X-User-Id": userId } : {},
           credentials: "same-origin"
         });
 

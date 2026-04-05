@@ -4,10 +4,35 @@ session_start();
 
 $userId = 0;
 
+// 1. Session
 if (!empty($_SESSION["user_id"])) {
     $userId = (int)$_SESSION["user_id"];
-} elseif (!empty($_SERVER["HTTP_X_USER_ID"])) {
+}
+
+// 2. Header X-User-Id
+if ($userId <= 0 && !empty($_SERVER["HTTP_X_USER_ID"])) {
     $userId = (int)$_SERVER["HTTP_X_USER_ID"];
+}
+
+// 3. Query string ?user_id=
+if ($userId <= 0 && !empty($_GET["user_id"])) {
+    $userId = (int)$_GET["user_id"];
+}
+
+// 4. POST/form-data
+if ($userId <= 0 && !empty($_POST["user_id"])) {
+    $userId = (int)$_POST["user_id"];
+}
+
+// 5. JSON body
+if ($userId <= 0) {
+    $raw = file_get_contents("php://input");
+    if ($raw) {
+        $json = json_decode($raw, true);
+        if (is_array($json) && !empty($json["user_id"])) {
+            $userId = (int)$json["user_id"];
+        }
+    }
 }
 
 if ($userId <= 0) {
