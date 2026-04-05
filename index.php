@@ -361,7 +361,14 @@
 
           <button class="menu-btn" onclick="toggleSidebar()">☰</button>
 
-          <div class="fw-bold">Btoan AI</div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="fw-bold">Btoan AI</div>
+
+            <a href="./code/code.php" class="code-entry-btn">
+              <i class="bi bi-code-slash"></i>
+              <span>Code</span>
+            </a>
+          </div>
 
           <div class="ms-auto d-flex align-items-center">
 
