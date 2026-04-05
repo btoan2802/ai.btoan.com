@@ -125,21 +125,44 @@ function highlightActiveFile() {
 
 function renderTree(nodes, container, depth = 0) {
   nodes.forEach((node) => {
-    const div = document.createElement("div");
-    div.className = `tree-item ${node.type} tree-indent-${Math.min(depth, 5)}`;
-    div.dataset.path = node.path;
+    const row = document.createElement("div");
+    row.className = `tree-item ${node.type}`;
+    row.dataset.path = node.path;
+    row.style.paddingLeft = `${8 + depth * 14}px`;
 
-    const icon = node.type === "dir" ? "📁" : "📄";
-    div.textContent = `${icon} ${node.name}`;
+    if (node.type === "dir") {
+      row.classList.add("dir-row");
 
-    if (node.type === "file") {
-      div.onclick = () => openFile(node.path);
-    }
+      const toggle = document.createElement("span");
+      toggle.className = "tree-toggle";
+      toggle.textContent = node.children && node.children.length ? "▸" : "•";
 
-    container.appendChild(div);
+      const label = document.createElement("span");
+      label.className = "tree-label";
+      label.textContent = `📁 ${node.name}`;
 
-    if (node.type === "dir" && node.children?.length) {
-      renderTree(node.children, container, depth + 1);
+      row.appendChild(toggle);
+      row.appendChild(label);
+      container.appendChild(row);
+
+      const childWrap = document.createElement("div");
+      childWrap.className = "tree-children";
+      childWrap.style.display = "none";
+      container.appendChild(childWrap);
+
+      if (node.children && node.children.length) {
+        renderTree(node.children, childWrap, depth + 1);
+
+        row.onclick = () => {
+          const open = childWrap.style.display === "block";
+          childWrap.style.display = open ? "none" : "block";
+          toggle.textContent = open ? "▸" : "▾";
+        };
+      }
+    } else {
+      row.innerHTML = `<span class="tree-label">📄 ${node.name}</span>`;
+      row.onclick = () => openFile(node.path);
+      container.appendChild(row);
     }
   });
 }
@@ -291,7 +314,56 @@ function initMonaco() {
 
 document.addEventListener("DOMContentLoaded", () => {
   initMonaco();
+  const agentSendBtn = document.getElementById("agentSendBtn");
+const agentInput = document.getElementById("agentInput");
 
+if (agentSendBtn) agentSendBtn.onclick = sendAgentMessage;
+
+if (agentInput) {
+  agentInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendAgentMessage();
+    }
+  });
+}
+  const uploadWorkspaceFolder = document.getElementById("uploadWorkspaceFolder");
+
+  if (uploadWorkspaceFolder) {
+    uploadWorkspaceFolder.addEventListener("change", async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      const fd = new FormData();
+
+      files.forEach((file) => {
+        const relPath = file.webkitRelativePath || file.name;
+        fd.append("files[]", file, relPath);
+      });
+
+      try {
+        const userId = localStorage.getItem("user_id");
+        const res = await fetch("/ai/api/workspace/upload_folder.php", {
+          method: "POST",
+          body: fd,
+          headers: userId ? { "X-User-Id": userId } : {},
+          credentials: "same-origin"
+        });
+
+        const raw = await res.text();
+        const data = JSON.parse(raw);
+
+        if (!res.ok || data.error) throw new Error(data.error || "Upload folder lỗi");
+
+        await loadTree();
+        alert("Đã upload folder");
+      } catch (err) {
+        alert(err.message);
+      }
+
+      e.target.value = "";
+    });
+  }
   const reloadTreeBtn = document.getElementById("reloadTreeBtn");
   const saveFileBtn = document.getElementById("saveFileBtn");
   const globalSearchBtn = document.getElementById("globalSearchBtn");
@@ -383,3 +455,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+function appendAgentMessage(role, text) {
+  const box = document.getElementById("agentChatHistory");
+  if (!box) return;
+
+  const div = document.createElement("div");
+  div.className = `agent-msg ${role}`;
+  div.textContent = text;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+async function sendAgentMessage() {
+  const input = document.getElementById("agentInput");
+  if (!input) return;
+
+  const message = input.value.trim();
+  if (!message) return;
+
+  appendAgentMessage("user", message);
+  input.value = "";
+
+  try {
+    const data = await api("/ai/api/workspace/agent_chat.php", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        currentFile
+      })
+    });
+
+    appendAgentMessage("assistant", data.reply || "(không có phản hồi)");
+
+    if (data.action?.type === "create_file") {
+      await loadTree();
+      await openFile(data.action.path);
+    }
+
+    if (data.action?.type === "create_folder") {
+      await loadTree();
+    }
+  } catch (e) {
+    appendAgentMessage("assistant", "Lỗi: " + e.message);
+  }
+}

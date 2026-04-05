@@ -24,8 +24,12 @@
       <div class="top-right">
         <button id="newFileBtn" class="top-btn">New File</button>
         <button id="newFolderBtn" class="top-btn">New Folder</button>
-        <label class="top-btn" for="uploadWorkspaceFile">Upload</label>
+        <label class="top-btn" for="uploadWorkspaceFile">Upload File</label>
         <input id="uploadWorkspaceFile" type="file" hidden>
+
+        <label class="top-btn" for="uploadWorkspaceFolder">Upload Folder</label>
+        <input id="uploadWorkspaceFolder" type="file" webkitdirectory directory multiple hidden>
+        <a href="/ai/api/workspace/download.php" class="top-btn">Download Project</a>
         <button id="saveFileBtn" class="top-btn primary">Save</button>
       </div>
     </header>
@@ -39,7 +43,7 @@
 
         <input id="globalSearchInput" class="search-input" placeholder="Tìm file hoặc nội dung...">
         <button id="globalSearchBtn" class="search-btn">Search</button>
-        
+
         <div id="fileTree" class="file-tree"></div>
       </aside>
 
@@ -50,18 +54,18 @@
 
       <aside class="assistant-panel">
         <div class="panel-header">
-          <span>AI ASSISTANT</span>
+          <span>AI AGENT</span>
         </div>
 
         <div class="small-label">File đang mở</div>
         <div id="currentFileLabel" class="current-file-label">Chưa chọn file</div>
 
-        <textarea id="aiPrompt" class="ai-prompt" rows="10"
-          placeholder="Ví dụ: tạo landing page HTML/CSS đẹp, responsive"></textarea>
+        <div id="agentChatHistory" class="agent-chat-history"></div>
 
-        <button id="aiEditBtn" class="top-btn primary w-100">AI sửa file hiện tại</button>
+        <textarea id="agentInput" class="ai-prompt" rows="6"
+          placeholder="Hỏi AI, yêu cầu sửa code, tạo file, tạo folder..."></textarea>
 
-        <div id="searchResults" class="search-results"></div>
+        <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
       </aside>
     </div>
   </div>
