@@ -16,10 +16,19 @@ function api(url, options = {}) {
     headers,
     credentials: "same-origin"
   }).then(async (res) => {
-    const data = await res.json();
+    const raw = await res.text();
+
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (e) {
+      throw new Error(raw.slice(0, 800));
+    }
+
     if (!res.ok || data.error) {
       throw new Error(data.error || "API error");
     }
+
     return data;
   });
 }
