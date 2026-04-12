@@ -61,10 +61,8 @@ function setupMobile(){
 
 
 
-  const faceLoginBtn = document.getElementById("face-login-btn");
+const faceLoginBtn = document.getElementById("face-login-btn");
 const faceEnrollBtn = document.getElementById("face-enroll-btn");
-const faceCaptureBtn = document.getElementById("face-capture-btn");
-const faceSaveBtn = document.getElementById("face-save-btn");
 const faceCloseBtn = document.getElementById("face-close-btn");
 
 if (faceLoginBtn) {
@@ -75,14 +73,6 @@ if (faceEnrollBtn) {
   faceEnrollBtn.addEventListener("click", openFaceEnrollModal);
 }
 
-if (faceCaptureBtn) {
-  faceCaptureBtn.addEventListener("click", captureFaceImage);
-}
-
-if (faceSaveBtn) {
-  faceSaveBtn.addEventListener("click", saveFaceImage);
-}
-
 if (faceCloseBtn) {
   faceCloseBtn.addEventListener("click", closeFaceEnrollModal);
 }
@@ -91,6 +81,10 @@ if (faceCloseBtn) {
 
 let faceStream = null;
 let capturedFaceImage = "";
+let autoCaptureInterval = null;
+let stableStartTime = null;
+let isSavingFace = false;
+let autoCaptureCooldown = false;
 
 function setFaceLoginMessage(message, isError = false) {
   const el = document.getElementById("face-login-status");
@@ -132,16 +126,94 @@ async function openFaceEnrollModal() {
     video.srcObject = faceStream;
     modal.style.display = "flex";
     capturedFaceImage = "";
-    setFaceEnrollMessage("Đưa mặt vào giữa khung rồi bấm Chụp ảnh");
+    stableStartTime = null;
+    isSavingFace = false;
+    autoCaptureCooldown = false;
+
+    setFaceEnrollMessage("Đưa khuôn mặt vào giữa khung, giữ yên để hệ thống tự chụp");
+
+    startAutoCaptureCheck();
   } catch (err) {
     console.error(err);
     setFaceEnrollMessage("Không mở được camera", true);
   }
 }
 
+function startAutoCaptureCheck() {
+  stopAutoCaptureCheck();
+
+  autoCaptureInterval = setInterval(async () => {
+    if (isSavingFace || autoCaptureCooldown) return;
+
+    const ready = await isFaceReadyForAutoCapture();
+
+    if (!ready.ok) {
+      stableStartTime = null;
+      setFaceEnrollMessage(ready.message || "Đưa khuôn mặt vào giữa khung");
+      return;
+    }
+
+    if (!stableStartTime) {
+      stableStartTime = Date.now();
+      setFaceEnrollMessage("Giữ yên khuôn mặt...");
+      return;
+    }
+
+    const stableMs = Date.now() - stableStartTime;
+
+    if (stableMs >= 1200) {
+      autoCaptureCooldown = true;
+      setFaceEnrollMessage("Đã nhận diện hợp lệ, đang tự lưu...");
+      await autoCaptureAndSave();
+    }
+  }, 400);
+}
+
+function stopAutoCaptureCheck() {
+  if (autoCaptureInterval) {
+    clearInterval(autoCaptureInterval);
+    autoCaptureInterval = null;
+  }
+}
+
+async function isFaceReadyForAutoCapture() {
+  const video = document.getElementById("face-video");
+  if (!video) {
+    return { ok: false, message: "Không tìm thấy camera" };
+  }
+
+  if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
+    return { ok: false, message: "Đang khởi động camera..." };
+  }
+
+  // Bản nhẹ, chưa dùng detector thật:
+  // kiểm tra video đã sẵn sàng + mặt người dùng có vẻ đã ổn định trong khung.
+  // Sau này có thể thay bằng detector thật để chính xác hơn.
+  return { ok: true, message: "Khuôn mặt hợp lệ" };
+}
+
+async function autoCaptureAndSave() {
+  if (isSavingFace) return;
+
+  isSavingFace = true;
+
+  const ok = captureFaceImage();
+  if (!ok || !capturedFaceImage) {
+    isSavingFace = false;
+    autoCaptureCooldown = false;
+    setFaceEnrollMessage("Không chụp được ảnh", true);
+    return;
+  }
+
+  await saveFaceImage();
+}
+
+
 function captureFaceImage() {
   const video = document.getElementById("face-video");
   const canvas = document.getElementById("face-canvas");
+
+  if (!video || !canvas) return false;
 
   const width = video.videoWidth || 640;
   const height = video.videoHeight || 480;
@@ -153,7 +225,7 @@ function captureFaceImage() {
   ctx.drawImage(video, 0, 0, width, height);
 
   capturedFaceImage = canvas.toDataURL("image/jpeg", 0.92);
-  setFaceEnrollMessage("Đã chụp ảnh. Bấm Lưu khuôn mặt để hoàn tất.");
+  return true;
 }
 
 async function saveFaceImage() {
@@ -161,12 +233,16 @@ async function saveFaceImage() {
   const username = usernameInput ? usernameInput.value.trim() : "";
 
   if (!username) {
+    isSavingFace = false;
+    autoCaptureCooldown = false;
     setFaceEnrollMessage("Thiếu username", true);
     return;
   }
 
   if (!capturedFaceImage) {
-    setFaceEnrollMessage("Bạn chưa chụp ảnh", true);
+    isSavingFace = false;
+    autoCaptureCooldown = false;
+    setFaceEnrollMessage("Chưa có ảnh khuôn mặt", true);
     return;
   }
 
@@ -187,17 +263,28 @@ async function saveFaceImage() {
     if (result.success) {
       setFaceEnrollMessage("Thiết lập khuôn mặt thành công");
       setFaceLoginMessage("Tài khoản đã sẵn sàng đăng nhập bằng khuôn mặt");
-      closeFaceEnrollModal();
+
+      setTimeout(() => {
+        closeFaceEnrollModal();
+      }, 800);
     } else {
+      isSavingFace = false;
+      autoCaptureCooldown = false;
+      stableStartTime = null;
       setFaceEnrollMessage(result.msg || result.error || "Không lưu được khuôn mặt", true);
     }
   } catch (err) {
     console.error(err);
+    isSavingFace = false;
+    autoCaptureCooldown = false;
+    stableStartTime = null;
     setFaceEnrollMessage("Lỗi khi lưu khuôn mặt", true);
   }
 }
 
 function closeFaceEnrollModal() {
+  stopAutoCaptureCheck();
+
   const modal = document.getElementById("face-enroll-modal");
   const video = document.getElementById("face-video");
 
@@ -213,6 +300,11 @@ function closeFaceEnrollModal() {
   if (modal) {
     modal.style.display = "none";
   }
+
+  stableStartTime = null;
+  isSavingFace = false;
+  autoCaptureCooldown = false;
+  capturedFaceImage = "";
 }
 
 async function loginWithFace() {

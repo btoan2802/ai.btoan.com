@@ -526,8 +526,6 @@
         <div id="face-enroll-status" style="margin-top:10px; font-size:14px;"></div>
 
         <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
-          <button type="button" id="face-capture-btn">Chụp ảnh</button>
-          <button type="button" id="face-save-btn">Lưu khuôn mặt</button>
           <button type="button" id="face-close-btn">Đóng</button>
         </div>
       </div>
