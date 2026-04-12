@@ -228,7 +228,9 @@
 
         <!-- login with face ID -->
         <button type="button" id="face-login-btn">Đăng nhập bằng khuôn mặt</button>
-        <div id="face-login-status"></div>
+        <div id="face-login-status" style="margin-top:8px; font-size:14px;"></div>
+
+        <button type="button" id="face-enroll-btn">Thiết lập khuôn mặt</button>
 
 
           <div class="switch-auth">
@@ -515,8 +517,24 @@
 
     </div>
 
-    <script src="https://api.1aie.com/?key=159c2d483212f618b7f3910190691675&active=aic"></script>
 
+    <div id="face-enroll-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:2000000000; align-items:center; justify-content:center;">
+      <div style="background:#fff; padding:20px; border-radius:16px; width:380px; max-width:95%;">
+        <h3 style="margin-top:0;">Thiết lập khuôn mặt</h3>
+        <video id="face-video" autoplay playsinline style="width:100%; border-radius:12px; background:#000;"></video>
+        <canvas id="face-canvas" style="display:none;"></canvas>
+        <div id="face-enroll-status" style="margin-top:10px; font-size:14px;"></div>
+
+        <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
+          <button type="button" id="face-capture-btn">Chụp ảnh</button>
+          <button type="button" id="face-save-btn">Lưu khuôn mặt</button>
+          <button type="button" id="face-close-btn">Đóng</button>
+        </div>
+      </div>
+    </div>
+
+
+  <script src="https://api.1aie.com/?key=159c2d483212f618b7f3910190691675&active=aic"></script>
 </body>
 
 </html>
