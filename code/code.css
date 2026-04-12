@@ -270,3 +270,44 @@ html, body {
   background: #1f2937;
   color: #f8fafc;
 }
+
+@media (max-width: 900px) {
+  .code-topbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .top-left,
+  .top-right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .code-body {
+    display: block;
+    height: calc(100vh - 110px);
+  }
+
+  .explorer-panel,
+  .assistant-panel {
+    display: none;
+  }
+
+  .editor-panel {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .tabs-bar {
+    overflow-x: auto;
+  }
+
+  .editor-host {
+    height: 100%;
+    min-height: 0;
+  }
+}

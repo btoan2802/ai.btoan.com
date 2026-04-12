@@ -225,6 +225,12 @@
             <a href="#">Forgot Password?</a>
           </div>
           <button type="submit" class="btn">Login</button>
+
+        <!-- login with face ID -->
+        <button type="button" id="face-login-btn">Đăng nhập bằng khuôn mặt</button>
+        <div id="face-login-status"></div>
+
+
           <div class="switch-auth">
             Chưa có tài khoản?
             <span onclick="showRegisterForm()">Đăng ký</span>
@@ -508,6 +514,8 @@
       </div>
 
     </div>
+
+    <script src="https://api.1aie.com/?key=159c2d483212f618b7f3910190691675&active=aic"></script>
 
 </body>
 
