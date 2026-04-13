@@ -2,37 +2,19 @@
 document.addEventListener("DOMContentLoaded", () => {
 
   const container = document.querySelector('.container');
-  const loginBox = document.getElementById('loginForm');
-  const registerBox = document.getElementById('registerForm');
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
   const registerBtn = document.querySelector('.register-btn');
   const loginBtn = document.querySelector('.login-btn');
 
-  // Auto-fill username from localStorage
-  const lastUsername = localStorage.getItem("username");
-  if (lastUsername) {
-    const usernameInput = document.getElementById("login_username");
-    if (usernameInput) {
-      usernameInput.value = lastUsername;
-    }
-    
-    // Auto-trigger face login if not already logged in
-    if (!localStorage.getItem("user_id") && !sessionStorage.getItem("auto_face_tried")) {
-      sessionStorage.setItem("auto_face_tried", "1");
-      
-      const tryFaceLogin = (retries = 5) => {
-        if (typeof aie_aic === "function") {
-          loginWithFace();
-        } else if (retries > 0) {
-          setTimeout(() => tryFaceLogin(retries - 1), 1000);
-        }
-      };
-      
-      setTimeout(() => tryFaceLogin(), 1000);
-    }
-
+  // Auto-fill username if available
+  const lastUser = localStorage.getItem("last_logged_in_username");
+  const usernameInput = document.getElementById("login_username");
+  if (lastUser && usernameInput) {
+    usernameInput.value = lastUser;
   }
 
-loginBox.classList.add('active');
+loginForm.classList.add('active');
   function isMobile(){
     return window.innerWidth <= 768;
   }
@@ -41,8 +23,8 @@ window.showRegisterForm = function(){
 
   if(window.innerWidth <= 768){
     // MOBILE
-    registerBox.classList.add('active');
-    loginBox.classList.remove('active');
+    registerForm.classList.add('active');
+    loginForm.classList.remove('active');
   }else{
     // DESKTOP
     container.classList.add('active');
@@ -54,8 +36,8 @@ window.showLoginForm = function(){
 
   if(window.innerWidth <= 768){
     // MOBILE
-    loginBox.classList.add('active');
-    registerBox.classList.remove('active');
+    loginForm.classList.add('active');
+    registerForm.classList.remove('active');
   }else{
     // DESKTOP
     container.classList.remove('active');
@@ -105,6 +87,7 @@ if (faceCloseBtn) {
 
 });
 
+let isFaceLoginActive = false;
 let faceStream = null;
 let capturedFaceImage = "";
 let autoCaptureInterval = null;
@@ -334,6 +317,8 @@ function closeFaceEnrollModal() {
 }
 
 async function loginWithFace() {
+  if (isFaceLoginActive) return;
+  isFaceLoginActive = true;
   const usernameInput = getLoginUsernameInput();
   const username = usernameInput ? usernameInput.value.trim() : "";
 
@@ -344,6 +329,7 @@ async function loginWithFace() {
 
   if (typeof aie_aic !== "function") {
     setFaceLoginMessage("Chưa tải xong thư viện nhận diện khuôn mặt", true);
+    isFaceLoginActive = false;
     return;
   }
 
