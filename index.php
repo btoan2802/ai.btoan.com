@@ -197,6 +197,48 @@
     .new-chat-btn:hover {
       background: #1f63d6;
     }
+    /* PROFILE MODAL */
+    .profile-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .profile-card {
+      background: #fff;
+      width: 380px;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .avatar-upload {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .avatar-preview {
+      width: 80px;
+      height: 80px;
+      background: #2b7cff;
+      color: #fff;
+      font-size: 32px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      margin: 0 auto;
+      object-fit: cover;
+    }
+    .profile-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-align: center;
+    }
   </style>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -480,7 +522,7 @@
 
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
 
-    <div id="profileModal" class="profile-modal">
+    <div id="profileModal" class="profile-modal" style="display:none">
 
       <div class="profile-card">
 
