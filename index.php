@@ -200,6 +200,7 @@
   </style>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://api.1aie.com/?key=159c2d483212f618b7f3910190691675&active=aic"></script>
 </head>
 
 <body>
@@ -294,13 +295,13 @@
 
       <div class="toggle-box">
         <div class="toggle-panel toggle-left">
-          <h1>Hello, Welcome!</h1>
+          <h1>Welcome Back!</h1>
           <p>Don't have an account?</p>
           <button class="btn register-btn">Register</button>
         </div>
 
         <div class="toggle-panel toggle-right">
-          <h1>Welcome Back!</h1>
+          <h1>Hello, Welcome!</h1>
           <p>Already have an account?</p>
           <button class="btn login-btn">Login</button>
         </div>
@@ -480,10 +481,6 @@
 
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
 
-  <script src="login/SignUp_LogIn_Form.js"></script>
-
-  <script src="./app.js"></script>
-
     <div id="profileModal" class="profile-modal">
 
       <div class="profile-card">
@@ -532,7 +529,8 @@
     </div>
 
 
-  <script src="https://api.1aie.com/?key=159c2d483212f618b7f3910190691675&active=aic"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=4"></script>
+  <script src="./app.js?v=4"></script>
 </body>
 
 </html>

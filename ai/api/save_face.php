@@ -1,112 +1,110 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (!(error_reporting() & $errno)) return;
+    echo json_encode(["success" => false, "msg" => "PHP Error: $errstr in $errfile on line $errline"]);
+    exit;
+});
+
+set_exception_handler(function($e) {
+    echo json_encode(["success" => false, "msg" => "PHP Exception: " . $e->getMessage()]);
+    exit;
+});
+
 header('Content-Type: application/json');
 
 require "db.php";
-require __DIR__ . "/../../vendor/autoload.php";
 
-use Aws\S3\S3Client;
-
-$bucket = "btoan-avatars";
-$endpoint = "https://cd15eba0ab1a0ea99b7da632530e8924.r2.cloudflarestorage.com";
-$publicUrl = "https://pub-26804f759e1e4ef3b2c251c9c3fe708b.r2.dev";
-
-$accessKey = "6fc950e7d94074f3fc93b5bd7756ce68";
-$secretKey = "cf9b9014fef7fac8965d785594ad4cae43edb5658ed7d36f354f19cc6f1611a5";
-
-$s3 = new S3Client([
-    'version' => 'latest',
-    'region' => 'auto',
-    'endpoint' => $endpoint,
-    'credentials' => [
-        'key' => $accessKey,
-        'secret' => $secretKey,
-    ],
-]);
-
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    echo json_encode(["success" => false, "msg" => "invalid method"]);
-    exit;
+// Get JSON input
+$data = json_decode(file_get_contents("php://input"), true);
+if (!$data) {
+    // Fallback to $_POST just in case
+    $data = $_POST;
 }
 
-$username = trim($_POST["username"] ?? "");
-$image = $_POST["image"] ?? "";
+$username = trim($data["username"] ?? "");
+$image = $data["image"] ?? "";
 
 if ($username === "" || $image === "") {
-    echo json_encode(["success" => false, "msg" => "missing data"]);
+    echo json_encode(["success" => false, "msg" => "missing data: username or image empty"]);
     exit;
 }
-
-$stmt = $conn->prepare("SELECT id, username FROM users WHERE username = ? LIMIT 1");
-$stmt->bind_param("s", $username);
-$stmt->execute();
-$result = $stmt->get_result();
-$user = $result->fetch_assoc();
-$stmt->close();
-
-if (!$user) {
-    echo json_encode(["success" => false, "msg" => "user not found"]);
-    exit;
-}
-
-if (!preg_match('/^data:image\/(jpeg|jpg|png);base64,/', $image)) {
-    echo json_encode(["success" => false, "msg" => "invalid image format"]);
-    exit;
-}
-
-$image = preg_replace('/^data:image\/\w+;base64,/', '', $image);
-$binary = base64_decode($image);
-
-if ($binary === false) {
-    echo json_encode(["success" => false, "msg" => "decode failed"]);
-    exit;
-}
-
-$tmpFile = tempnam(sys_get_temp_dir(), 'face_');
-file_put_contents($tmpFile, $binary);
-
-$mime = mime_content_type($tmpFile);
-$ext = "jpg";
-
-if ($mime === "image/png") {
-    $ext = "png";
-} elseif ($mime === "image/jpeg") {
-    $ext = "jpg";
-}
-
-$fileName = "faces/" . $username . "/1." . $ext;
 
 try {
-    $s3->putObject([
-        'Bucket' => $bucket,
-        'Key' => $fileName,
-        'SourceFile' => $tmpFile,
-        'ContentType' => $mime,
-    ]);
+    $stmt = $conn->prepare("SELECT id, username FROM users WHERE username = ? LIMIT 1");
+    if (!$stmt) {
+        throw new Exception("SQL prepare failed: " . $conn->error);
+    }
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $user = $result->fetch_assoc();
+    $stmt->close();
 
-    $url = $publicUrl . "/" . $fileName;
+    if (!$user) {
+        echo json_encode(["success" => false, "msg" => "user not found"]);
+        exit;
+    }
 
-    $stmt = $conn->prepare("
+    if (!preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $image)) {
+        echo json_encode(["success" => false, "msg" => "invalid image format: " . substr($image, 0, 50)]);
+        exit;
+    }
+
+    $imageType = 'jpg';
+    if (strpos($image, 'data:image/png') === 0) {
+        $imageType = 'png';
+    } elseif (strpos($image, 'data:image/webp') === 0) {
+        $imageType = 'webp';
+    }
+
+    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $image);
+    $binary = base64_decode($base64Data);
+
+    if ($binary === false) {
+        echo json_encode(["success" => false, "msg" => "decode failed"]);
+        exit;
+    }
+
+    // Save locally
+    $dir = "../../uploads/faces/" . $username . "/";
+    if (!is_dir($dir)) {
+        if (!mkdir($dir, 0777, true)) {
+             throw new Exception("Could not create directory $dir");
+        }
+    }
+
+    $fileName = "1." . $imageType;
+    $filePath = $dir . $fileName;
+    
+    if (file_put_contents($filePath, $binary) === false) {
+        throw new Exception("Could not save image to disk at $filePath");
+    }
+
+    // Public URL
+    $publicUrl = "uploads/faces/" . $username . "/" . $fileName;
+
+    $stmtUpdate = $conn->prepare("
         UPDATE users
         SET face_image_url = ?, face_enabled = 1, face_updated_at = NOW()
         WHERE id = ?
     ");
-    $stmt->bind_param("si", $url, $user['id']);
-    $stmt->execute();
-    $stmt->close();
-
-    @unlink($tmpFile);
+    if (!$stmtUpdate) {
+         throw new Exception("SQL prepare update failed: " . $conn->error);
+    }
+    $stmtUpdate->bind_param("si", $publicUrl, $user['id']);
+    $stmtUpdate->execute();
+    $stmtUpdate->close();
 
     echo json_encode([
         "success" => true,
-        "face_image_url" => $url
+        "face_image_url" => $publicUrl
     ]);
-} catch (Exception $e) {
-    @unlink($tmpFile);
-
+} catch (Throwable $e) {
     echo json_encode([
         "success" => false,
-        "error" => $e->getMessage()
+        "msg" => "Server error: " . $e->getMessage()
     ]);
 }

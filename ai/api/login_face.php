@@ -56,5 +56,6 @@ $_SESSION['username'] = $user['username'];
 echo json_encode([
     'success' => true,
     'message' => 'Đăng nhập khuôn mặt thành công',
-    'username' => $user['username']
+    'username' => $user['username'],
+    'user_id' => (int)$user['id']
 ]);

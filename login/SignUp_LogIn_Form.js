@@ -2,10 +2,36 @@
 document.addEventListener("DOMContentLoaded", () => {
 
   const container = document.querySelector('.container');
-const loginBox = document.getElementById('loginForm');
-const registerBox = document.getElementById('registerForm');
+  const loginBox = document.getElementById('loginForm');
+  const registerBox = document.getElementById('registerForm');
   const registerBtn = document.querySelector('.register-btn');
   const loginBtn = document.querySelector('.login-btn');
+
+  // Auto-fill username from localStorage
+  const lastUsername = localStorage.getItem("username");
+  if (lastUsername) {
+    const usernameInput = document.getElementById("login_username");
+    if (usernameInput) {
+      usernameInput.value = lastUsername;
+    }
+    
+    // Auto-trigger face login if not already logged in
+    if (!localStorage.getItem("user_id") && !sessionStorage.getItem("auto_face_tried")) {
+      sessionStorage.setItem("auto_face_tried", "1");
+      
+      const tryFaceLogin = (retries = 5) => {
+        if (typeof aie_aic === "function") {
+          loginWithFace();
+        } else if (retries > 0) {
+          setTimeout(() => tryFaceLogin(retries - 1), 1000);
+        }
+      };
+      
+      setTimeout(() => tryFaceLogin(), 1000);
+    }
+
+  }
+
 loginBox.classList.add('active');
   function isMobile(){
     return window.innerWidth <= 768;
@@ -386,6 +412,8 @@ async function loginWithFace() {
         const result = await response.json();
 
         if (result.success) {
+          localStorage.setItem("user_id", result.user_id);
+          localStorage.setItem("username", result.username);
           setFaceLoginMessage("Đăng nhập thành công");
           window.location.reload();
         } else {
