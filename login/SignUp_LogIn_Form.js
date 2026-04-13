@@ -362,9 +362,11 @@ async function loginWithFace() {
     }
 
     const faceImageUrl = profileData.user.face_image_url;
-    const lastSlash = faceImageUrl.lastIndexOf("/");
-    const baseUrl = faceImageUrl.substring(0, lastSlash + 1);
-    const fileName = faceImageUrl.substring(lastSlash + 1);
+    // Đảm bảo URL là tuyệt đối để thư viện nhận diện chính xác
+    const fullImageUrl = faceImageUrl.startsWith('http') ? faceImageUrl : window.location.origin + '/' + faceImageUrl.replace(/^\//, '');
+    const lastSlash = fullImageUrl.lastIndexOf("/");
+    const baseUrl = fullImageUrl.substring(0, lastSlash + 1);
+    const fileName = fullImageUrl.substring(lastSlash + 1);
 
     setFaceLoginMessage("Đang mở camera để quét khuôn mặt...");
 
