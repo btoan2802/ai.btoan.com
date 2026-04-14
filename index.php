@@ -124,9 +124,24 @@
     }
 
     .auth-footer span {
-      color: #2b7cff;
+      color: #7494ec;
       cursor: pointer;
       font-weight: 600;
+    }
+
+    /* CUSTOM SCROLLBAR */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
     }
 
     /* APP */
@@ -139,12 +154,40 @@
     }
 
     .sidebar {
-      width: 260px;
+      width: 280px;
       background: #fff;
       flex-shrink: 0;
-      border-right: 1px solid #ddd;
+      border-right: 1px solid #eee;
       height: 100vh;
       overflow-y: auto;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 999;
+        backdrop-filter: blur(2px);
+      }
+      .sidebar.open + .sidebar-overlay {
+        display: block;
+      }
     }
 
     .sidebar-title {
@@ -154,21 +197,30 @@
     }
 
     .chat-history-item {
-      padding: 10px 15px;
+      padding: 12px 15px;
       cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid #f8fafc;
+      font-size: 14px;
+      transition: all 0.2s;
+      border-radius: 8px;
+      margin: 4px 8px;
     }
 
     .chat-history-item:hover {
-      background: #f5f5f5;
+      background: #f1f5f9;
+      transform: translateX(4px);
     }
 
     .topbar {
       display: flex;
       align-items: center;
-      padding: 10px 15px;
-      background: #fff;
-      border-bottom: 1px solid #ddd;
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #eee;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .menu-btn {
@@ -239,6 +291,47 @@
       margin-bottom: 20px;
       text-align: center;
     }
+    .chat-actions-group {
+      position: relative;
+    }
+    .btn-action-plus {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-action-plus:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    #msg {
+      border-radius: 24px;
+      padding: 10px 20px;
+      background: #f1f5f9;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    #msg:focus {
+      background: #fff;
+      border-color: #7494ec;
+      box-shadow: 0 0 0 4px rgba(116, 148, 236, 0.1);
+    }
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 8px;
+    }
   </style>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -269,10 +362,14 @@
           <button type="submit" class="btn">Login</button>
 
         <!-- login with face ID -->
-        <button type="button" id="face-login-btn">Đăng nhập bằng khuôn mặt</button>
-        <div id="face-login-status" style="margin-top:8px; font-size:14px;"></div>
+        <button type="button" id="face-login-btn" class="btn btn-face">
+          <i class='bx bx-scan'></i> Đăng nhập khuôn mặt
+        </button>
+        <div id="face-login-status"></div>
 
-        <button type="button" id="face-enroll-btn">Thiết lập khuôn mặt</button>
+        <button type="button" id="face-enroll-btn" class="btn btn-face-enroll">
+          <i class='bx bx-face'></i> Thiết lập khuôn mặt (FaceID)
+        </button>
 
 
           <div class="switch-auth">
@@ -308,11 +405,14 @@
             <i class='bx bxs-lock-alt'></i>
           </div>
 
-          <!-- FIX ở đây -->
           <div class="input-box">
             <input id="reg_password2" type="password" placeholder="Confirm Password" required>
             <i class='bx bxs-lock-alt'></i>
           </div>
+
+          <button type="button" id="face-enroll-btn-reg" class="btn btn-face-enroll" style="margin-bottom:15px;">
+            <i class='bx bx-face'></i> Thiết lập khuôn mặt (Tùy chọn)
+          </button>
 
           <button type="submit" class="btn">Register</button>
           <div class="switch-auth">
@@ -383,7 +483,6 @@
       <!-- SIDEBAR -->
 
       <div id="sidebar" class="sidebar">
-
         <div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
 
         <div class="sidebar-title">
@@ -398,6 +497,7 @@
         </div>
 
       </div>
+      <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 
       <!-- MAIN -->
@@ -462,9 +562,9 @@
               multiple hidden>
 
             <!-- ✅ NÚT + -->
-            <div class="dropdown">
-              <button class="btn btn-light me-2" data-bs-toggle="dropdown">
-                +
+            <div class="chat-actions-group">
+              <button class="btn btn-action-plus" data-bs-toggle="dropdown">
+                <i class="bi bi-plus-lg"></i>
               </button>
 
               <ul class="dropdown-menu">
@@ -556,18 +656,45 @@
     </div>
 
 
-    <div id="face-enroll-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:2000000000; align-items:center; justify-content:center;">
-      <div style="background:#fff; padding:20px; border-radius:16px; width:380px; max-width:95%;">
-        <h3 style="margin-top:0;">Thiết lập khuôn mặt</h3>
-        <video id="face-video" autoplay playsinline style="width:100%; border-radius:12px; background:#000;"></video>
+    <!-- FACE ENROLL MODAL -->
+    <div id="face-enroll-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+      <div style="background:#fff; padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <h3 style="margin-top:0; font-weight:700; color:#1e293b; margin-bottom:10px;">Thiết lập FaceID</h3>
+        <p style="color:#64748b; font-size:14px; margin-bottom:20px;">Giữ điện thoại thẳng mặt và đảm bảo đủ ánh sáng</p>
+        
+        <div style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:50%; border:4px solid #7494ec; background:#000; margin-bottom:20px;">
+          <video id="face-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
+          <!-- Scanning animation effect -->
+          <div id="scan-line" style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(to right, transparent, #7494ec, transparent); box-shadow: 0 0 15px #7494ec; animation: scanAnim 2s infinite linear; display:none;"></div>
+        </div>
+        
         <canvas id="face-canvas" style="display:none;"></canvas>
-        <div id="face-enroll-status" style="margin-top:10px; font-size:14px;"></div>
+        <div id="face-enroll-status" style="min-height:20px; margin-bottom:15px;"></div>
 
-        <div style="display:flex; gap:10px; margin-top:15px; flex-wrap:wrap;">
-          <button type="button" id="face-close-btn">Đóng</button>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button type="button" id="face-close-btn" class="btn btn-danger" style="background:#ef4444; height:44px; font-size:14px;">Hủy bỏ</button>
         </div>
       </div>
     </div>
+
+    <style>
+      @keyframes scanAnim {
+        0% { top: 0%; }
+        100% { top: 100%; }
+      }
+      .btn-danger {
+        border-radius: 12px;
+        color: #fff;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: .3s;
+      }
+      .btn-danger:hover {
+        background: #dc2626;
+        opacity: 0.9;
+      }
+    </style>
 
 
   <script src="login/SignUp_LogIn_Form.js?v=4"></script>

@@ -85,7 +85,21 @@ if (faceCloseBtn) {
   faceCloseBtn.addEventListener("click", closeFaceEnrollModal);
 }
 
+const faceEnrollBtnReg = document.getElementById("face-enroll-btn-reg");
+if (faceEnrollBtnReg) {
+  faceEnrollBtnReg.addEventListener("click", openFaceEnrollModal);
+}
+
 });
+
+async function stopAllCameras() {
+  try {
+    const streams = await navigator.mediaDevices.enumerateDevices();
+    const tracks = window.localStream ? window.localStream.getTracks() : [];
+    // brute force stop all tracks we can find
+    const devices = await navigator.mediaDevices.getUserMedia({video: true}).then(s => s.getTracks().forEach(t => t.stop())).catch(() => {});
+  } catch(e) {}
+}
 
 let isFaceLoginActive = false;
 let faceStream = null;
@@ -109,17 +123,30 @@ function setFaceEnrollMessage(message, isError = false) {
   el.style.color = isError ? "red" : "green";
 }
 
-function getLoginUsernameInput() {
+function getActiveUsernameInput() {
+  // Check which form is active
+  const loginForm = document.getElementById('loginForm');
+  const registerForm = document.getElementById('registerForm');
+  
+  if (registerForm && registerForm.classList.contains('active')) {
+    return document.getElementById("reg_username");
+  }
+  
   return document.getElementById("login_username")
     || document.getElementById("username")
-    || document.querySelector('input[name="username"]')
-    || document.querySelector('input[type="text"]');
+    || document.querySelector('input[name="username"]');
 }
 
 async function openFaceEnrollModal() {
-  const usernameInput = getLoginUsernameInput();
+  const usernameInput = getActiveUsernameInput();
   if (!usernameInput || !usernameInput.value.trim()) {
-    setFaceLoginMessage("Vui lòng nhập username trước khi thiết lập khuôn mặt", true);
+    const isReg = document.getElementById('registerForm')?.classList.contains('active');
+    const msg = isReg ? "Vui lòng nhập tên đăng ký trước" : "Vui lòng nhập username trước";
+    if (isReg) {
+       document.getElementById("registerMsg").textContent = msg;
+    } else {
+       setFaceLoginMessage(msg, true);
+    }
     return;
   }
 
@@ -139,7 +166,10 @@ async function openFaceEnrollModal() {
     isSavingFace = false;
     autoCaptureCooldown = false;
 
-    setFaceEnrollMessage("Đưa khuôn mặt vào giữa khung, giữ yên để hệ thống tự chụp");
+    const scanLine = document.getElementById("scan-line");
+    if (scanLine) scanLine.style.display = "block";
+
+    setFaceEnrollMessage("Đưa khuôn mặt vào giữa khung tròn...");
 
     startAutoCaptureCheck();
   } catch (err) {
@@ -238,7 +268,7 @@ function captureFaceImage() {
 }
 
 async function saveFaceImage() {
-  const usernameInput = getLoginUsernameInput();
+  const usernameInput = getActiveUsernameInput();
   const username = usernameInput ? usernameInput.value.trim() : "";
 
   if (!username) {
@@ -270,12 +300,15 @@ async function saveFaceImage() {
     const result = await response.json();
 
     if (result.success) {
-      setFaceEnrollMessage("Thiết lập khuôn mặt thành công");
-      setFaceLoginMessage("Tài khoản đã sẵn sàng đăng nhập bằng khuôn mặt");
+      setFaceEnrollMessage("✅ Thiết lập FaceID thành công!");
+      setFaceLoginMessage("✅ FaceID đã sẵn sàng", false);
+      
+      const scanLine = document.getElementById("scan-line");
+      if (scanLine) scanLine.style.display = "none";
 
       setTimeout(() => {
         closeFaceEnrollModal();
-      }, 800);
+      }, 1500);
     } else {
       isSavingFace = false;
       autoCaptureCooldown = false;
@@ -310,6 +343,9 @@ function closeFaceEnrollModal() {
     modal.style.display = "none";
   }
 
+  const scanLine = document.getElementById("scan-line");
+  if (scanLine) scanLine.style.display = "none";
+
   stableStartTime = null;
   isSavingFace = false;
   autoCaptureCooldown = false;
@@ -319,7 +355,7 @@ function closeFaceEnrollModal() {
 async function loginWithFace() {
   if (isFaceLoginActive) return;
   isFaceLoginActive = true;
-  const usernameInput = getLoginUsernameInput();
+  const usernameInput = getActiveUsernameInput();
   const username = usernameInput ? usernameInput.value.trim() : "";
 
   if (!username) {
@@ -353,6 +389,10 @@ async function loginWithFace() {
     const lastSlash = fullImageUrl.lastIndexOf("/");
     const baseUrl = fullImageUrl.substring(0, lastSlash + 1);
     const fileName = fullImageUrl.substring(lastSlash + 1);
+
+    setFaceLoginMessage("Đang dọn dẹp camera...");
+    await stopAllCameras();
+    await new Promise(r => setTimeout(r, 1000));
 
     setFaceLoginMessage("Đang mở camera để quét khuôn mặt...");
 
@@ -402,10 +442,12 @@ async function loginWithFace() {
         if (result.success) {
           localStorage.setItem("user_id", result.user_id);
           localStorage.setItem("username", result.username);
-          setFaceLoginMessage("Đăng nhập thành công");
-          window.location.reload();
+          setFaceLoginMessage("✅ Đăng nhập thành công! Đang chuyển hướng...");
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
         } else {
-          setFaceLoginMessage(result.message || "Đăng nhập khuôn mặt thất bại", true);
+          setFaceLoginMessage("❌ " + (result.message || "Đăng nhập khuôn mặt thất bại"), true);
         }
       } catch (err) {
         console.error(err);
