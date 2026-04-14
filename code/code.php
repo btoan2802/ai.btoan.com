@@ -8,43 +8,7 @@
   <link rel="icon" href="/favicon.ico">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="./code.css?v=2.8">
-  <style>
-    html, body, .code-app {
-      height: 100vh !important;
-      overflow: hidden !important;
-      margin: 0;
-      padding: 0;
-    }
-    .code-body {
-      flex: 1 !important;
-      display: grid !important;
-      grid-template-areas: "explorer editor assistant";
-      grid-template-columns: 280px 1fr 320px;
-      grid-template-rows: 1fr;
-      min-height: 0;
-      height: calc(100vh - var(--header-height)) !important;
-    }
-    .explorer-panel, .assistant-panel, .webview-panel, .editor-panel {
-      height: 100% !important;
-      min-height: 0;
-      overflow: hidden;
-    }
-    .assistant-panel {
-      display: flex !important;
-      flex-direction: column !important;
-    }
-    .agent-chat-history {
-      flex: 1 1 0% !important;
-      min-height: 0 !important;
-      overflow-y: auto !important;
-    }
-    .assistant-input-area {
-      flex-shrink: 0 !important;
-      background: #1e1e24;
-      border-top: 1px solid var(--border-color);
-    }
-  </style>
+  <link rel="stylesheet" href="./code.css?v=4.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
 </head>
 <body>
@@ -68,8 +32,6 @@
         <button id="saveFileBtn" class="top-btn primary">Save</button>
       </div>
     </header>
-
-    
 
     <div class="code-body" id="mainBody">
       <aside class="explorer-panel" id="explorerPanel">
@@ -108,30 +70,30 @@
         <div id="agentChatHistory" class="agent-chat-history"></div>
 
         <div class="assistant-input-area">
-            <textarea id="agentInput" class="ai-prompt" rows="3"
-              placeholder="Yêu cầu sửa code, tạo file..."></textarea>
-            <div class="input-wrapper">
-              <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
-            </div>
+          <textarea id="agentInput" class="ai-prompt" rows="2"
+            placeholder="Yêu cầu sửa code, tạo file..."></textarea>
+          <div class="input-wrapper">
+            <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
+          </div>
         </div>
       </aside>
     </div>
 
     <!-- MOBILE NAV -->
     <nav class="mobile-nav">
-      <div class="nav-item" onclick="switchMobileTab('explorer')">
+      <div class="nav-item" data-tab="explorer" onclick="switchMobileTab('explorer')">
         <i class="bi bi-folder2-open"></i>
         <span>Explorer</span>
       </div>
-      <div class="nav-item active" onclick="switchMobileTab('editor')">
+      <div class="nav-item active" data-tab="editor" onclick="switchMobileTab('editor')">
         <i class="bi bi-code-slash"></i>
         <span>Editor</span>
       </div>
-      <div class="nav-item" onclick="switchMobileTab('preview')">
+      <div class="nav-item" data-tab="preview" onclick="switchMobileTab('preview')">
         <i class="bi bi-play-circle"></i>
         <span>Preview</span>
       </div>
-      <div class="nav-item" onclick="switchMobileTab('ai')">
+      <div class="nav-item" data-tab="ai" onclick="switchMobileTab('ai')">
         <i class="bi bi-robot"></i>
         <span>AI Agent</span>
       </div>
@@ -195,6 +157,6 @@
     });
   </script>
 
-  <script src="workspace.js?v=3.0"></script>
+  <script src="workspace.js?v=4.0"></script>
 </body>
 </html>
