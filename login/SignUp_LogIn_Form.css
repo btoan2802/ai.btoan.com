@@ -106,6 +106,50 @@ form{ width: 100%; }
     font-size: 16px;
     color: #fff;
     font-weight: 600;
+    transition: .3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn:hover {
+    background: #5d7ddb;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(116, 148, 236, 0.4);
+}
+
+.btn-face {
+    background: #fff;
+    color: #7494ec;
+    border: 2px solid #7494ec;
+    margin-top: 15px;
+    box-shadow: none;
+}
+
+.btn-face:hover {
+    background: #f0f4ff;
+    color: #5d7ddb;
+    border-color: #5d7ddb;
+}
+
+.btn-face-enroll {
+    background: #edf2ff;
+    color: #7494ec;
+    border: none;
+    font-size: 14px;
+    height: 40px;
+    margin-top: 10px;
+}
+
+.btn-face-enroll:hover {
+    background: #e0e8ff;
+}
+
+#face-login-status, #face-enroll-status {
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: 8px;
 }
 
 .social-icons{

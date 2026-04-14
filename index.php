@@ -38,6 +38,11 @@
   <link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
   <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 
+  <!-- MediaPipe Core (Moved to head for reliability) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
   <style>
     /* GLOBAL */
 
@@ -124,9 +129,24 @@
     }
 
     .auth-footer span {
-      color: #2b7cff;
+      color: #7494ec;
       cursor: pointer;
       font-weight: 600;
+    }
+
+    /* CUSTOM SCROLLBAR */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
     }
 
     /* APP */
@@ -139,12 +159,40 @@
     }
 
     .sidebar {
-      width: 260px;
+      width: 280px;
       background: #fff;
       flex-shrink: 0;
-      border-right: 1px solid #ddd;
+      border-right: 1px solid #eee;
       height: 100vh;
       overflow-y: auto;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        transform: translateX(-100%);
+        box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+      }
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.4);
+        z-index: 999;
+        backdrop-filter: blur(2px);
+      }
+      .sidebar.open + .sidebar-overlay {
+        display: block;
+      }
     }
 
     .sidebar-title {
@@ -154,21 +202,30 @@
     }
 
     .chat-history-item {
-      padding: 10px 15px;
+      padding: 12px 15px;
       cursor: pointer;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid #f8fafc;
+      font-size: 14px;
+      transition: all 0.2s;
+      border-radius: 8px;
+      margin: 4px 8px;
     }
 
     .chat-history-item:hover {
-      background: #f5f5f5;
+      background: #f1f5f9;
+      transform: translateX(4px);
     }
 
     .topbar {
       display: flex;
       align-items: center;
-      padding: 10px 15px;
-      background: #fff;
-      border-bottom: 1px solid #ddd;
+      padding: 12px 20px;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid #eee;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
 
     .menu-btn {
@@ -197,6 +254,141 @@
     .new-chat-btn:hover {
       background: #1f63d6;
     }
+    /* PROFILE MODAL */
+    .profile-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+    }
+    .profile-card {
+      background: #fff;
+      width: 380px;
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .avatar-upload {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .avatar-preview {
+      width: 80px;
+      height: 80px;
+      background: #2b7cff;
+      color: #fff;
+      font-size: 32px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      margin: 0 auto;
+      object-fit: cover;
+    }
+    .profile-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .chat-actions-group {
+      position: relative;
+    }
+    .btn-action-plus {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-action-plus:hover {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+    #msg {
+      border-radius: 24px;
+      padding: 10px 20px;
+      background: #f1f5f9;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+    #msg:focus {
+      background: #fff;
+      border-color: #7494ec;
+      box-shadow: 0 0 0 4px rgba(116, 148, 236, 0.1);
+    }
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 8px;
+    }
+
+    /* 🛡️ v10.0 Sidebar Utilities & Profile Fix */
+    .sidebar-utils {
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+    }
+    .util-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 15px;
+        border-radius: 12px;
+        color: #475569;
+        text-decoration: none !important;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s;
+        margin-bottom: 5px;
+        background: #f8fafc;
+    }
+    .util-item:hover {
+        background: #eff6ff;
+        color: #2b7cff;
+        transform: translateX(5px);
+    }
+    .util-item i { font-size: 18px; }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        max-width: 220px;
+        padding: 5px 10px;
+        border-radius: 20px;
+        transition: background 0.2s;
+    }
+    .user-info:hover { background: rgba(0,0,0,0.05); }
+    .avatar { 
+        width: 35px !important; 
+        height: 35px !important; 
+        flex-shrink: 0 !important; 
+        border-radius: 50% !important;
+        object-fit: cover !important;
+    }
+    .user-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 14px;
+        font-weight: 600;
+    }
   </style>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -208,7 +400,7 @@
 
   <div id="loginBox" style="display:none">
 
-    <div class="container active">
+    <div class="container">
       <div class="form-box login" id="loginForm">
         <form onsubmit="event.preventDefault(); login();">
           <div id="loginMsg" style="color:red;"></div>
@@ -225,6 +417,15 @@
             <a href="#">Forgot Password?</a>
           </div>
           <button type="submit" class="btn">Login</button>
+
+        <!-- login with face ID -->
+        <button type="button" id="face-login-btn" class="btn btn-face">
+          <i class='bx bx-scan'></i> Đăng nhập khuôn mặt
+        </button>
+        <div id="face-login-status"></div>
+
+
+
           <div class="switch-auth">
             Chưa có tài khoản?
             <span onclick="showRegisterForm()">Đăng ký</span>
@@ -258,11 +459,11 @@
             <i class='bx bxs-lock-alt'></i>
           </div>
 
-          <!-- FIX ở đây -->
           <div class="input-box">
             <input id="reg_password2" type="password" placeholder="Confirm Password" required>
             <i class='bx bxs-lock-alt'></i>
           </div>
+
 
           <button type="submit" class="btn">Register</button>
           <div class="switch-auth">
@@ -286,13 +487,13 @@
 
       <div class="toggle-box">
         <div class="toggle-panel toggle-left">
-          <h1>Hello, Welcome!</h1>
+          <h1>Welcome Back!</h1>
           <p>Don't have an account?</p>
           <button class="btn register-btn">Register</button>
         </div>
 
         <div class="toggle-panel toggle-right">
-          <h1>Welcome Back!</h1>
+          <h1>Hello, Welcome!</h1>
           <p>Already have an account?</p>
           <button class="btn login-btn">Login</button>
         </div>
@@ -333,8 +534,18 @@
       <!-- SIDEBAR -->
 
       <div id="sidebar" class="sidebar">
-
         <div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
+
+        <div class="sidebar-utils">
+          <a href="./code/code.php" class="util-item">
+            <i class="bi bi-code-slash" style="color:#7c3aed;"></i>
+            <span>Btoan AI Code</span>
+          </a>
+          <div id="toggleHandMode" class="util-item" style="cursor:pointer;">
+            <i class="bi bi-hand-index-thumb" style="color:#2b7cff;"></i>
+            <span>Hand Interaction</span>
+          </div>
+        </div>
 
         <div class="sidebar-title">
           Lịch sử chat
@@ -348,6 +559,7 @@
         </div>
 
       </div>
+      <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
 
       <!-- MAIN -->
@@ -361,7 +573,9 @@
 
           <button class="menu-btn" onclick="toggleSidebar()">☰</button>
 
-          <div class="fw-bold">Btoan AI</div>
+          <div class="d-flex align-items-center gap-2">
+            <div class="fw-bold">Btoan AI</div>
+          </div>
 
           <div class="ms-auto d-flex align-items-center">
 
@@ -405,9 +619,9 @@
               multiple hidden>
 
             <!-- ✅ NÚT + -->
-            <div class="dropdown">
-              <button class="btn btn-light me-2" data-bs-toggle="dropdown">
-                +
+            <div class="chat-actions-group">
+              <button class="btn btn-action-plus" data-bs-toggle="dropdown">
+                <i class="bi bi-plus-lg"></i>
               </button>
 
               <ul class="dropdown-menu">
@@ -449,7 +663,6 @@
   </div>
 
 
-  </div>
 
 
 
@@ -465,11 +678,7 @@
 
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
 
-  <script src="login/SignUp_LogIn_Form.js"></script>
-
-  <script src="./app.js"></script>
-
-    <div id="profileModal" class="profile-modal">
+    <div id="profileModal" class="profile-modal" style="display:none">
 
       <div class="profile-card">
 
@@ -493,6 +702,11 @@
         <!-- DOB -->
         <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
 
+        <!-- FACEID SETTING -->
+        <button type="button" id="face-enroll-btn-profile" class="btn btn-face-enroll w-100 mb-3" style="background: #edf2ff; color: #7494ec; border: none; font-size: 14px; height: 40px;">
+          <i class='bx bx-face'></i> Thiết lập khuôn mặt (FaceID)
+        </button>
+
         <!-- SAVE -->
         <button onclick="saveProfile()" class="btn btn-primary w-100">
           Lưu thay đổi
@@ -502,6 +716,147 @@
 
     </div>
 
+
+    <!-- FACE ENROLL MODAL -->
+    <div id="face-enroll-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+      <div style="background:#fff; padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+        <h3 style="margin-top:0; font-weight:700; color:#1e293b; margin-bottom:10px;">Thiết lập FaceID</h3>
+        <p style="color:#64748b; font-size:14px; margin-bottom:20px;">Giữ điện thoại thẳng mặt và đảm bảo đủ ánh sáng</p>
+        
+        <div style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:50%; border:4px solid #7494ec; background:#000; margin-bottom:20px;">
+          <video id="face-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
+          <!-- Scanning animation effect -->
+          <div id="scan-line" style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(to right, transparent, #7494ec, transparent); box-shadow: 0 0 15px #7494ec; animation: scanAnim 2s infinite linear; display:none;"></div>
+        </div>
+        
+        <canvas id="face-canvas" style="display:none;"></canvas>
+        <div id="face-enroll-status" style="min-height:20px; margin-bottom:15px;"></div>
+
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <button type="button" id="face-close-btn" class="btn btn-danger" style="background:#ef4444; height:44px; font-size:14px;">Hủy bỏ</button>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      @keyframes scanAnim {
+        0% { top: 0%; }
+        100% { top: 100%; }
+      }
+      .btn-danger {
+        border-radius: 12px;
+        color: #fff;
+        border: none;
+        font-weight: 600;
+        cursor: pointer;
+        transition: .3s;
+      }
+      .btn-danger:hover {
+        background: #dc2626;
+        opacity: 0.9;
+      }
+
+      /* ===== HAND TRACKING UI ===== */
+      #hand-camera-pip {
+          transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      #hand-camera-pip:hover {
+          transform: scale(1.05);
+      }
+      #hand-cursor {
+          box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+          background: rgba(255, 0, 255, 0.1);
+      }
+      .demo-box {
+          transition: transform 0.2s, box-shadow 0.2s;
+          user-select: none;
+          -webkit-user-drag: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          font-weight: bold;
+          cursor: grab;
+      }
+      .demo-box:active {
+          cursor: grabbing;
+      }
+      #hand-overlay {
+          background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.1) 100%);
+      }
+      #toggleHandMode:hover {
+          background: #e0e7ff !important;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(43, 124, 255, 0.1);
+      }
+      #toggleHandMode.active {
+          background: #2b7cff !important;
+          color: #fff !important;
+      }
+    </style>
+
+
+  <!-- 🚀 3D SPATIAL & INTERACTION SYSTEM v12.0 -->
+  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.05); overflow:hidden;">
+    
+    <!-- 3D Interaction Stage -->
+    <div id="shape-container" style="position:absolute; inset:0; pointer-events:none; z-index:15; perspective: 1200px; transform-style: preserve-3d;"></div>
+
+    <!-- HUD -->
+    <div id="hud-container" style="position:absolute; inset:0; pointer-events:none; font-family:'JetBrains Mono', monospace;">
+        <div style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; align-items:center; gap:15px;">
+                <div id="hand-mode-label" style="font-size:14px; font-weight:900; color:#00ffcc; background:rgba(0,0,0,0.8); padding:6px 15px; border:1px solid #00ffcc; letter-spacing:2px; pointer-events:auto;">3D SPATIAL</div>
+            </div>
+            <div style="pointer-events:auto;">
+                <button onclick="window.shapeManager.reset()" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:6px 15px; font-size:11px; cursor:pointer;">RESET SCENE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hand Cursors 3.0 -->
+    <div id="cursor-left" class="hand-cursor" style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
+        <div style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);"></div>
+        <div class="cursor-label" style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:8px; color:#00ffcc;">L_HAND</div>
+    </div>
+    <div id="cursor-right" class="hand-cursor" style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
+        <div style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);"></div>
+        <div class="cursor-label" style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:8px; color:#00ffcc;">R_HAND</div>
+    </div>
+
+    <!-- Professional Preview -->
+    <div id="hand-camera-container" style="position:absolute; bottom:30px; left:30px; width:220px; aspect-ratio:4/3; background:#000; border-radius:15px; border:1px solid rgba(0, 255, 204, 0.4); overflow:hidden; pointer-events:auto; box-shadow:0 15px 40px rgba(0,0,0,0.6);">
+        <video id="hand-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1); opacity:0.8; filter: brightness(1.1) contrast(1.1);"></video>
+        <canvas id="hand-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
+        <button onclick="window.handEngine.stop()" style="position:absolute; top:10px; right:10px; background:none; border:none; color:#00ffcc; cursor:pointer; opacity:0.5;"><i class="bi bi-x-circle"></i></button>
+    </div>
+  </div>
+
+  <style>
+    #hand-overlay.drawing-active #cursor-right { transform: translate(-50%, -50%) scale(1.3); }
+    #hand-overlay.drawing-active #cursor-right div { border-color: #fff; box-shadow: 0 0 20px #fff; }
+    .hand-cursor { transition: transform 0.1s; }
+  </style>
+
+  <style>
+    @keyframes genesis-pulse { 0% { opacity:0.4; transform: scale(1); } 50% { opacity:0.8; transform: scale(1.1); } 100% { opacity:0.4; transform: scale(1); } }
+    .seed-node { animation: genesis-pulse 2s infinite ease-in-out; cursor: pointer; }
+    .hand-object { transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  </style>
+
+  <style>
+    @keyframes orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes blink { 0% { opacity: 0.2; } 50% { opacity: 0.6; } 100% { opacity: 0.2; } }
+    @keyframes genesis-pulse { 0% { transform: scale(1); opacity: 0.6; } 50% { transform: scale(1.1); opacity: 0.9; } 100% { transform: scale(1); opacity: 0.6; } }
+    .seed-node { animation: genesis-pulse 3s infinite ease-in-out; }
+  </style>
+
+  <script src="facelib/face-api.min.js"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=19"></script>
+  <script src="./app.js?v=19"></script>
+  <script src="hand_scene.js?v=9"></script>
+  <script src="hand_shapes.js?v=4"></script>
+  <script src="hand_engine.js?v=9"></script>
 </body>
 
 </html>
