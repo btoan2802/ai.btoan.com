@@ -333,16 +333,44 @@ html, body {
 @media (max-width: 900px) {
   .code-body {
     grid-template-columns: 1fr !important;
+    grid-template-areas: "editor" !important;
     height: calc(100vh - var(--header-height) - var(--mobile-nav-height));
   }
 
   .explorer-panel, .assistant-panel, .webview-panel {
     display: none !important;
     position: fixed;
-    inset: var(--header-height) 0 var(--mobile-nav-height) 0;
-    z-index: 50;
+    bottom: var(--mobile-nav-height);
+    left: 0;
+    right: 0;
+    top: 20%; /* Drawer effect: start from 20% down */
+    z-index: 2000;
     border: none;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
     width: 100% !important;
+    background: rgba(20, 20, 24, 0.95);
+    backdrop-filter: blur(30px);
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
+    overflow: hidden;
+    animation: drawerUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .explorer-panel::before, .assistant-panel::before, .webview-panel::before {
+    content: '';
+    width: 40px;
+    height: 4px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 2px;
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  @keyframes drawerUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
   }
 
   .explorer-panel.mobile-active,
@@ -350,9 +378,17 @@ html, body {
   .webview-panel.mobile-active {
     display: flex !important;
   }
+  
+  .editor-panel {
+    width: 100vw !important;
+    height: 100% !important;
+  }
 
   .mobile-nav {
     display: flex;
+    background: rgba(13, 13, 15, 0.98);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--border-color);
   }
   
   .top-right {

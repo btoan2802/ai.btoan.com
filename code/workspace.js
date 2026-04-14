@@ -297,7 +297,6 @@ function switchMobileTab(tab) {
   const explorer = document.getElementById("explorerPanel");
   const assistant = document.getElementById("assistantPanel");
   const preview = document.getElementById("webviewPanel");
-  const body = document.getElementById("mainBody");
 
   // Reset
   explorer.classList.remove("mobile-active");
@@ -312,6 +311,8 @@ function switchMobileTab(tab) {
   } else if (tab === "preview") {
     preview.classList.add("mobile-active");
     runProject();
+  } else if (tab === "editor") {
+    // Just reset others, editor area shows by default when nothing is over it
   }
 
   // Find nav item to activate
@@ -321,6 +322,11 @@ function switchMobileTab(tab) {
       span.parentElement.classList.add("active");
     }
   });
+
+  // Critical: Force editor layout after UI change on mobile
+  setTimeout(() => {
+    if (editor) editor.layout();
+  }, 350); // Wait for transition
 }
 window.switchMobileTab = switchMobileTab;
 
