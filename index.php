@@ -741,28 +741,41 @@
 
   <!-- HAND TRACKING UI OVERLAY -->
   <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none;">
-    <!-- Webcam PIP -->
-    <div id="hand-camera-pip" style="position:absolute; bottom:20px; right:20px; width:240px; aspect-ratio:4/3; background:#000; border-radius:12px; border:2px solid #2b7cff; overflow:hidden; pointer-events:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+    <!-- ✅ ARCHITECTURE HUD (GIỐNG VIDEO MẪU) -->
+    <div id="hand-camera-pip" style="position:absolute; bottom:20px; right:20px; width:280px; aspect-ratio:4/3; background:#000; border-radius:16px; border:2px solid #00ffcc; overflow:hidden; pointer-events:auto; box-shadow:0 0 40px rgba(0, 255, 204, 0.3);">
         <video id="hand-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
         <canvas id="hand-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
-        <div id="hand-status" style="position:absolute; top:5px; left:5px; background:rgba(0,0,0,0.6); color:#fff; font-size:10px; padding:2px 6px; border-radius:4px;">Initing...</div>
+        <div id="hand-status" style="position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.8); color:#00ffcc; font-family:'JetBrains Mono', monospace; font-size:12px; padding:4px 10px; border-radius:4px; border-left:3px solid #00ffcc;">READY</div>
+    </div>
+
+    <!-- Rulers (X/Y Axis) -->
+    <div id="hud-ruler-x" style="position:absolute; top:20px; left:0; width:100%; height:1px; background:rgba(0, 255, 204, 0.2); pointer-events:none;">
+        <div id="hud-val-x" style="position:absolute; top:-20px; left:50%; color:#00ffcc; font-size:10px; font-family:monospace;">X: 0</div>
+    </div>
+    <div id="hud-ruler-y" style="position:absolute; top:0; left:20px; width:1px; height:100%; background:rgba(0, 255, 204, 0.2); pointer-events:none;">
+        <div id="hud-val-y" style="position:absolute; top:50%; left:5px; color:#00ffcc; font-size:10px; font-family:monospace; transform: rotate(90deg);">Y: 0</div>
     </div>
 
     <!-- Virtual Cursor -->
-    <div id="hand-cursor" style="position:absolute; width:40px; height:40px; border:3px solid #ff00ff; border-radius:50%; margin-top:-20px; margin-left:-20px; pointer-events:none; z-index:1000000; transition: transform 0.1s; display:none;">
-        <div style="position:absolute; inset:8px; border:2px solid #fff; border-radius:50%; opacity:0.5;"></div>
+    <div id="hand-cursor" style="position:absolute; width:60px; height:60px; border:1px solid #00ffcc; pointer-events:none; z-index:1000000; display:none;">
+        <div style="position:absolute; top:50%; left:-10px; right:-10px; height:1px; background:#00ffcc; opacity:0.5;"></div>
+        <div style="position:absolute; left:50%; top:-10px; bottom:-10px; width:1px; background:#00ffcc; opacity:0.5;"></div>
+        <div id="cursor-status" style="position:absolute; bottom:-25px; left:0; color:#00ffcc; font-size:10px; font-family:monospace; white-space:nowrap;">READY</div>
     </div>
 
-    <!-- Interaction Area / Sandbox -->
-    <div id="hand-sandbox" style="width:100%; height:100%; pointer-events:auto;">
-        <div id="hand-demo-target" class="demo-box" style="position:absolute; top:40%; left:50%; width:100px; height:100px; background:linear-gradient(135deg, #2b7cff, #7494ec); border-radius:16px; box-shadow:0 10px 20px rgba(0,0,0,0.2); transform:translate(-50%, -50%);">
-            Gắp I!
+    <!-- Interaction Area / Architecture Sandbox -->
+    <div id="hand-sandbox" style="width:100%; height:100%; pointer-events:auto; perspective: 1000px;">
+        <!-- Wireframe Objects -->
+        <div id="obj-1" class="demo-box wireframe" style="position:absolute; top:30%; left:40%; width:120px; height:120px; border:2px solid #00ffcc; background:rgba(0, 255, 204, 0.05); transform: rotateX(20deg) rotateY(20deg);">
+            <div style="position:absolute; inset:-5px; border:1px solid #00ffcc; opacity:0.3;"></div>
+            BLOCK_01
         </div>
-        <div class="demo-box" style="position:absolute; top:60%; left:30%; width:80px; height:80px; background:linear-gradient(135deg, #ff00ff, #7494ec); border-radius:50%; box-shadow:0 10px 20px rgba(0,0,0,0.2); transform:translate(-50%, -50%);">
-            Tròn
+        <div id="obj-2" class="demo-box wireframe" style="position:absolute; top:50%; left:60%; width:150px; height:80px; border:2px solid #00ffcc; background:rgba(0, 255, 204, 0.05); transform: rotateX(-10deg) rotateY(30deg);">
+            <div style="position:absolute; inset:-5px; border:1px solid #00ffcc; opacity:0.3;"></div>
+            STRUCT_02
         </div>
-        <div class="demo-box" style="position:absolute; top:60%; left:70%; width:80px; height:80px; background:linear-gradient(135deg, #00ff00, #7494ec); border-radius:12px; box-shadow:0 10px 20px rgba(0,0,0,0.2); transform:translate(-50%, -50%);">
-            Vuông
+        <div id="obj-3" class="demo-box wireframe" style="position:absolute; top:60%; left:20%; width:100px; height:100px; border:2px solid #00ffcc; background:rgba(0, 255, 204, 0.05); border-radius:50%;">
+            CORE_03
         </div>
     </div>
   </div>
