@@ -84,7 +84,7 @@
         <div id="fileTree" class="file-tree"></div>
       </aside>
 
-      <main class="editor-panel">
+      <main class="editor-panel mobile-active" id="editorPanel">
         <div id="tabsBar" class="tabs-bar"></div>
         <div id="editor" class="editor-host"></div>
       </main>
@@ -193,6 +193,6 @@
     });
   </script>
 
-  <script src="workspace.js?v=2.8"></script>
+  <script src="workspace.js?v=2.9"></script>
 </body>
 </html>
