@@ -104,15 +104,17 @@ class HandEngine {
                 this.spatialState.isDualOnSame = true;
                 this.spatialState.initialDist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)) || 1;
                 this.spatialState.initialAngle = Math.atan2(hR.y - hL.y, hR.x - hL.x);
-                this.spatialState.initialRotX = t.rotationX;
-                this.spatialState.initialRotY = t.rotationY;
-                this.spatialState.initialRotZ = t.rotationZ;
+                this.spatialState.initialRotX = t.rotationX || 0;
+                this.spatialState.initialRotY = t.rotationY || 0;
+                this.spatialState.initialRotZ = t.rotationZ || 0;
             }
             t.state = 'grabbed_dual';
         } else {
-            this.spatialState.isDualOnSame = false;
-            if (hL.lockTarget) hL.lockTarget.state = 'grabbed_single';
-            if (hR.lockTarget) hR.lockTarget.state = 'grabbed_single';
+            if (this.spatialState.isDualOnSame) {
+                this.spatialState.isDualOnSame = false;
+                if (hL.lockTarget) hL.lockTarget.state = 'grabbed_single';
+                if (hR.lockTarget) hR.lockTarget.state = 'grabbed_single';
+            }
         }
     }
 
@@ -191,7 +193,14 @@ class HandEngine {
     handleDualSpatial() {
         const hL = this.handStates['Left'];
         const hR = this.handStates['Right'];
-        const t = hL.lockTarget; // same as hR
+        const t = hL.lockTarget; 
+        
+        // Safety guard: if target lost or not the same, abort
+        if (!t || t !== hR.lockTarget) {
+            this.spatialState.isDualOnSame = false;
+            return;
+        }
+
         const ss = this.spatialState;
         
         const dx = hR.x - hL.x;
@@ -199,18 +208,17 @@ class HandEngine {
         const dist = Math.sqrt(dx*dx + dy*dy) || 1;
         const angle = Math.atan2(dy, dx);
         
-        // Z-Rotation (Angle Change)
+        // Z-Rotation 
         t.rotationZ = ss.initialRotZ + (angle - ss.initialAngle) * (180/Math.PI);
         
-        // 3D X/Y Rotation (Relative movements)
+        // XY Rotation delta
         const diffX = (hL.x - hL.prevX) + (hR.x - hR.prevX);
         const diffY = (hL.y - hL.prevY) + (hR.y - hR.prevY);
         
-        // Use midpoint movement for rotation logic
         t.rotationY += diffX * 0.3;
         t.rotationX -= diffY * 0.3;
         
-        // Midpoint position
+        // Midpoint
         t.x = (hL.x + hR.x) / 2;
         t.y = (hL.y + hR.y) / 2;
     }
