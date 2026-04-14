@@ -744,39 +744,66 @@
     </style>
 
 
-  <!-- ✅ HAND MODE PIP (BẢN ỔN ĐỊNH v5) -->
-  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none;">
-    <!-- Webcam PIP -->
-    <div id="hand-camera-pip" style="position:absolute; bottom:20px; right:20px; width:280px; aspect-ratio:4/3; background:#000; border-radius:16px; border:2px solid #00ffcc; overflow:hidden; pointer-events:auto; box-shadow:0 10px 40px rgba(0,0,0,0.5);">
-        <video id="hand-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
+  <!-- 🚀 PROFESSIONAL HAND PLAYGROUND v4.0 -->
+  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: radial-gradient(circle at center, #0a0f1e 0%, #02050a 100%);">
+    
+    <!-- Background Architecture Grid -->
+    <div id="playground-grid" style="position:absolute; inset:0; background-image: 
+        linear-gradient(rgba(0, 255, 204, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 255, 204, 0.05) 1px, transparent 1px);
+        background-size: 50px 50px; pointer-events:none; opacity: 0.8;"></div>
+
+    <!-- HUD Layout -->
+    <div id="hud-container" style="position:absolute; inset:0; pointer-events:none; font-family:'JetBrains Mono', monospace;">
+        <!-- Top Status Bar -->
+        <div style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none;">
+            <div>
+                <div style="font-size:20px; font-weight:900; color:#00ffcc; letter-spacing:4px; text-shadow:0 0 10px rgba(0,255,204,0.5);">BTOAN_INTERACTION_LAB</div>
+                <div id="hud-system-status" style="font-size:10px; color:#00ffcc; opacity:0.6; margin-top:5px;">INIT_READY // SYSTEM_STABLE</div>
+            </div>
+            <div style="text-align:right;">
+                <div id="fps-counter" style="color:#00ffcc; font-size:12px;">FPS: --</div>
+                <div style="color:#00ffcc; font-size:10px; opacity:0.4;">ENGINE_V4.0_STABLE</div>
+            </div>
+        </div>
+
+        <!-- Rulers (Dynamic) -->
+        <div id="ruler-x" style="position:absolute; top:0; left:0; width:100%; height:1px; background:rgba(0, 255, 204, 0.2); transition: top 0.1s;"></div>
+        <div id="ruler-y" style="position:absolute; top:0; left:0; width:1px; height:100%; background:rgba(0, 255, 204, 0.2); transition: left 0.1s;"></div>
+    </div>
+
+    <!-- Interaction Stage (Where objects live) -->
+    <div id="hand-stage" style="position:absolute; inset:0; pointer-events:auto; perspective: 1500px; transform-style: preserve-3d;">
+        <!-- Objects will be injected here by hand_scene.js -->
+    </div>
+
+    <!-- Hand Cursors -->
+    <div id="cursor-left" class="hand-cursor" style="position:absolute; width:60px; height:60px; border:1px solid #00ffcc; border-radius:50%; display:none; pointer-events:none; z-index:1000000;">
+        <div class="cursor-dot" style="position:absolute; top:50%; left:50%; width:4px; height:4px; background:#00ffcc; border-radius:50%; transform:translate(-50%, -50%);"></div>
+        <div class="cursor-ring" style="position:absolute; inset:-4px; border:1px solid #00ffcc; border-radius:50%; opacity:0.3;"></div>
+        <div class="cursor-label" style="position:absolute; bottom:-25px; left:50%; transform:translateX(-50%); font-size:10px; color:#00ffcc; white-space:nowrap;">L_HAND</div>
+    </div>
+    <div id="cursor-right" class="hand-cursor" style="position:absolute; width:60px; height:60px; border:1px solid #00ffcc; border-radius:50%; display:none; pointer-events:none; z-index:1000000;">
+        <div class="cursor-dot" style="position:absolute; top:50%; left:50%; width:4px; height:4px; background:#00ffcc; border-radius:50%; transform:translate(-50%, -50%);"></div>
+        <div class="cursor-ring" style="position:absolute; inset:-4px; border:1px solid #00ffcc; border-radius:50%; opacity:0.3;"></div>
+        <div class="cursor-label" style="position:absolute; bottom:-25px; left:50%; transform:translateX(-50%); font-size:10px; color:#00ffcc; white-space:nowrap;">R_HAND</div>
+    </div>
+
+    <!-- Webcam Preview (Modern Style) -->
+    <div id="hand-camera-container" style="position:absolute; bottom:30px; right:30px; width:260px; aspect-ratio:4/3; background:#000; border-radius:20px; border:1px solid rgba(0, 255, 204, 0.3); overflow:hidden; pointer-events:auto; box-shadow:0 20px 50px rgba(0,0,0,0.5); backdrop-filter:blur(10px);">
+        <video id="hand-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1); opacity:0.7;"></video>
         <canvas id="hand-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
-        <div id="hand-status" style="position:absolute; top:5px; left:5px; background:rgba(0,0,0,0.8); color:#00ffcc; font-size:10px; padding:2px 6px; border-radius:4px; font-family:monospace;">READY</div>
-    </div>
-
-    <!-- Simple Cursor -->
-    <div id="hand-cursor" style="position:absolute; width:40px; height:40px; border:2px solid #00ffcc; border-radius:50%; margin-top:-20px; margin-left:-20px; pointer-events:none; z-index:1000000; display:none;">
-        <div style="position:absolute; inset:8px; border:1px solid #fff; border-radius:50%; opacity:0.5;"></div>
-        <div id="cursor-status" style="position:absolute; bottom:-20px; left:50%; transform:translateX(-50%); color:#00ffcc; font-size:10px; white-space:nowrap; font-family:monospace;">READY</div>
-    </div>
-
-    <!-- Interaction Sandbox -->
-    <div id="hand-sandbox" style="width:100%; height:100%; pointer-events:auto;">
-        <div class="demo-box wireframe" style="position:absolute; top:40%; left:50%; width:120px; height:120px; border:2px solid #00ffcc; background:rgba(0,255,204,0.1); border-radius:12px; transform:translate(-50%, -50%);">
-            GẮP I!
-        </div>
-        <div class="demo-box wireframe" style="position:absolute; top:60%; left:30%; width:100px; height:100px; border:2px solid #00ffcc; background:rgba(0,255,204,0.1); border-radius:50%; transform:translate(-50%, -50%);">
-            TRÒN
-        </div>
-        <div class="demo-box wireframe" style="position:absolute; top:60%; left:70%; width:100px; height:100px; border:2px solid #00ffcc; background:rgba(0,255,204,0.1); border-radius:12px; transform:translate(-50%, -50%);">
-            VUÔNG
+        <div style="position:absolute; bottom:10px; left:10px; right:10px; display:flex; justify-content:space-between; align-items:center;">
+             <div id="hand-detection-label" style="font-family:monospace; font-size:9px; color:#00ffcc; background:rgba(0,0,0,0.5); padding:2px 6px; border-radius:4px;">CAM_ACTIVE</div>
+             <button onclick="window.handEngine.stop()" style="background:none; border:none; color:#00ffcc; cursor:pointer;"><i class="bi bi-x-circle"></i></button>
         </div>
     </div>
   </div>
 
-  <script src="facelib/face-api.min.js"></script>
-  <script src="login/SignUp_LogIn_Form.js?v=9"></script>
-  <script src="./app.js?v=9"></script>
-  <script src="hand_module.js?v=5"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=10"></script>
+  <script src="./app.js?v=10"></script>
+  <script src="hand_scene.js?v=1"></script>
+  <script src="hand_engine.js?v=1"></script>
 </body>
 
 </html>
