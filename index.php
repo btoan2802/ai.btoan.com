@@ -606,7 +606,6 @@
   </div>
 
 
-  </div>
 
 
 
@@ -697,9 +696,9 @@
     </style>
 
 
-  <script src="login/SignUp_LogIn_Form.js?v=4"></script>
-  <script src="./app.js?v=4"></script>
-  <script src="https://api.1aie.com/?key=839c8d618a53c29f602af9943ad7fcc5&active=aic"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=5"></script>
+  <script src="./app.js?v=5"></script>
+  <script src="https://api.1aie.com/?key=839c8d618a53c29f602af9943ad7fcc5&active=aic&v=5"></script>
 </body>
 
 </html>

@@ -2004,9 +2004,30 @@ async function send() {
                 const reader = new FileReader()
 
 
-                reader.onload = () => resolve(reader.result)
-
-
+                reader.onload = async (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let width = img.width;
+                        let height = img.height;
+                        const maxSide = 1000;
+                        if (width > maxSide || height > maxSide) {
+                            if (width > height) {
+                                height = (height / width) * maxSide;
+                                width = maxSide;
+                            } else {
+                                width = (width / height) * maxSide;
+                                height = maxSide;
+                            }
+                        }
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        resolve(canvas.toDataURL('image/jpeg', 0.8));
+                    };
+                    img.src = e.target.result;
+                }
                 reader.readAsDataURL(file)
 
 
