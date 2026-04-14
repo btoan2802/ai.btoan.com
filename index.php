@@ -744,24 +744,20 @@
     </style>
 
 
-  <!-- 🚀 GESTURE SHAPE & INTERACTION SYSTEM v8.0 -->
-  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.1); overflow:hidden;">
+  <!-- 🚀 3D SPATIAL INTERACTION SYSTEM v9.0 -->
+  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.05); overflow:hidden;">
     
-    <!-- Drawing Canvas Layer -->
-    <canvas id="draw-canvas" style="position:absolute; inset:0; pointer-events:none; z-index:10;"></canvas>
-
-    <!-- Shape Container -->
-    <div id="shape-container" style="position:absolute; inset:0; pointer-events:none; z-index:15;"></div>
+    <!-- 3D Interaction Stage -->
+    <div id="shape-container" style="position:absolute; inset:0; pointer-events:none; z-index:15; perspective: 1200px; transform-style: preserve-3d;"></div>
 
     <!-- HUD -->
     <div id="hud-container" style="position:absolute; inset:0; pointer-events:none; font-family:'JetBrains Mono', monospace;">
         <div style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:center;">
             <div style="display:flex; align-items:center; gap:15px;">
-                <div id="hand-mode-label" style="font-size:14px; font-weight:900; color:#00ffcc; background:rgba(0,0,0,0.8); padding:6px 15px; border:1px solid #00ffcc; letter-spacing:2px; pointer-events:auto;">NO_HAND</div>
+                <div id="hand-mode-label" style="font-size:14px; font-weight:900; color:#00ffcc; background:rgba(0,0,0,0.8); padding:6px 15px; border:1px solid #00ffcc; letter-spacing:2px; pointer-events:auto;">3D SPATIAL</div>
             </div>
-            <div style="display:flex; gap:10px; pointer-events:auto;">
-                <button onclick="window.handDraw.clear()" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:5px 12px; font-size:11px; cursor:pointer;">CLEAR</button>
-                <button onclick="window.shapeManager.clearAll()" style="background:rgba(255,50,50,0.1); border:1px solid #ff3232; color:#ff3232; padding:5px 12px; font-size:11px; cursor:pointer;">RESET ALL</button>
+            <div style="pointer-events:auto;">
+                <button onclick="window.shapeManager.reset()" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:6px 15px; font-size:11px; cursor:pointer;">RESET SCENE</button>
             </div>
         </div>
     </div>
@@ -803,13 +799,11 @@
     .seed-node { animation: genesis-pulse 3s infinite ease-in-out; }
   </style>
 
-  <script src="login/SignUp_LogIn_Form.js?v=15"></script>
-  <script src="./app.js?v=15"></script>
-  <script src="hand_scene.js?v=6"></script>
-  <script src="hand_geometry.js?v=1"></script>
-  <script src="hand_draw.js?v=3"></script>
-  <script src="hand_shapes.js?v=1"></script>
-  <script src="hand_engine.js?v=6"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=16"></script>
+  <script src="./app.js?v=16"></script>
+  <script src="hand_scene.js?v=7"></script>
+  <script src="hand_shapes.js?v=2"></script>
+  <script src="hand_engine.js?v=7"></script>
 </body>
 
 </html>

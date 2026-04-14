@@ -1,31 +1,35 @@
 /**
- * Btoan AI - Interactive Shapes Module v1.0
- * Handles Circle, Square, Triangle, and Star primitives with stretching logic.
+ * Btoan AI - Interactive 3D Objects Module v2.0
+ * Supports 3D Rotation, Independent Dual-Hand Manipulation.
  */
 
-class InteractiveShape {
-    constructor(id, type, bounds) {
+class Interactive3DObject {
+    constructor(id, type, x, y, size) {
         this.id = id;
-        this.type = type; // 'circle', 'square', 'triangle', 'star'
+        this.type = type; // 'box', 'panel'
         
-        this.w = bounds.w;
-        this.h = bounds.h;
-        this.x = bounds.x + this.w / 2;
-        this.y = bounds.y + this.h / 2;
+        this.w = size || 180;
+        this.h = size || 180;
+        this.x = x;
+        this.y = y;
         
-        this.baseW = this.w;
-        this.baseH = this.h;
-        
-        this.rotation = 0;
+        this.rotationX = 0;
+        this.rotationY = 0;
+        this.rotationZ = 0;
         this.scale = 1;
+        
+        this.vx = 0;
+        this.vy = 0;
+        
         this.state = 'idle';
+        this.grabbedBy = []; // ['left', 'right']
         
         this.init();
     }
 
     init() {
         this.el = document.createElement('div');
-        this.el.className = `interactive-shape ${this.type}`;
+        this.el.className = `interactive-3d ${this.type}`;
         this.el.style.cssText = `
             position: absolute; left: 0; top: 0; 
             width: ${this.w}px; height: ${this.h}px;
@@ -33,63 +37,82 @@ class InteractiveShape {
             display: flex; align-items: center; justify-content: center;
         `;
 
-        this.updateStyle();
+        this.updateVisuals();
         document.getElementById('shape-container').appendChild(this.el);
     }
 
-    updateStyle() {
-        const commonStyle = `width:100%; height:100%; filter: drop-shadow(0 0 15px rgba(0,255,204,0.4)); transition: border 0.3s;`;
+    updateVisuals() {
+        const glass = `
+            width:100%; height:100%; position:absolute; inset:0;
+            background: rgba(0,255,204,0.1); border: 2px solid rgba(0,255,204,0.6);
+            border-radius:12px; backdrop-filter:blur(10px);
+            box-shadow: 0 0 30px rgba(0,255,204,0.2);
+            display:flex; align-items:center; justify-content:center;
+            color:#00ffcc; font-size:10px; font-weight:900; letter-spacing:2px;
+        `;
         
-        if (this.type === 'circle') {
-            this.el.innerHTML = `<div style="${commonStyle} background: radial-gradient(circle, rgba(0,255,204,0.1) 0%, rgba(0,255,204,0.6) 100%); border-radius:50%; border:2px solid rgba(255,255,255,0.3); backdrop-filter:blur(8px);"></div>`;
-        } else if (this.type === 'square') {
-            this.el.innerHTML = `<div style="${commonStyle} background: rgba(0,255,204,0.1); border:2px solid rgba(0,255,204,0.8); border-radius:8px; backdrop-filter:blur(8px);"></div>`;
-        } else if (this.type === 'triangle') {
-            const path = "50% 0%, 0% 100%, 100% 100%";
-            this.el.innerHTML = `<div style="${commonStyle} background: rgba(0,255,204,0.2); clip-path: polygon(${path}); border:1px solid #00ffcc;"></div>`;
-        } else if (this.type === 'star') {
-            const path = "50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%";
-            this.el.innerHTML = `<div style="${commonStyle} background: rgba(0,255,204,0.3); clip-path: polygon(${path});"></div>`;
+        if (this.type === 'box') {
+            // Simplified 3D cube
+            this.el.innerHTML = `
+                <div style="${glass} transform: translateZ(40px);">FRONT</div>
+                <div style="${glass} transform: translateZ(-40px) rotateY(180deg); opacity:0.5;">BACK</div>
+                <div style="${glass} transform: translateX(40px) rotateY(90deg); width:80px; left:50px;">SIDE</div>
+                <div style="${glass} transform: translateX(-40px) rotateY(-90deg); width:80px; left:50px;">SIDE</div>
+            `;
+        } else {
+            this.el.innerHTML = `<div style="${glass}">TRANSFORM_PANEL</div>`;
         }
     }
 
     update() {
-        this.el.style.width = `${this.w}px`;
-        this.el.style.height = `${this.h}px`;
-        this.el.style.transform = `translate(-50%, -50%) translate3d(${this.x}px, ${this.y}px, 0) rotate(${this.rotation}deg) scale(${this.scale})`;
+        if (this.state === 'idle') {
+            this.x += this.vx; this.y += this.vy;
+            this.vx *= 0.95; this.vy *= 0.95;
+            // Float
+            this.rotationY += Math.sin(Date.now() / 2000) * 0.2;
+        }
+        this.applyTransform();
+    }
+
+    applyTransform() {
+        this.el.style.transform = `translate(-50%, -50%) translate3d(${this.x}px, ${this.y}px, 0) rotateX(${this.rotationX}deg) rotateY(${this.rotationY}deg) rotateZ(${this.rotationZ}deg) scale(${this.scale})`;
     }
 
     setHover(isHover) {
-        if (this.state === 'dragging' || this.state === 'stretching') return;
-        this.scale = isHover ? 1.1 : 1.0;
+        if (this.grabbedBy.length > 0) return;
+        this.scale = isHover ? 1.15 : 1.0;
     }
 }
 
 class ShapeManager {
     constructor() {
         this.shapes = [];
+        this.reset();
         this.loop();
     }
 
-    spawn(type, bounds) {
-        const s = new InteractiveShape(Date.now(), type, bounds);
+    reset() {
+        this.shapes.forEach(s => s.el.remove());
+        this.shapes = [];
+        // Spawn standard 3D cubes
+        this.spawn('box', window.innerWidth * 0.35, window.innerHeight * 0.5, 140);
+        this.spawn('box', window.innerWidth * 0.65, window.innerHeight * 0.5, 140);
+    }
+
+    spawn(type, x, y, size) {
+        const s = new Interactive3DObject(Date.now() + Math.random(), type, x, y, size);
         this.shapes.push(s);
         return s;
     }
 
     getShapeAt(x, y) {
         let closest = null;
-        let minDist = 100;
+        let minDist = 120;
         for (const s of this.shapes) {
             const d = Math.sqrt(Math.pow(s.x - x, 2) + Math.pow(s.y - y, 2));
             if (d < minDist) { minDist = d; closest = s; }
         }
         return closest;
-    }
-
-    clearAll() {
-        this.shapes.forEach(s => s.el.remove());
-        this.shapes = [];
     }
 
     loop() {

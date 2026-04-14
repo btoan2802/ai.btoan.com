@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Professional Hand Engine v8.0 (SHAPE SNAPPING & STRETCH)
- * Integrated with Physics, Recognition, and Absolute Click.
+ * Btoan AI - Professional Hand Engine v9.0 (3D SPATIAL & INDEPENDENT DUAL)
+ * Pure 3D Manipulation: 1H Move, 1H Rotate (Two objects), or 2H Dual Rotation.
  */
 
 class HandEngine {
@@ -11,11 +11,12 @@ class HandEngine {
         this.overlay = document.getElementById('hand-overlay');
         
         this.isActive = false;
-        this.mode = 'NO_HAND';
+        this.mode = '3D SPATIAL';
         
+        // --- INDEPENDENT HAND CONTROLLERS ---
         this.handStates = {
-            'Left': { x: 0, y: 0, isPinching: false, prevPinching: false, pinchStartTime: 0, lockTarget: null, prevX: 0, prevY: 0 },
-            'Right': { x: 0, y: 0, isPinching: false, prevPinching: false, pinchStartTime: 0, lockTarget: null, prevX: 0, prevY: 0 }
+            'Left': { x: 0, y: 0, isPinching: false, prevPinching: false, lockTarget: null, prevX: 0, prevY: 0 },
+            'Right': { x: 0, y: 0, isPinching: false, prevPinching: false, lockTarget: null, prevX: 0, prevY: 0 }
         };
         
         // --- PRECISION CONFIG ---
@@ -23,6 +24,15 @@ class HandEngine {
         this.pinchThresh = 0.052;
         this.tapWindow = 220; 
         
+        // --- SPATIAL ANCHORS ---
+        this.spatialState = {
+            isDualOnSame: false,
+            initialDist: 0,
+            initialRotX: 0,
+            initialRotY: 0,
+            initialRotZ: 0
+        };
+
         this.init();
     }
 
@@ -56,7 +66,7 @@ class HandEngine {
         if (this.camera) this.camera.stop();
         this.isActive = false;
         this.overlay.style.display = 'none';
-        this.mode = 'NO_HAND';
+        ['Left', 'Right'].forEach(side => this.releaseObject(side));
     }
 
     onResults(results) {
@@ -78,25 +88,37 @@ class HandEngine {
             });
         }
         
-        this.updateGlobalMode(detectedSet);
+        // Sync Logic for Shared Objects
+        this.evaluateMultiHandState();
         this.syncUI(detectedSet);
         this.ctx.restore();
     }
 
-    updateGlobalMode(detected) {
-        let newMode = 'NO_HAND';
-        if (detected.size === 1) newMode = 'MOUSE_DRAW';
-        else if (detected.size === 2) newMode = 'STRETCH';
+    evaluateMultiHandState() {
+        const hL = this.handStates['Left'];
+        const hR = this.handStates['Right'];
         
-        if (this.mode !== newMode) {
-            if (this.mode === 'MOUSE_DRAW') window.handDraw.endStroke();
-            this.mode = newMode;
+        if (hL.lockTarget && hR.lockTarget && hL.lockTarget === hR.lockTarget) {
+            const t = hL.lockTarget;
+            if (!this.spatialState.isDualOnSame) {
+                this.spatialState.isDualOnSame = true;
+                this.spatialState.initialDist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)) || 1;
+                this.spatialState.initialAngle = Math.atan2(hR.y - hL.y, hR.x - hL.x);
+                this.spatialState.initialRotX = t.rotationX;
+                this.spatialState.initialRotY = t.rotationY;
+                this.spatialState.initialRotZ = t.rotationZ;
+            }
+            t.state = 'grabbed_dual';
+        } else {
+            this.spatialState.isDualOnSame = false;
+            if (hL.lockTarget) hL.lockTarget.state = 'grabbed_single';
+            if (hR.lockTarget) hR.lockTarget.state = 'grabbed_single';
         }
     }
 
     syncUI(detected) {
         const badge = document.getElementById('hand-mode-label');
-        badge.innerText = this.mode;
+        badge.innerText = `3D_SPATIAL [${detected.size}H]`;
         ['Left', 'Right'].forEach(side => {
             const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
             if (detected.has(side)) {
@@ -105,7 +127,10 @@ class HandEngine {
                 cursor.style.left = `${s.x}px`;
                 cursor.style.top = `${s.y}px`;
                 cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.7 : 1})`;
-            } else { cursor.style.display = 'none'; }
+            } else { 
+                cursor.style.display = 'none'; 
+                this.releaseObject(side);
+            }
         });
     }
 
@@ -123,78 +148,80 @@ class HandEngine {
         s.isPinching = d < this.pinchThresh;
         
         const now = Date.now();
-        if (s.isPinching && !s.prevPinching) s.pinchStartTime = now;
+        if (s.isPinching && !s.prevPinching) {
+            const target = window.shapeManager.getShapeAt(s.x, s.y);
+            if (target) {
+                target.state = 'grabbed_single';
+                s.lockTarget = target;
+                if (!target.grabbedBy.includes(side.toLowerCase())) target.grabbedBy.push(side.toLowerCase());
+            } else {
+                // Potential Click only if in background
+                s.pinchStartTime = now;
+            }
+        } else if (!s.isPinching && s.prevPinching) {
+            if (s.lockTarget) {
+                this.releaseObject(side);
+            } else if (now - s.pinchStartTime < this.tapWindow) {
+                this.virtualClick(s.x, s.y);
+            }
+        }
 
-        if (this.mode === 'MOUSE_DRAW') {
-            this.handleMouseDraw(side, s, now);
-        } else if (this.mode === 'STRETCH') {
-            this.handleStretch();
+        // Apply Independent Movement
+        if (s.isPinching && s.lockTarget && s.lockTarget.state === 'grabbed_single') {
+            s.lockTarget.x = s.x;
+            s.lockTarget.y = s.y;
+            s.lockTarget.vx = (s.x - s.prevX) * 0.5;
+            s.lockTarget.vy = (s.y - s.prevY) * 0.5;
+        }
+        
+        // Handle Shared Rotation Logic
+        if (this.spatialState.isDualOnSame) {
+            this.handleDualSpatial();
+        }
+
+        // Hover Effect
+        if (!s.isPinching) {
+             const h = window.shapeManager.getShapeAt(s.x, s.y);
+             window.shapeManager.shapes.forEach(sh => sh.setHover(sh === h));
         }
         
         s.prevX = s.x; s.prevY = s.y;
     }
 
-    handleMouseDraw(side, s, now) {
-        if (s.isPinching) {
-            if (!s.lockTarget) {
-                const shape = window.shapeManager.getShapeAt(s.x, s.y);
-                if (shape) {
-                    s.lockTarget = shape;
-                    shape.state = 'dragging';
-                } else {
-                    // Start Stroke
-                    if (!s.prevPinching) window.handDraw.startStroke(s.x, s.y);
-                    window.handDraw.addPoint(s.x, s.y);
-                }
-            } else {
-                // Move Shape
-                s.lockTarget.x = s.x;
-                s.lockTarget.y = s.y;
-            }
-        } else {
-            if (s.prevPinching) {
-                if (s.lockTarget) { s.lockTarget.state = 'idle'; s.lockTarget = null; }
-                else {
-                    const dur = now - s.pinchStartTime;
-                    if (dur < this.tapWindow) {
-                        window.handDraw.strokes.pop(); // Remove click-dot
-                        this.virtualClick(s.x, s.y);
-                    } else {
-                        window.handDraw.endStroke();
-                    }
-                }
-            }
-            // Hover logic
-            const hover = window.shapeManager.getShapeAt(s.x, s.y);
-            window.shapeManager.shapes.forEach(sh => sh.setHover(sh === hover));
-        }
+    handleDualSpatial() {
+        const hL = this.handStates['Left'];
+        const hR = this.handStates['Right'];
+        const t = hL.lockTarget; // same as hR
+        const ss = this.spatialState;
+        
+        const dx = hR.x - hL.x;
+        const dy = hR.y - hL.y;
+        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+        const angle = Math.atan2(dy, dx);
+        
+        // Z-Rotation (Angle Change)
+        t.rotationZ = ss.initialRotZ + (angle - ss.initialAngle) * (180/Math.PI);
+        
+        // 3D X/Y Rotation (Relative movements)
+        const diffX = (hL.x - hL.prevX) + (hR.x - hR.prevX);
+        const diffY = (hL.y - hL.prevY) + (hR.y - hR.prevY);
+        
+        // Use midpoint movement for rotation logic
+        t.rotationY += diffX * 0.3;
+        t.rotationX -= diffY * 0.3;
+        
+        // Midpoint position
+        t.x = (hL.x + hR.x) / 2;
+        t.y = (hL.y + hR.y) / 2;
     }
 
-    handleStretch() {
-        const hL = this.handStates['Left']; const hR = this.handStates['Right'];
-        if (hL.isPinching && hR.isPinching) {
-            const centerX = (hL.x + hR.x) / 2;
-            const centerY = (hL.y + hR.y) / 2;
-            const target = window.shapeManager.getShapeAt(centerX, centerY);
-            
-            if (target) {
-                target.state = 'stretching';
-                const dist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2));
-                if (!target.initialDist) {
-                    target.initialDist = dist;
-                    target.initialW = target.w;
-                    target.initialH = target.h;
-                }
-                const ratio = dist / target.initialDist;
-                target.w = target.initialW * ratio;
-                target.h = target.initialH * ratio;
-            }
-        } else {
-            // Reset stretch anchors when fingers release
-            window.shapeManager.shapes.forEach(s => { 
-                if (s.state === 'stretching') s.state = 'idle'; 
-                s.initialDist = null;
-            });
+    releaseObject(side) {
+        const s = this.handStates[side];
+        if (s.lockTarget) {
+            const idx = s.lockTarget.grabbedBy.indexOf(side.toLowerCase());
+            if (idx > -1) s.lockTarget.grabbedBy.splice(idx, 1);
+            s.lockTarget.state = s.lockTarget.grabbedBy.length > 0 ? 'grabbed_single' : 'idle';
+            s.lockTarget = null;
         }
     }
 
@@ -214,14 +241,9 @@ class HandEngine {
 
     createRipple(x, y) {
         const r = document.createElement('div');
-        r.style.cssText = `position:absolute; left:${x}px; top:${y}px; width:10px; height:10px; background:rgba(255,255,255,0.6); border-radius:50%; transform:translate(-50%, -50%); animation:ripple-v8 0.4s forwards; pointer-events:none; z-index:999999;`;
+        r.style.cssText = `position:absolute; left:${x}px; top:${y}px; width:10px; height:10px; background:rgba(255,255,255,0.6); border-radius:50%; transform:translate(-50%, -50%); animation:ripple-v9 0.4s forwards; pointer-events:none; z-index:999999;`;
         document.body.appendChild(r);
         setTimeout(() => r.remove(), 400);
-        if (!document.getElementById('v8-ripple')) {
-            const s = document.createElement('style'); s.id='v8-ripple';
-            s.textContent = `@keyframes ripple-v8 { to { width:100px; height:100px; opacity:0; } }`;
-            document.head.appendChild(s);
-        }
     }
 
     loop() { requestAnimationFrame(() => this.loop()); }
