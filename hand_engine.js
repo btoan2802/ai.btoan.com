@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Professional Hand Engine v5.0 (STABLE)
- * Advanced Smoothing, Hysteresis, and Robust Target Locking.
+ * Btoan AI - Professional Hand Engine v5.5 (STABLE SINGLE-HAND FIRST)
+ * True independent hand controllers with robust target locking and jitter filter.
  */
 
 class HandEngine {
@@ -13,16 +13,16 @@ class HandEngine {
         this.camera = null;
         this.isActive = false;
         
-        // Hand States with Target Locking
+        // --- INDEPENDENT HAND CONTROLLERS ---
         this.handStates = {
-            'Left': { x: 0, y: 0, isPinching: false, lockTarget: null, mode: 'idle' },
-            'Right': { x: 0, y: 0, isPinching: false, lockTarget: null, mode: 'idle' }
+            'Left': { x: 0, y: 0, isPinching: false, lockTarget: null, mode: 'idle', prevX: 0, prevY: 0 },
+            'Right': { x: 0, y: 0, isPinching: false, lockTarget: null, mode: 'idle', prevX: 0, prevY: 0 }
         };
         
-        // --- 1. SMOOTHING PARAMS ---
-        this.smoothFactor = 0.5; // Exponential Smoothing
-        this.pinchStartThreshold = 0.05; // Tight to start
-        this.pinchReleaseThreshold = 0.085; // Loose to hold
+        // --- STABILITY PARAMS ---
+        this.smoothFactor = 0.55; // Higher = Snappier but more jitter, 0.55 is tuned
+        this.pinchOpen = 0.055;  // Threshold to START
+        this.pinchHold = 0.095;  // Threshold to RELEASE (Wide hysteresis)
         
         this.lastTime = 0;
         this.init();
@@ -92,18 +92,18 @@ class HandEngine {
         
         if (results.multiHandLandmarks && results.multiHandedness) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
-                const label = results.multiHandedness[i].label;
+                const label = results.multiHandedness[i].label; // MediaPipe: Left/Right is mirrored
                 detected.add(label);
                 
-                // Draw skeleton (Cyan)
+                // Draw skeleton (Professional Cyan)
                 window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS, { color: 'rgba(0, 255, 204, 0.4)', lineWidth: 2 });
-                window.drawLandmarks(this.ctx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 2 });
+                window.drawLandmarks(this.ctx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 1.5 });
                 
                 this.processHand(label, landmarks);
             });
         }
         
-        // Visibility Sync
+        // Cursor Visibility Logic
         ['Left', 'Right'].forEach(side => {
             const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
             if (detected.has(side)) {
@@ -111,8 +111,8 @@ class HandEngine {
                 const s = this.handStates[side];
                 cursor.style.left = `${s.x}px`;
                 cursor.style.top = `${s.y}px`;
-                // Cursor visual scale based on pinch
-                cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.7 : 1})`;
+                cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.75 : 1})`;
+                cursor.style.opacity = s.isPinching ? '1' : '0.6';
             } else {
                 cursor.style.display = 'none';
                 this.cleanupSide(side);
@@ -126,49 +126,52 @@ class HandEngine {
         const thumb = landmarks[4];
         const index = landmarks[8];
         
-        // --- 2. ADVANCED SMOOTHING ---
+        // --- 1. SMOOTHING (Stickiness) ---
         const rawX = (1 - index.x) * window.innerWidth;
         const rawY = index.y * window.innerHeight;
-        s.x = s.x + (rawX - s.x) * this.smoothFactor;
-        s.y = s.y + (rawY - s.y) * this.smoothFactor;
         
-        // --- 3. HYSTERESIS GESTURE ---
+        // Deadzone logic: don't move if delta is sub-pixel
+        if (Math.abs(rawX - s.x) > 0.5) s.x = s.x + (rawX - s.x) * this.smoothFactor;
+        if (Math.abs(rawY - s.y) > 0.5) s.y = s.y + (rawY - s.y) * this.smoothFactor;
+        
+        // --- 2. GESTURE (Hysteresis) ---
         const d = Math.sqrt(Math.pow(thumb.x - index.x, 2) + Math.pow(thumb.y - index.y, 2));
         const wasPinching = s.isPinching;
         
-        if (!wasPinching && d < this.pinchStartThreshold) s.isPinching = true;
-        else if (wasPinching && d > this.pinchReleaseThreshold) s.isPinching = false;
+        if (!wasPinching && d < this.pinchOpen) s.isPinching = true;
+        else if (wasPinching && d > this.pinchHold) s.isPinching = false;
         
-        // --- 4. STATE MACHINE & TARGET LOCKING ---
+        // --- 3. STATE & LOCKING ---
         if (s.isPinching && !wasPinching) {
-            // New interaction: LOCK TARGET
+            // Check Creation first
             const seed = window.genesisEngine.getSeedAt(s.x, s.y);
             if (seed) {
                 s.mode = 'creating';
                 s.lockTarget = seed;
                 window.genesisEngine.startCreation(seed, side, s.x, s.y);
             } else {
+                // Check Grab
                 const obj = window.handScene.getObjectAt(s.x, s.y);
                 if (obj) {
-                    s.mode = 'manipulating';
+                    s.mode = 'grabbing';
                     this.grabObject(s, obj, side);
                 }
             }
         } else if (!s.isPinching && wasPinching) {
-            // RELEASE TARGET
+            // Release (Finalize)
             if (s.mode === 'creating') window.genesisEngine.finalizeCreation(s.x, s.y);
-            else if (s.mode === 'manipulating') this.releaseObject(s);
+            else if (s.mode === 'grabbing') this.releaseObject(s);
             s.mode = 'idle';
             s.lockTarget = null;
         }
 
-        // --- 5. EXECUTION (LOCKED) ---
+        // --- 4. EXECUTION ---
         if (s.mode === 'creating') {
             window.genesisEngine.updateCreation(s.x, s.y);
-        } else if (s.mode === 'manipulating' && s.lockTarget) {
+        } else if (s.mode === 'grabbing' && s.lockTarget) {
             this.handleManipulation(s);
         } else {
-            // Hover logic (Exclusive to non-interacting hands)
+            // Hover logic (Exclusive to non-active hands)
             const hover = window.handScene.getObjectAt(s.x, s.y);
             window.handScene.objects.forEach(o => { if (!o.grabbedBy.length) o.setHover(o === hover); });
         }
@@ -178,12 +181,14 @@ class HandEngine {
 
     grabObject(handState, target, handSide) {
         handState.lockTarget = target;
-        if (!target.grabbedBy.includes(handSide)) target.grabbedBy.push(handSide.toLowerCase());
+        const sideKey = handSide === 'Left' ? 'left' : 'right';
+        if (!target.grabbedBy.includes(sideKey)) target.grabbedBy.push(sideKey);
+        
         target.state = target.grabbedBy.length === 2 ? 'grabbed_dual' : 'grabbed_single';
         
         if (target.state === 'grabbed_dual') {
             const hL = this.handStates['Left']; const hR = this.handStates['Right'];
-            target.initialDist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2));
+            target.initialDist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)) || 1;
             target.initialAngle = Math.atan2(hR.y - hL.y, hR.x - hL.x) * (180 / Math.PI);
             target.initialScale = target.scale;
             target.initialRot = target.rotationZ;
@@ -192,9 +197,10 @@ class HandEngine {
 
     releaseObject(handState) {
         const target = handState.lockTarget; if (!target) return;
-        const side = handState === this.handStates['Left'] ? 'left' : 'right';
-        const idx = target.grabbedBy.indexOf(side);
+        const sideKey = handState === this.handStates['Left'] ? 'left' : 'right';
+        const idx = target.grabbedBy.indexOf(sideKey);
         if (idx > -1) target.grabbedBy.splice(idx, 1);
+        
         target.state = target.grabbedBy.length === 1 ? 'grabbed_single' : 'idle';
         if (target.state === 'idle') {
             target.vx = (handState.x - handState.prevX) * 0.4;
@@ -210,8 +216,8 @@ class HandEngine {
         } else if (t.state === 'grabbed_dual') {
             const hL = this.handStates['Left']; const hR = this.handStates['Right'];
             t.x = (hL.x + hR.x) / 2; t.y = (hL.y + hR.y) / 2;
-            const dist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2));
-            t.scale = t.initialScale * (dist / target.initialDist); // Use scale for dual transform
+            const dist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)) || 1;
+            t.scale = t.initialScale * (dist / target.initialDist);
             const angle = Math.atan2(hR.y - hL.y, hR.x - hL.x) * (180 / Math.PI);
             t.rotationZ = t.initialRot + (angle - target.initialAngle);
         }

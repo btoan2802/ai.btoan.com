@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Professional Hand Scene v5.0
- * Advanced Materials & Finalization Animations
+ * Btoan AI - Professional Hand Scene v5.5
+ * Refined Interactive Playground: Glassmorphism, Floating objects, and Centralized Seeds.
  */
 
 class HandObject {
@@ -21,11 +21,11 @@ class HandObject {
         
         this.vx = 0;
         this.vy = 0;
-        this.currentScale = 0.5; // Start small for pop-in
+        this.currentScale = 0.6; // Start small for pop-in
         this.targetScale = 1.0;
         
         this.state = 'idle';
-        this.grabbedBy = [];
+        this.grabbedBy = []; // 'left' or 'right'
 
         this.init();
     }
@@ -34,28 +34,22 @@ class HandObject {
         this.el = document.createElement('div');
         this.el.id = `obj-${this.id}`;
         this.el.className = `hand-object ${this.type}`;
-        this.el.style.cssText = `
-            position: absolute; width: ${this.width}px; height: ${this.height}px;
-            left: 0; top: 0; transform-style: preserve-3d; pointer-events: auto;
-        `;
+        this.el.style.cssText = `position:absolute; width:${this.width}px; height:${this.height}px; left:0; top:0; transform-style:preserve-3d;`;
         
         this.el.innerHTML = `
             <div class="obj-content" style="position:absolute; inset:0; 
-                background: rgba(0, 255, 204, 0.05); backdrop-filter: blur(10px);
-                border: 1px solid rgba(0, 255, 204, 0.4); border-radius: 8px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(0,255,204,0.1);
-                transition: border 0.3s, box-shadow 0.3s, background 0.3s;">
-                <div style="position:absolute; top:10px; left:10px; font-size:9px; color:#00ffcc; opacity:0.6; font-family:monospace;">
-                    ${this.type.toUpperCase()}_${Math.floor(this.id % 1000)}
+                background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px);
+                border: 1px solid rgba(0, 255, 204, 0.2); border-radius: 12px;
+                box-shadow: 0 10px 40px rgba(0,0,0,0.4), inset 0 0 10px rgba(0,255,204,0.05);
+                transition: border 0.4s, box-shadow 0.4s;">
+                <div style="position:absolute; bottom:10px; right:12px; font-size:9px; color:#00ffcc; opacity:0.3; font-family:monospace;">
+                    L_ID: ${Math.floor(this.id % 999)}
                 </div>
-                <div class="glow-edge" style="position:absolute; inset:-1px; border:1px solid #00ffcc; opacity:0; transition:0.3s;"></div>
             </div>
         `;
 
         document.getElementById('hand-stage').appendChild(this.el);
-        
-        // Settle animation
-        setTimeout(() => { this.currentScale = 1.05; setTimeout(() => { this.currentScale = 1.0; }, 200); }, 50);
+        setTimeout(() => { this.currentScale = 1.0; }, 50);
     }
 
     update() {
@@ -64,8 +58,11 @@ class HandObject {
         if (this.state === 'idle') {
             this.x += this.vx; this.y += this.vy;
             this.vx *= 0.95; this.vy *= 0.95;
-            // Hover-like breathing
-            this.rotationY = Math.sin(Date.now() / 1500) * 2;
+            
+            // Subtle floating motion
+            const t = Date.now() / 2000;
+            this.rotationY = Math.sin(t) * 3;
+            this.rotationX = Math.cos(t) * 2;
         }
 
         this.applyTransform();
@@ -77,11 +74,10 @@ class HandObject {
 
     setHover(isHover) {
         if (this.grabbedBy.length > 0) return;
-        this.targetScale = isHover ? 1.1 : 1.0;
+        this.targetScale = isHover ? 1.12 : 1.0;
         const content = this.el.querySelector('.obj-content');
-        content.style.background = isHover ? 'rgba(0, 255, 204, 0.1)' : 'rgba(0, 255, 204, 0.05)';
-        content.style.borderColor = isHover ? '#00ffcc' : 'rgba(0, 255, 204, 0.4)';
-        this.el.querySelector('.glow-edge').style.opacity = isHover ? '0.5' : '0';
+        content.style.borderColor = isHover ? 'rgba(0, 255, 204, 0.8)' : 'rgba(0, 255, 204, 0.2)';
+        content.style.boxShadow = isHover ? '0 0 30px rgba(0, 255, 204, 0.3)' : '0 10px 40px rgba(0,0,0,0.4)';
     }
 }
 
@@ -96,6 +92,9 @@ class HandScene {
         if (!stage) return;
         stage.innerHTML = '';
         this.objects = [];
+        
+        // Initial setup
+        this.spawnObject('box', { x: window.innerWidth / 2, y: window.innerHeight * 0.4, w: 200, h: 120 });
     }
 
     spawnObject(type, bounds) {
@@ -106,7 +105,7 @@ class HandScene {
 
     getObjectAt(x, y) {
         let closest = null;
-        let minDist = 120;
+        let minDist = 140;
         for (const obj of this.objects) {
             const d = Math.sqrt(Math.pow(obj.x - x, 2) + Math.pow(obj.y - y, 2));
             if (d < minDist) { minDist = d; closest = obj; }
