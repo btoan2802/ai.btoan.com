@@ -851,8 +851,9 @@
     .seed-node { animation: genesis-pulse 3s infinite ease-in-out; }
   </style>
 
-  <script src="login/SignUp_LogIn_Form.js?v=18"></script>
-  <script src="./app.js?v=18"></script>
+  <script src="facelib/face-api.min.js"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=19"></script>
+  <script src="./app.js?v=19"></script>
   <script src="hand_scene.js?v=9"></script>
   <script src="hand_shapes.js?v=4"></script>
   <script src="hand_engine.js?v=9"></script>
