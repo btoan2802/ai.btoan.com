@@ -38,6 +38,11 @@
   <link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
   <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
 
+  <!-- MediaPipe Core (Moved to head for reliability) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
   <style>
     /* GLOBAL */
 
@@ -795,14 +800,10 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-  
   <script src="facelib/face-api.min.js"></script>
-  <script src="login/SignUp_LogIn_Form.js?v=7"></script>
-  <script src="./app.js?v=7"></script>
-  <script src="hand_module.js?v=1"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=8"></script>
+  <script src="./app.js?v=8"></script>
+  <script src="hand_module.js?v=4"></script>
 </body>
 
 </html>

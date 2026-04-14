@@ -37,20 +37,29 @@ class HandModule {
     }
 
     async init() {
-        this.hands = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-        });
+        console.log("HandModule: Initializing MediaPipe Hands...");
+        try {
+            this.hands = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`
+            });
 
-        this.hands.setOptions({
-            maxNumHands: 2, // Enable 2 hands as seen in video
-            modelComplexity: 1,
-            minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.7
-        });
+            this.hands.setOptions({
+                maxNumHands: 2,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
 
-        this.hands.onResults(this.onResults.bind(this));
+            this.hands.onResults(this.onResults.bind(this));
+            console.log("HandModule: Hands initialized successfully.");
 
-        document.getElementById('toggleHandMode').addEventListener('click', () => this.toggle());
+            const toggleBtn = document.getElementById('toggleHandMode');
+            if (toggleBtn) {
+                toggleBtn.onclick = () => this.toggle();
+            }
+        } catch (e) {
+            console.error("HandModule Init Error:", e);
+        }
     }
 
     async toggle() {
