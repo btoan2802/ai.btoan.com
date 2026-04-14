@@ -8,7 +8,7 @@
   <link rel="icon" href="/favicon.ico">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="./code.css">
+  <link rel="stylesheet" href="./code.css?v=2.5">
 
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
@@ -160,6 +160,6 @@
     });
   </script>
 
-  <script src="./workspace.js"></script>
+  <script src="workspace.js?v=2.5"></script>
 </body>
 </html>
