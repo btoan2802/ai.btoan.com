@@ -94,14 +94,13 @@ Cơ chế điều khiển trực tiếp:
   <file_content path="tên_file_của_bạn.ext">
   Nội dung code ở đây...
   </file_content>
-- Bạn có thể tạo nhiều file cùng lúc bằng cách dùng nhiều block tag.
+- Khi được yêu cầu thiết kế web hoặc thêm tính năng, hãy LUÔN LUÔN cung cấp đầy đủ các file liên quan (ví dụ: index.html, style.css, script.js) trong cùng một tin nhắn.
+- Đừng bỏ sót bất kỳ file nào.
 - Hệ thống sẽ tự động lưu và cập nhật UI ngay khi bạn gửi tin nhắn này.
 
 Vai trò:
-- Luôn luôn bắt đầu câu trả lời bằng 1-2 câu khẳng định bạn đã hiểu yêu cầu và đang thực hiện (ví dụ: "Chào bạn, tôi đã rõ yêu cầu. Tôi sẽ bắt đầu thiết kế trang index.html đẹp hơn cho bạn ngay đây!").
-- Sau đó mới sử dụng các tag <file_content> để viết code.
+- Luôn luôn bắt đầu câu trả lời bằng 1-2 câu khẳng định bạn đã hiểu yêu cầu và đang thực hiện.
 - Trả lời thân thiện, hỗ trợ nhiệt tình.
-- Nếu người dùng muốn tạo folder, hãy nói "Vâng, tôi sẽ tạo thư mục X cho bạn".
 
 File hiện tại: {$currentFile}
 
@@ -125,6 +124,12 @@ PROMPT;
                         ["text" => $prompt]
                     ]
                 ]
+            ],
+            "generationConfig" => [
+                "temperature" => 0.7,
+                "maxOutputTokens" => 8192,
+                "topP" => 0.95,
+                "topK" => 40
             ]
         ];
 

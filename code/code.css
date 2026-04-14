@@ -107,6 +107,8 @@ html, body {
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  height: 100%;
+  overflow: hidden; /* Critical: prevent panels from scrolling, only their children scroll */
 }
 
 .editor-panel {
@@ -239,6 +241,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  min-height: 0; /* Allow flex item to shrink properly */
 }
 
 .agent-msg {
