@@ -337,6 +337,58 @@
       justify-content: center;
       margin-left: 8px;
     }
+
+    /* 🛡️ v10.0 Sidebar Utilities & Profile Fix */
+    .sidebar-utils {
+        padding: 10px 15px;
+        border-bottom: 1px solid #eee;
+    }
+    .util-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 15px;
+        border-radius: 12px;
+        color: #475569;
+        text-decoration: none !important;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.2s;
+        margin-bottom: 5px;
+        background: #f8fafc;
+    }
+    .util-item:hover {
+        background: #eff6ff;
+        color: #2b7cff;
+        transform: translateX(5px);
+    }
+    .util-item i { font-size: 18px; }
+    
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        max-width: 220px;
+        padding: 5px 10px;
+        border-radius: 20px;
+        transition: background 0.2s;
+    }
+    .user-info:hover { background: rgba(0,0,0,0.05); }
+    .avatar { 
+        width: 35px !important; 
+        height: 35px !important; 
+        flex-shrink: 0 !important; 
+        border-radius: 50% !important;
+        object-fit: cover !important;
+    }
+    .user-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-size: 14px;
+        font-weight: 600;
+    }
   </style>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -484,6 +536,17 @@
       <div id="sidebar" class="sidebar">
         <div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
 
+        <div class="sidebar-utils">
+          <a href="./code/code.php" class="util-item">
+            <i class="bi bi-code-slash" style="color:#7c3aed;"></i>
+            <span>Btoan AI Code</span>
+          </a>
+          <div id="toggleHandMode" class="util-item" style="cursor:pointer;">
+            <i class="bi bi-hand-index-thumb" style="color:#2b7cff;"></i>
+            <span>Hand Interaction</span>
+          </div>
+        </div>
+
         <div class="sidebar-title">
           Lịch sử chat
         </div>
@@ -512,17 +575,6 @@
 
           <div class="d-flex align-items-center gap-2">
             <div class="fw-bold">Btoan AI</div>
-
-            <a href="./code/code.php" class="code-entry-btn">
-              <i class="bi bi-code-slash"></i>
-              <span>Code</span>
-            </a>
-
-            <!-- ✅ HAND MODE BTN -->
-            <button id="toggleHandMode" class="code-entry-btn" style="background:#edf2ff; color:#2b7cff; border:none; margin-left:8px;">
-              <i class="bi bi-hand-index-thumb"></i>
-              <span>Hand Mode</span>
-            </button>
           </div>
 
           <div class="ms-auto d-flex align-items-center">
