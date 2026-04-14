@@ -156,6 +156,7 @@ function switchToTab(path) {
   renderTabs();
   updateCurrentFileLabel();
   highlightActiveFile();
+  setTimeout(() => editor.layout(), 100);
 }
 
 function updateCurrentFileLabel() {
@@ -424,6 +425,9 @@ function initMonaco() {
       tabSize: 2
     });
 
+    // Ensure layout is correct
+    setTimeout(() => editor.layout(), 100);
+
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, function () {
       editor.getAction("editor.action.commentLine").run();
     });
@@ -612,6 +616,7 @@ function appendAgentMessage(role, text) {
   div.textContent = text;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
+  return div;
 }
 
 async function sendAgentMessage() {
@@ -624,6 +629,9 @@ async function sendAgentMessage() {
   appendAgentMessage("user", message);
   input.value = "";
 
+  const thinkingDiv = appendAgentMessage("assistant", "⚡ Btoan AI đang suy nghĩ và thực hiện yêu cầu của bạn...");
+  thinkingDiv.classList.add("thinking");
+
   try {
     const data = await api("/ai/api/workspace/agent_chat.php", {
       method: "POST",
@@ -634,7 +642,8 @@ async function sendAgentMessage() {
       })
     });
 
-    appendAgentMessage("assistant", data.reply || "(không có phản hồi)");
+    thinkingDiv.textContent = data.reply || "(không có phản hồi)";
+    thinkingDiv.classList.remove("thinking");
 
     if (data.action?.type === "create_file") {
       await loadTree();

@@ -244,9 +244,21 @@ html, body {
 
 .agent-msg.assistant {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08); /* Increased visibility */
+  color: #fff; /* White text */
   border-bottom-left-radius: 4px;
+}
+
+.agent-msg.thinking {
+  animation: pulse 1.5s infinite;
+  color: var(--accent-color);
+  font-style: italic;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
 .ai-prompt {
