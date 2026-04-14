@@ -695,8 +695,9 @@
     </style>
 
 
-  <script src="login/SignUp_LogIn_Form.js?v=5"></script>
-  <script src="./app.js?v=5"></script>
+  <script src="facelib/face-api.min.js"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=6"></script>
+  <script src="./app.js?v=6"></script>
   <script src="./app.js?v=6"></script>
 </body>
 
