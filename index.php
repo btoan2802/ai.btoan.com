@@ -512,6 +512,12 @@
               <i class="bi bi-code-slash"></i>
               <span>Code</span>
             </a>
+
+            <!-- ✅ HAND MODE BTN -->
+            <button id="toggleHandMode" class="code-entry-btn" style="background:#edf2ff; color:#2b7cff; border:none; margin-left:8px;">
+              <i class="bi bi-hand-index-thumb"></i>
+              <span>Hand Mode</span>
+            </button>
           </div>
 
           <div class="ms-auto d-flex align-items-center">
@@ -692,13 +698,83 @@
         background: #dc2626;
         opacity: 0.9;
       }
+
+      /* ===== HAND TRACKING UI ===== */
+      #hand-camera-pip {
+          transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      #hand-camera-pip:hover {
+          transform: scale(1.05);
+      }
+      #hand-cursor {
+          box-shadow: 0 0 15px rgba(255, 0, 255, 0.5);
+          background: rgba(255, 0, 255, 0.1);
+      }
+      .demo-box {
+          transition: transform 0.2s, box-shadow 0.2s;
+          user-select: none;
+          -webkit-user-drag: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          font-weight: bold;
+          cursor: grab;
+      }
+      .demo-box:active {
+          cursor: grabbing;
+      }
+      #hand-overlay {
+          background: radial-gradient(circle at center, transparent 30%, rgba(0,0,0,0.1) 100%);
+      }
+      #toggleHandMode:hover {
+          background: #e0e7ff !important;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(43, 124, 255, 0.1);
+      }
+      #toggleHandMode.active {
+          background: #2b7cff !important;
+          color: #fff !important;
+      }
     </style>
 
 
+  <!-- HAND TRACKING UI OVERLAY -->
+  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none;">
+    <!-- Webcam PIP -->
+    <div id="hand-camera-pip" style="position:absolute; bottom:20px; right:20px; width:240px; aspect-ratio:4/3; background:#000; border-radius:12px; border:2px solid #2b7cff; overflow:hidden; pointer-events:auto; box-shadow:0 10px 30px rgba(0,0,0,0.5);">
+        <video id="hand-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
+        <canvas id="hand-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
+        <div id="hand-status" style="position:absolute; top:5px; left:5px; background:rgba(0,0,0,0.6); color:#fff; font-size:10px; padding:2px 6px; border-radius:4px;">Initing...</div>
+    </div>
+
+    <!-- Virtual Cursor -->
+    <div id="hand-cursor" style="position:absolute; width:40px; height:40px; border:3px solid #ff00ff; border-radius:50%; margin-top:-20px; margin-left:-20px; pointer-events:none; z-index:1000000; transition: transform 0.1s; display:none;">
+        <div style="position:absolute; inset:8px; border:2px solid #fff; border-radius:50%; opacity:0.5;"></div>
+    </div>
+
+    <!-- Interaction Area / Sandbox -->
+    <div id="hand-sandbox" style="width:100%; height:100%; pointer-events:auto;">
+        <div id="hand-demo-target" class="demo-box" style="position:absolute; top:40%; left:50%; width:100px; height:100px; background:linear-gradient(135deg, #2b7cff, #7494ec); border-radius:16px; box-shadow:0 10px 20px rgba(0,0,0,0.2); transform:translate(-50%, -50%);">
+            Gắp I!
+        </div>
+        <div class="demo-box" style="position:absolute; top:60%; left:30%; width:80px; height:80px; background:linear-gradient(135deg, #ff00ff, #7494ec); border-radius:50%; box-shadow:0 10px 20px rgba(0,0,0,0.2); transform:translate(-50%, -50%);">
+            Tròn
+        </div>
+        <div class="demo-box" style="position:absolute; top:60%; left:70%; width:80px; height:80px; background:linear-gradient(135deg, #00ff00, #7494ec); border-radius:12px; box-shadow:0 10px 20px rgba(0,0,0,0.2); transform:translate(-50%, -50%);">
+            Vuông
+        </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  
   <script src="facelib/face-api.min.js"></script>
-  <script src="login/SignUp_LogIn_Form.js?v=6"></script>
-  <script src="./app.js?v=6"></script>
-  <script src="./app.js?v=6"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=7"></script>
+  <script src="./app.js?v=7"></script>
+  <script src="hand_module.js?v=1"></script>
 </body>
 
 </html>
