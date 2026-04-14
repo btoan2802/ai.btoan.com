@@ -30,6 +30,7 @@
         <label class="top-btn" for="uploadWorkspaceFolder">Upload Folder</label>
         <input id="uploadWorkspaceFolder" type="file" webkitdirectory directory multiple hidden>
         <a href="/ai/api/workspace/download.php" class="top-btn">Download Project</a>
+        <button id="runBtn" class="top-btn primary">Run / Preview</button>
         <button id="saveFileBtn" class="top-btn primary">Save</button>
       </div>
     </header>
@@ -53,6 +54,16 @@
         <div id="tabsBar" class="tabs-bar"></div>
         <div id="editor" class="editor-host"></div>
       </main>
+
+      <aside id="webviewPanel" class="webview-panel">
+        <div class="panel-header">
+          <span>PREVIEW / WEBVIEW</span>
+          <button id="closeWebviewBtn">×</button>
+        </div>
+        <div class="preview-host">
+          <iframe id="previewIframe" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
+        </div>
+      </aside>
 
       <aside class="assistant-panel">
         <div class="panel-header">

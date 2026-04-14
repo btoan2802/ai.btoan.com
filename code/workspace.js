@@ -77,9 +77,28 @@ function getLanguageFromPath(path) {
     md: "markdown",
     txt: "plaintext",
     sql: "sql",
-    xml: "xml"
+    xml: "xml",
+    cpp: "cpp",
+    java: "java"
   };
   return map[ext] || "plaintext";
+}
+
+function getIconClass(node) {
+  if (node.type === "dir") return "bi-folder-fill";
+  const ext = node.name.split(".").pop().toLowerCase();
+  const map = {
+    html: "bi-filetype-html",
+    css: "bi-filetype-css",
+    js: "bi-filetype-js",
+    php: "bi-filetype-php",
+    json: "bi-filetype-json",
+    sql: "bi-filetype-sql",
+    cpp: "bi-filetype-cpp",
+    java: "bi-filetype-java",
+    py: "bi-filetype-py"
+  };
+  return map[ext] || "bi-file-earmark-code";
 }
 
 function fileName(path) {
@@ -161,7 +180,7 @@ function renderTree(nodes, container, depth = 0) {
 
       const label = document.createElement("span");
       label.className = "tree-label";
-      label.textContent = `📁 ${node.name}`;
+      label.innerHTML = `<i class="bi ${getIconClass(node)}"></i> ${node.name}`;
 
       row.appendChild(toggle);
       row.appendChild(label);
@@ -182,7 +201,7 @@ function renderTree(nodes, container, depth = 0) {
         };
       }
     } else {
-      row.innerHTML = `<span class="tree-label">📄 ${node.name}</span>`;
+      row.innerHTML = `<span class="tree-label"><i class="bi ${getIconClass(node)}"></i> ${node.name}</span>`;
       row.onclick = () => openFile(node.path);
       container.appendChild(row);
     }
@@ -238,6 +257,36 @@ async function saveCurrentFile() {
   });
 
   alert("Đã lưu: " + currentFile);
+}
+
+function runProject() {
+  const body = document.querySelector(".code-body");
+  body.classList.add("with-preview");
+  
+  const iframe = document.getElementById("previewIframe");
+  if (!iframe) return;
+
+  // If current file is HTML, preview it. If it's JS/CSS, try to find an index.html or just show current as text.
+  const content = editor.getValue();
+  const ext = currentFile ? currentFile.split(".").pop().toLowerCase() : "";
+
+  if (ext === "html") {
+      iframe.srcdoc = content;
+  } else {
+      // Basic text preview for non-html
+      iframe.srcdoc = `<html><body style="background:#fff; color:#000; font-family:sans-serif; padding:20px;">
+        <h3>File: ${currentFile || "Unknown"}</h3>
+        <pre>${content.replace(/</g, "&lt;")}</pre>
+      </body></html>`;
+  }
+}
+
+function togglePreview() {
+    const body = document.querySelector(".code-body");
+    body.classList.toggle("with-preview");
+    if (body.classList.contains("with-preview")) {
+        runProject();
+    }
 }
 
 async function searchWorkspace() {
@@ -505,6 +554,12 @@ if (agentInput) {
       e.target.value = "";
     });
   }
+
+  const runBtn = document.getElementById("runBtn");
+  const closeWebviewBtn = document.getElementById("closeWebviewBtn");
+  
+  if (runBtn) runBtn.onclick = togglePreview;
+  if (closeWebviewBtn) closeWebviewBtn.onclick = togglePreview;
 });
 function appendAgentMessage(role, text) {
   const box = document.getElementById("agentChatHistory");
@@ -542,10 +597,32 @@ async function sendAgentMessage() {
     if (data.action?.type === "create_file") {
       await loadTree();
       await openFile(data.action.path);
+    } else if (data.action?.type === "create_folder") {
+      await loadTree();
     }
 
-    if (data.action?.type === "create_folder") {
-      await loadTree();
+    // New: Check for structured tags in reply
+    if (data.reply) {
+        const fileBlockRegex = /<file_content\s+path=["'](.+?)["']\s*>([\s\S]*?)<\/file_content>/gi;
+        let match;
+        while ((match = fileBlockRegex.exec(data.reply)) !== null) {
+            const path = match[1];
+            const content = match[2].trim();
+            
+            // Apply it to the workspace!
+            await api("/ai/api/workspace/save.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ path, content })
+            });
+
+            appendAgentMessage("assistant", `⚡ Đã tự động cập nhật file: ${path}`);
+            await loadTree();
+            await openFile(path);
+            if (document.querySelector(".code-body").classList.contains("with-preview")) {
+                runProject();
+            }
+        }
     }
   } catch (e) {
     appendAgentMessage("assistant", "Lỗi: " + e.message);
