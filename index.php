@@ -744,55 +744,53 @@
     </style>
 
 
-  <!-- 🚀 PROFESSIONAL HAND PLAYGROUND v5.5 (STABLE SINGLE-HAND) -->
-  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: radial-gradient(circle at center, #0a1128 0%, #01040a 100%); overflow:hidden;">
+  <!-- 🚀 AIR MOUSE & AIR DRAW SYSTEM v7.0 -->
+  <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.1); overflow:hidden;">
     
-    <!-- Subtle Ambient Glows -->
-    <div style="position:absolute; inset:0; background: radial-gradient(40% 40% at 80% 20%, rgba(0, 255, 204, 0.05) 0%, transparent 100%); pointer-events:none;"></div>
-    <div style="position:absolute; inset:0; background: radial-gradient(40% 40% at 20% 80%, rgba(0, 255, 204, 0.03) 0%, transparent 100%); pointer-events:none;"></div>
-    
-    <!-- Organic Playground Grid -->
-    <div id="playground-grid" style="position:absolute; inset:0; background-image: 
-        linear-gradient(rgba(0, 255, 204, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(0, 255, 204, 0.02) 1px, transparent 1px);
-        background-size: 80px 80px; pointer-events:none; opacity: 1;"></div>
+    <!-- Drawing Canvas Layer -->
+    <canvas id="draw-canvas" style="position:absolute; inset:0; pointer-events:none; z-index:10;"></canvas>
 
-    <!-- Minimalist HUD -->
+    <!-- Professional HUD -->
     <div id="hud-container" style="position:absolute; inset:0; pointer-events:none; font-family:'JetBrains Mono', monospace;">
-        <div style="position:absolute; top:40px; left:40px; pointer-events:none;">
-            <div style="font-size:18px; font-weight:900; color:#00ffcc; letter-spacing:8px; opacity:0.8;">PLAYGROUND_OS</div>
-            <div id="hud-system-status" style="font-size:10px; color:#00ffcc; opacity:0.4; margin-top:5px;">// STATUS: CALIBRATED // HANDS_SYNC: ACTIVE</div>
-        </div>
-        <div style="position:absolute; top:40px; right:40px; text-align:right;">
-             <div id="fps-counter" style="color:#00ffcc; font-size:11px; opacity:0.5;">FPS_LOCK: 60</div>
+        <!-- Top Status Bar -->
+        <div style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:center; pointer-events:none;">
+            <div id="mode-badge-container" style="display:flex; align-items:center; gap:15px;">
+                <div id="hand-mode-label" style="font-size:14px; font-weight:900; color:#00ffcc; background:rgba(0,0,0,0.8); padding:6px 15px; border:1px solid #00ffcc; letter-spacing:2px; box-shadow:0 0 15px rgba(0,255,204,0.3);">NO_HAND</div>
+                <div id="interaction-status" style="font-size:10px; color:#00ffcc; opacity:0.6;">SYSTEM: READY</div>
+            </div>
+            <div id="drawing-controls" style="display:none; pointer-events:auto; gap:10px;">
+                <button onclick="window.handDraw.clear()" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:5px 12px; font-size:11px; cursor:pointer; font-family:inherit;">CLEAR CANVAS</button>
+                <button onclick="window.handDraw.undo()" style="background:rgba(0,0,0,0.6); border:1px solid #00ffcc; color:#00ffcc; padding:5px 12px; font-size:11px; cursor:pointer; font-family:inherit;">UNDO</button>
+            </div>
+            <div style="text-align:right;">
+                <div id="fps-counter" style="color:#00ffcc; font-size:11px; opacity:0.5;">FPS: --</div>
+            </div>
         </div>
     </div>
 
-    <!-- Interaction Stage v2 -->
-    <div id="hand-stage" style="position:absolute; inset:0; pointer-events:auto; perspective: 2000px; transform-style: preserve-3d;">
-        <!-- Genesis Seeds & Objects -->
+    <!-- Hand Cursors 3.0 -->
+    <div id="cursor-left" class="hand-cursor" style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
+        <div style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);"></div>
+        <div class="cursor-label" style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:8px; color:#00ffcc;">L_HAND</div>
     </div>
-
-    <!-- Cursor 3.0 (Organic & Fluid) -->
-    <div id="cursor-left" class="hand-cursor" style="position:absolute; width:120px; height:120px; display:none; pointer-events:none; z-index:1000000;">
-        <div style="position:absolute; inset:35px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 20px rgba(0,255,204,0.4);"></div>
-        <div style="position:absolute; inset:48px; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px #fff;"></div>
-        <div class="cursor-status-label" style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:8px; color:#00ffcc; opacity:0.6;">L_TRACK</div>
-    </div>
-    <div id="cursor-right" class="hand-cursor" style="position:absolute; width:120px; height:120px; display:none; pointer-events:none; z-index:1000000;">
-        <div style="position:absolute; inset:35px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 20px rgba(0,255,204,0.4);"></div>
-        <div style="position:absolute; inset:48px; width:4px; height:4px; background:#fff; border-radius:50%; top:50%; left:50%; transform:translate(-50%, -50%); box-shadow:0 0 10px #fff;"></div>
-        <div class="cursor-status-label" style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:8px; color:#00ffcc; opacity:0.6;">R_TRACK</div>
+    <div id="cursor-right" class="hand-cursor" style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
+        <div style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);"></div>
+        <div class="cursor-label" style="position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:8px; color:#00ffcc;">R_HAND</div>
     </div>
 
     <!-- Professional Preview -->
-    <div id="hand-camera-container" style="position:absolute; bottom:40px; left:40px; width:220px; aspect-ratio:4/3; background:#000; border-radius:15px; border:1px solid rgba(0, 255, 204, 0.3); overflow:hidden; pointer-events:auto; box-shadow:0 20px 60px rgba(0,0,0,0.6);">
-        <video id="hand-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1); opacity:0.8;"></video>
+    <div id="hand-camera-container" style="position:absolute; bottom:30px; left:30px; width:220px; aspect-ratio:4/3; background:#000; border-radius:15px; border:1px solid rgba(0, 255, 204, 0.4); overflow:hidden; pointer-events:auto; box-shadow:0 15px 40px rgba(0,0,0,0.6);">
+        <video id="hand-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1); opacity:0.8; filter: brightness(1.1) contrast(1.1);"></video>
         <canvas id="hand-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
-        <div style="position:absolute; top:10px; right:10px; width:6px; height:6px; background:#00ffcc; border-radius:50%; box-shadow:0 0 8px #00ffcc;"></div>
-        <button onclick="window.handEngine.stop()" style="position:absolute; bottom:5px; right:10px; background:none; border:none; color:#00ffcc; opacity:0.5; cursor:pointer;"><i class="bi bi-x"></i></button>
+        <button onclick="window.handEngine.stop()" style="position:absolute; top:10px; right:10px; background:none; border:none; color:#00ffcc; cursor:pointer; opacity:0.5;"><i class="bi bi-x-circle"></i></button>
     </div>
   </div>
+
+  <style>
+    #hand-overlay.drawing-active #cursor-right { transform: translate(-50%, -50%) scale(1.3); }
+    #hand-overlay.drawing-active #cursor-right div { border-color: #fff; box-shadow: 0 0 20px #fff; }
+    .hand-cursor { transition: transform 0.1s; }
+  </style>
 
   <style>
     @keyframes genesis-pulse { 0% { opacity:0.4; transform: scale(1); } 50% { opacity:0.8; transform: scale(1.1); } 100% { opacity:0.4; transform: scale(1); } }
@@ -807,11 +805,11 @@
     .seed-node { animation: genesis-pulse 3s infinite ease-in-out; }
   </style>
 
-  <script src="login/SignUp_LogIn_Form.js?v=12"></script>
-  <script src="./app.js?v=12"></script>
-  <script src="hand_scene.js?v=3"></script>
-  <script src="hand_genesis.js?v=2"></script>
-  <script src="hand_engine.js?v=3"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=13"></script>
+  <script src="./app.js?v=13"></script>
+  <script src="hand_scene.js?v=4"></script>
+  <script src="hand_draw.js?v=1"></script>
+  <script src="hand_engine.js?v=4"></script>
 </body>
 
 </html>

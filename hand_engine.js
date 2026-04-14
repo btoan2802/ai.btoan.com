@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Professional Hand Engine v6.0 (STABLE)
- * Advanced Multi-stage Jitter Filtering & Mode-Specific Smoothing.
+ * Btoan AI - Professional Hand Engine v7.0 (AIR MOUSE & DRAW)
+ * Refactored for 1-hand Mouse and 2-hand Draw logic.
  */
 
 class HandEngine {
@@ -13,18 +13,23 @@ class HandEngine {
         this.camera = null;
         this.isActive = false;
         
+        // --- GLOBAL STATE ---
+        this.mode = 'NO_HAND'; // 'NO_HAND', 'MOUSE', 'DRAW'
         this.handStates = {
-            'Left': { x: 0, y: 0, isPinching: false, lockTarget: null, mode: 'idle', prevX: 0, prevY: 0 },
-            'Right': { x: 0, y: 0, isPinching: false, lockTarget: null, mode: 'idle', prevX: 0, prevY: 0 }
+            'Left': { x: 0, y: 0, isPinching: false, prevPinching: false, rawX: 0, rawY: 0 },
+            'Right': { x: 0, y: 0, isPinching: false, prevPinching: false, rawX: 0, rawY: 0 }
         };
         
-        // --- PRECISION TUNING ---
-        this.smoothIDLE = 0.55;    // Snappy when moving
-        this.smoothCREATE = 0.25;  // Heavy damping when building
-        this.pinchOpen = 0.052;    // Threshold to START
-        this.pinchHold = 0.090;    // Threshold to RELEASE (Hysteresis)
-        
+        // --- CONFIG ---
+        this.smoothFactor = 0.55;
+        this.pinchThreshold = 0.055;
+        this.modeStabilityFrames = 0;
         this.lastTime = 0;
+        
+        // --- CLICK DEBOUNCE ---
+        this.lastClickTime = 0;
+        this.clickCooldown = 400; // ms
+
         this.init();
     }
 
@@ -70,19 +75,7 @@ class HandEngine {
         if (this.camera) this.camera.stop();
         this.isActive = false;
         document.getElementById('hand-overlay').style.display = 'none';
-        this.cleanupAll();
-    }
-
-    cleanupAll() {
-        ['Left', 'Right'].forEach(side => this.cleanupSide(side));
-    }
-
-    cleanupSide(side) {
-        const s = this.handStates[side];
-        if (s.mode === 'creating') window.genesisEngine.cancel();
-        if (s.lockTarget) this.releaseObject(s);
-        s.mode = 'idle';
-        s.lockTarget = null;
+        this.mode = 'NO_HAND';
     }
 
     onResults(results) {
@@ -92,16 +85,52 @@ class HandEngine {
         
         if (results.multiHandLandmarks && results.multiHandedness) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
-                const label = results.multiHandedness[i].label; 
+                const label = results.multiHandedness[i].label; // 'Left' or 'Right'
                 detected.add(label);
                 
-                // Professional Skeleton Rendering
+                // Draw skeleton (Professional Cyan)
                 window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS, { color: 'rgba(255, 255, 255, 0.2)', lineWidth: 1 });
                 window.drawLandmarks(this.ctx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 1 });
                 
                 this.processHand(label, landmarks);
             });
         }
+        
+        // --- MODE MANAGEMENT ---
+        this.updateMode(detected);
+        this.syncUI(detected);
+        
+        this.ctx.restore();
+    }
+
+    updateMode(detected) {
+        const count = detected.size;
+        let targetMode = 'NO_HAND';
+        if (count === 1) targetMode = 'MOUSE';
+        else if (count === 2) targetMode = 'DRAW';
+
+        if (this.mode !== targetMode) {
+            this.modeStabilityFrames++;
+            if (this.modeStabilityFrames > 5) { // Needs 5 frames of stability
+                const oldMode = this.mode;
+                this.mode = targetMode;
+                this.modeStabilityFrames = 0;
+                
+                // Cleanup when leaving Draw mode
+                if (oldMode === 'DRAW') window.handDraw.endStroke();
+            }
+        } else {
+            this.modeStabilityFrames = 0;
+        }
+    }
+
+    syncUI(detected) {
+        const overlay = document.getElementById('hand-overlay');
+        const badge = document.getElementById('hand-mode-label');
+        const controls = document.getElementById('drawing-controls');
+        
+        badge.innerText = this.mode;
+        controls.style.display = (this.mode === 'DRAW') ? 'flex' : 'none';
         
         ['Left', 'Right'].forEach(side => {
             const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
@@ -110,15 +139,22 @@ class HandEngine {
                 const s = this.handStates[side];
                 cursor.style.left = `${s.x}px`;
                 cursor.style.top = `${s.y}px`;
-                // Visual feedback for interaction
-                cursor.style.backgroundColor = s.isPinching ? 'rgba(0, 255, 204, 0.2)' : 'transparent';
-                cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.8 : 1})`;
+                
+                // Mouse Clicking Feedback
+                if (this.mode === 'MOUSE') {
+                   cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.7 : 1})`;
+                }
             } else {
                 cursor.style.display = 'none';
-                this.cleanupSide(side);
             }
         });
-        this.ctx.restore();
+        
+        // Handle Drawing Visual State
+        if (this.mode === 'DRAW' && this.handStates['Left'].isPinching) {
+            overlay.classList.add('drawing-active');
+        } else {
+            overlay.classList.remove('drawing-active');
+        }
     }
 
     processHand(side, landmarks) {
@@ -126,128 +162,94 @@ class HandEngine {
         const thumb = landmarks[4];
         const index = landmarks[8];
         
-        // --- 1. MODE-DRIVEN SMOOTHING ---
-        const factor = (s.mode === 'creating') ? this.smoothCREATE : this.smoothIDLE;
+        // Smoothing
         const rawX = (1 - index.x) * window.innerWidth;
         const rawY = index.y * window.innerHeight;
+        s.x = s.x + (rawX - s.x) * this.smoothFactor;
+        s.y = s.y + (rawY - s.y) * this.smoothFactor;
         
-        // Deadzone check (0.3px) to prevent sub-pixel co-giật
-        if (Math.abs(rawX - s.x) > 0.3) s.x = s.x + (rawX - s.x) * factor;
-        if (Math.abs(rawY - s.y) > 0.3) s.y = s.y + (rawY - s.y) * factor;
-        
-        // --- 2. GESTURE (Hysteresis) ---
+        // Pinch Detection
         const d = Math.sqrt(Math.pow(thumb.x - index.x, 2) + Math.pow(thumb.y - index.y, 2));
-        const wasPinching = s.isPinching;
+        s.prevPinching = s.isPinching;
+        s.isPinching = d < this.pinchThreshold;
         
-        if (!wasPinching && d < this.pinchOpen) s.isPinching = true;
-        else if (wasPinching && d > this.pinchHold) s.isPinching = false;
-        
-        // --- 3. STATE LOCKING ---
-        if (s.isPinching && !wasPinching) {
-            // New Interaction Lock
-            const seed = window.genesisEngine.getSeedAt(s.x, s.y);
-            if (seed) {
-                s.mode = 'creating';
-                s.lockTarget = seed;
-                window.genesisEngine.startInteraction(seed, side, s.x, s.y);
-            } else {
-                const obj = window.handScene.getObjectAt(s.x, s.y);
-                if (obj) {
-                    s.mode = 'grabbing';
-                    this.grabObject(s, obj, side);
-                }
+        // --- INTERACTION LOGIC ---
+        if (this.mode === 'MOUSE') {
+            this.handleMouseMode(s);
+        } else if (this.mode === 'DRAW') {
+            this.handleDrawMode();
+        }
+    }
+
+    handleMouseMode(s) {
+        // Trigger Click on Release (Tap Gesture)
+        if (s.prevPinching && !s.isPinching) {
+            const now = Date.now();
+            if (now - this.lastClickTime > this.clickCooldown) {
+                this.lastClickTime = now;
+                this.virtualClick(s.x, s.y);
             }
-        } else if (!s.isPinching && wasPinching) {
-            // Release (Finalize)
-            if (s.mode === 'creating') window.genesisEngine.finalize();
-            else if (s.mode === 'grabbing') this.releaseObject(s);
-            s.mode = 'idle';
-            s.lockTarget = null;
-        }
-
-        // --- 4. EXECUTION ---
-        if (s.mode === 'creating') {
-            window.genesisEngine.updateInteraction(s.x, s.y);
-        } else if (s.mode === 'grabbing' && s.lockTarget) {
-            this.handleManipulation(s);
-        } else {
-            const hover = window.handScene.getObjectAt(s.x, s.y);
-            window.handScene.objects.forEach(o => { if (!o.grabbedBy.length) o.setHover(o === hover); });
-        }
-        
-        s.prevX = s.x; s.prevY = s.y;
-    }
-
-    grabObject(handState, target, handSide) {
-        handState.lockTarget = target;
-        const sideKey = handSide === 'Left' ? 'left' : 'right';
-        if (!target.grabbedBy.includes(sideKey)) target.grabbedBy.push(sideKey);
-        target.state = target.grabbedBy.length === 2 ? 'grabbed_dual' : 'grabbed_single';
-        
-        if (target.state === 'grabbed_dual') {
-            const hL = this.handStates['Left']; const hR = this.handStates['Right'];
-            target.initialDist = Math.sqrt(Math.pow(hL.x-hR.x, 2) + Math.pow(hL.y-hR.y, 2)) || 1;
-            target.initialAngle = Math.atan2(hR.y-hL.y, hR.x-hL.x) * (180/Math.PI);
-            target.initialScale = target.scale;
-            target.initialRot = target.rotationZ;
         }
     }
 
-    releaseObject(handState) {
-        const target = handState.lockTarget;
-        if (!target) return;
-
-        const sideKey = (handState === this.handStates['Left']) ? 'left' : 'right';
+    handleDrawMode() {
+        const trigger = this.handStates['Left']; // Trigger hand
+        const pen = this.handStates['Right'];    // Pen hand
         
-        // Safety guard for grabbedBy array
-        if (target.grabbedBy && Array.isArray(target.grabbedBy)) {
-            const idx = target.grabbedBy.indexOf(sideKey);
-            if (idx > -1) target.grabbedBy.splice(idx, 1);
-            
-            // Re-evaluate state
-            target.state = target.grabbedBy.length === 1 ? 'grabbed_single' : 'idle';
-        } else {
-            target.state = 'idle';
+        if (trigger.isPinching && !trigger.prevPinching) {
+            // Start Stroke
+            window.handDraw.startStroke(pen.x, pen.y);
+        } else if (trigger.isPinching) {
+            // Add Point
+            window.handDraw.addPoint(pen.x, pen.y);
+        } else if (!trigger.isPinching && trigger.prevPinching) {
+            // End Stroke
+            window.handDraw.endStroke();
         }
-
-        if (target.state === 'idle') {
-            target.vx = (handState.x - handState.prevX) * 0.4;
-            target.vy = (handState.y - handState.prevY) * 0.4;
-        }
-
-        handState.lockTarget = null;
     }
 
-    handleManipulation(handState) {
-        const t = handState.lockTarget;
-        if (!t) return;
+    virtualClick(x, y) {
+        // Find element at point
+        const el = document.elementFromPoint(x, y);
+        if (!el) return;
 
-        if (t.state === 'grabbed_single') {
-            t.x = handState.x;
-            t.y = handState.y;
-        } else if (t.state === 'grabbed_dual') {
-            const hL = this.handStates['Left'];
-            const hR = this.handStates['Right'];
-            
-            // Midpoint position
-            t.x = (hL.x + hR.x) / 2;
-            t.y = (hL.y + hR.y) / 2;
-            
-            const dist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)) || 1;
-            
-            // Use safe initialDist reference
-            if (t.initialDist) {
-                t.scale = t.initialScale * (dist / t.initialDist);
-            }
-            
-            const angle = Math.atan2(hR.y - hL.y, hR.x - hL.x) * (180 / Math.PI);
-            t.rotationZ = t.initialRot + (angle - t.initialAngle);
+        console.log("Virtual Click at:", x, y, "on element:", el);
+        
+        // Dispatch sequence
+        const props = { bubbles: true, cancelable: true, view: window };
+        el.dispatchEvent(new MouseEvent('mousedown', props));
+        el.dispatchEvent(new MouseEvent('mouseup', props));
+        el.click();
+        
+        // Visual Ripple Feedback
+        this.createRipple(x, y);
+    }
+
+    createRipple(x, y) {
+        const ripple = document.createElement('div');
+        ripple.style.cssText = `
+            position:absolute; left:${x}px; top:${y}px; width:10px; height:10px;
+            background:rgba(0, 255, 204, 0.4); border-radius:50%; pointer-events:none;
+            transform:translate(-50%, -50%); animation: ripple-anim 0.4s ease-out forwards;
+            z-index:9999999;
+        `;
+        document.body.appendChild(ripple);
+        setTimeout(() => ripple.remove(), 400);
+        
+        if (!document.getElementById('ripple-css')) {
+            const style = document.createElement('style');
+            style.id = 'ripple-css';
+            style.textContent = `@keyframes ripple-anim { to { width: 100px; height: 100px; opacity: 0; } }`;
+            document.head.appendChild(style);
         }
     }
 
     loop() {
-        if (window.handScene) window.handScene.update();
+        if (this.isActive) {
+            // External updates handled in loop
+        }
         requestAnimationFrame(() => this.loop());
     }
 }
+
 window.handEngine = new HandEngine();
