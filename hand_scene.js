@@ -1,33 +1,30 @@
 /**
- * Btoan AI - Professional Hand Scene v4.0
- * Handles interactable objects, animations, and visual polish.
+ * Btoan AI - Professional Hand Scene v4.5
+ * Glassmorphism materials and advanced visual polish.
  */
 
 class HandObject {
     constructor(id, type, config) {
         this.id = id;
-        this.type = type; // 'box', 'sphere', 'panel'
-        this.el = null;
-        this.config = config;
+        this.type = type;
+        this.isNew = config.isNew || false;
         
         // Physical state
         this.x = config.x || window.innerWidth / 2;
         this.y = config.y || window.innerHeight / 2;
         this.z = 0;
-        this.rotationX = 0;
-        this.rotationY = 0;
-        this.rotationZ = 0;
-        this.scale = 1;
+        this.rotationX = config.rotationX || 0;
+        this.rotationY = config.rotationY || 0;
+        this.rotationZ = config.rotationZ || 0;
+        this.scale = config.scale || 1;
         
-        // Velocity for inertia
         this.vx = 0;
         this.vy = 0;
-        this.targetScale = 1;
-        this.currentScale = 1;
+        this.targetScale = this.scale;
+        this.currentScale = this.isNew ? 0.1 : this.scale;
         
-        // Interaction state
-        this.state = 'idle'; // 'idle', 'hover', 'grabbed_single', 'grabbed_dual'
-        this.grabbedBy = []; // ['left', 'right']
+        this.state = 'idle';
+        this.grabbedBy = [];
 
         this.init();
     }
@@ -37,53 +34,67 @@ class HandObject {
         this.el.id = `obj-${this.id}`;
         this.el.className = `hand-object ${this.type}`;
         this.el.style.position = 'absolute';
-        this.el.style.width = `${this.config.width || 120}px`;
-        this.el.style.height = `${this.config.height || 120}px`;
+        this.el.style.width = `${this.config?.width || 140}px`;
+        this.el.style.height = `${this.config?.height || 140}px`;
         this.el.style.left = '0';
         this.el.style.top = '0';
         this.el.style.transformStyle = 'preserve-3d';
         
-        // Inner content for wireframe/glow
+        // Premium Material: Glassmorphism + Glow
         this.el.innerHTML = `
-            <div class="obj-content" style="position:absolute; inset:0; border:2px solid #00ffcc; background:rgba(0,255,204,0.02); box-shadow:0 0 15px rgba(0,255,204,0.1); transition: all 0.3s;">
-                <div style="position:absolute; top:5px; left:8px; font-size:9px; color:#00ffcc; opacity:0.6;">${this.config.label || 'OBJECT'}</div>
-                <div class="glow-layer" style="position:absolute; inset:-2px; border:1px solid #00ffcc; opacity:0; transition: opacity 0.3s;"></div>
+            <div class="obj-content" style="position:absolute; inset:0; 
+                background: rgba(0, 255, 204, 0.03);
+                backdrop-filter: blur(8px);
+                border: 1px solid rgba(0, 255, 204, 0.3);
+                border-radius: ${this.type === 'sphere' ? '50%' : '12px'};
+                box-shadow: inset 0 0 20px rgba(0,255,204,0.1), 0 5px 15px rgba(0,0,0,0.3);
+                transition: border 0.3s, box-shadow 0.3s;
+                overflow: hidden;">
+                
+                <!-- Inner Detail -->
+                <div style="position:absolute; top:8px; left:10px; font-size:8px; color:#00ffcc; opacity:0.5; font-family:monospace;">
+                    NODE_ID: ${this.id}<br>TYPE: ${this.type.toUpperCase()}
+                </div>
+                
+                <!-- Scanning Effect Line -->
+                <div class="scan-line" style="position:absolute; top:-100%; left:0; width:100%; height:20%; background:linear-gradient(to bottom, transparent, rgba(0,255,204,0.2), transparent); animation: scan 3s infinite linear;"></div>
             </div>
         `;
 
         document.getElementById('hand-stage').appendChild(this.el);
+        
+        if (this.isNew) {
+            setTimeout(() => { this.targetScale = 1.0; }, 50);
+        }
     }
 
-    update(dt) {
-        // Physics: Spring Scale
-        this.currentScale += (this.targetScale - this.currentScale) * 0.2;
+    update() {
+        // Smooth scale transition
+        this.currentScale += (this.targetScale - this.currentScale) * 0.15;
         
-        // Inertia (if not grabbed)
         if (this.state === 'idle') {
             this.x += this.vx;
             this.y += this.vy;
-            this.vx *= 0.95;
-            this.vy *= 0.95;
+            this.vx *= 0.96;
+            this.vy *= 0.96;
             
-            // Boundary bounce
-            if (this.x < 100 || this.x > window.innerWidth - 100) this.vx *= -1;
-            if (this.y < 100 || this.y > window.innerHeight - 100) this.vy *= -1;
+            // Subtle floating motion
+            this.rotationY += Math.sin(Date.now() / 1000) * 0.1;
         }
 
         this.applyTransform();
     }
 
     applyTransform() {
-        const t = `translate(-50%, -50%) translate3d(${this.x}px, ${this.y}px, ${this.z}px) rotateX(${this.rotationX}deg) rotateY(${this.rotationY}deg) rotateZ(${this.rotationZ}deg) scale(${this.currentScale})`;
-        this.el.style.transform = t;
+        this.el.style.transform = `translate(-50%, -50%) translate3d(${this.x}px, ${this.y}px, ${this.z}px) rotateX(${this.rotationX}deg) rotateY(${this.rotationY}deg) rotateZ(${this.rotationZ}deg) scale(${this.currentScale})`;
     }
 
     setHover(isHover) {
-        if (this.state.startsWith('grabbed')) return;
-        this.state = isHover ? 'hover' : 'idle';
-        this.targetScale = isHover ? 1.1 : 1.0;
-        this.el.querySelector('.obj-content').style.boxShadow = isHover ? '0 0 30px rgba(0,255,204,0.4)' : '0 0 15px rgba(0,255,204,0.1)';
-        this.el.querySelector('.glow-layer').style.opacity = isHover ? '0.5' : '0';
+        if (this.grabbedBy.length > 0) return;
+        this.targetScale = isHover ? 1.15 : 1.0;
+        const content = this.el.querySelector('.obj-content');
+        content.style.borderColor = isHover ? 'rgba(0, 255, 204, 0.8)' : 'rgba(0, 255, 204, 0.3)';
+        content.style.boxShadow = isHover ? '0 0 30px rgba(0, 255, 204, 0.5), inset 0 0 20px rgba(0,255,204,0.2)' : '0 5px 15px rgba(0,0,0,0.3)';
     }
 }
 
@@ -97,35 +108,40 @@ class HandScene {
         const stage = document.getElementById('hand-stage');
         if (!stage) return;
         stage.innerHTML = '';
+        this.objects = [];
         
-        // Add varied objects
-        this.objects.push(new HandObject(1, 'box', { x: window.innerWidth * 0.3, y: window.innerHeight * 0.4, width: 150, height: 150, label: 'PRIMITIVE_BOX' }));
-        this.objects.push(new HandObject(2, 'panel', { x: window.innerWidth * 0.7, y: window.innerHeight * 0.3, width: 220, height: 140, label: 'DATA_PANEL' }));
-        this.objects.push(new HandObject(3, 'sphere', { x: window.innerWidth * 0.5, y: window.innerHeight * 0.7, width: 100, height: 100, label: 'CORE_ORB' }));
+        // Initial set of objects
+        this.spawnObject('box', { x: window.innerWidth * 0.25, y: window.innerHeight * 0.3 });
+        this.spawnObject('sphere', { x: window.innerWidth * 0.75, y: window.innerHeight * 0.35 });
+    }
+
+    spawnObject(type, config) {
+        const id = Date.now() + Math.random();
+        const obj = new HandObject(id, type, config);
+        this.objects.push(obj);
+        return obj;
     }
 
     getObjectAt(x, y) {
-        // Find closest object within reach
         let closest = null;
-        let minDist = 150; // Grab radius
-
+        let minDist = 120;
         for (const obj of this.objects) {
-            const dx = obj.x - x;
-            const dy = obj.y - y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist < minDist) {
-                minDist = dist;
-                closest = obj;
+            const d = Math.sqrt(Math.pow(obj.x - x, 2) + Math.pow(obj.y - y, 2));
+            if (d < minDist) {
+                minDist = d; closest = obj;
             }
         }
         return closest;
     }
 
-    update(dt) {
-        for (const obj of this.objects) {
-            obj.update(dt);
-        }
+    update() {
+        for (const obj of this.objects) obj.update();
     }
 }
+
+// Global scan animation
+const style = document.createElement('style');
+style.textContent = `@keyframes scan { from { top: -100%; } to { top: 150%; } }`;
+document.head.appendChild(style);
 
 window.handScene = new HandScene();

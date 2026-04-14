@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Professional Hand Engine v4.0
- * Handles MediaPipe tracking, smoothing, gestures, and multi-hand interaction.
+ * Btoan AI - Professional Hand Engine v4.5
+ * Handles Multi-hand tracking, Gestures, Creation Mode, and Multi-object manipulation.
  */
 
 class HandEngine {
@@ -13,23 +13,15 @@ class HandEngine {
         this.camera = null;
         this.isActive = false;
         
-        // Tracking state for 2 hands
+        // Tracking state
         this.handStates = {
-            'Left': { x: 0, y: 0, isPinching: false, target: null, rawX: 0, rawY: 0 },
-            'Right': { x: 0, y: 0, isPinching: false, target: null, rawX: 0, rawY: 0 }
+            'Left': { x: 0, y: 0, isPinching: false, target: null, mode: 'idle', rawX: 0, rawY: 0 },
+            'Right': { x: 0, y: 0, isPinching: false, target: null, mode: 'idle', rawX: 0, rawY: 0 }
         };
         
-        // Smoothing config
-        this.lerpAmount = 0.4;
-        this.pinchThreshold = 0.06;
-        
-        // FPS / Performance
+        this.lerpAmount = 0.45;
+        this.pinchThreshold = 0.055;
         this.lastTime = 0;
-        this.fpsCounter = document.getElementById('fps-counter');
-        
-        // Rulers
-        this.rulerX = document.getElementById('ruler-x');
-        this.rulerY = document.getElementById('ruler-y');
 
         this.init();
     }
@@ -50,7 +42,6 @@ class HandEngine {
         
         const toggleBtn = document.getElementById('toggleHandMode');
         if (toggleBtn) toggleBtn.onclick = () => this.toggle();
-        
         this.loop();
     }
 
@@ -64,128 +55,121 @@ class HandEngine {
         try {
             if (!this.camera) {
                 this.camera = new Camera(this.video, {
-                    onFrame: async () => {
-                        if (this.isActive) await this.hands.send({ image: this.video });
-                    },
-                    width: 1280,
-                    height: 720
+                    onFrame: async () => { if (this.isActive) await this.hands.send({ image: this.video }); },
+                    width: 1280, height: 720
                 });
             }
             await this.camera.start();
             this.isActive = true;
-        } catch (e) {
-            console.error(e);
-        }
+        } catch (e) { console.error(e); }
     }
 
     stop() {
         if (this.camera) this.camera.stop();
         this.isActive = false;
         document.getElementById('hand-overlay').style.display = 'none';
-        // Reset hand states
-        Object.values(this.handStates).forEach(h => {
-            if (h.target) this.releaseObject(h);
-        });
     }
 
     onResults(results) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        const detectedHands = new Set();
+        const detected = new Set();
         
         if (results.multiHandLandmarks && results.multiHandedness) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
-                const label = results.multiHandedness[i].label; // 'Left' or 'Right'
-                detectedHands.add(label);
+                const label = results.multiHandedness[i].label;
+                detected.add(label);
                 
-                // Draw skeleton
-                window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS, { color: '#00ffcc', lineWidth: 2 });
-                window.drawLandmarks(this.ctx, landmarks, { color: '#ffffff', lineWidth: 1, radius: 2 });
+                // Visual Skeleton (Professional White/Cyan)
+                window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS, { color: 'rgba(0, 255, 204, 0.4)', lineWidth: 1.5 });
+                window.drawLandmarks(this.ctx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 1.5 });
                 
                 this.processHand(label, landmarks);
             });
         }
         
-        // Update labels and visibility
         ['Left', 'Right'].forEach(side => {
             const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
-            if (detectedHands.has(side)) {
+            if (detected.has(side)) {
                 cursor.style.display = 'block';
-                const state = this.handStates[side];
-                cursor.style.left = `${state.x}px`;
-                cursor.style.top = `${state.y}px`;
-                cursor.style.transform = `translate(-50%, -50%) scale(${state.isPinching ? 0.8 : 1})`;
-                cursor.style.borderColor = state.isPinching ? '#ffffff' : '#00ffcc';
+                const s = this.handStates[side];
+                cursor.style.left = `${s.x}px`;
+                cursor.style.top = `${s.y}px`;
+                // Update Badge style based on mode
+                const badge = cursor.querySelector('.cursor-status-label');
+                badge.innerText = `${side.charAt(0)}_${s.mode.toUpperCase()}`;
+                badge.style.color = s.isPinching ? '#fff' : '#00ffcc';
             } else {
                 cursor.style.display = 'none';
-                if (this.handStates[side].target) this.releaseObject(this.handStates[side]);
+                this.cleanupHandState(side);
             }
         });
-        
         this.ctx.restore();
     }
 
+    cleanupHandState(side) {
+        const s = this.handStates[side];
+        if (s.mode === 'creating') window.genesisEngine.cancelCreation();
+        if (s.target) this.releaseObject(s);
+        s.mode = 'idle';
+    }
+
     processHand(side, landmarks) {
-        const state = this.handStates[side];
+        const s = this.handStates[side];
         const thumb = landmarks[4];
         const index = landmarks[8];
         
-        // 1. Position & Smoothing
+        // 1. Position Smoothing
         const rawX = (1 - index.x) * window.innerWidth;
         const rawY = index.y * window.innerHeight;
-        state.x += (rawX - state.x) * this.lerpAmount;
-        state.y += (rawY - state.y) * this.lerpAmount;
+        s.x += (rawX - s.x) * this.lerpAmount;
+        s.y += (rawY - s.y) * this.lerpAmount;
         
-        // 2. Gesture: Pinch
-        const dx = thumb.x - index.x;
-        const dy = thumb.y - index.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        const prevPinching = state.isPinching;
-        state.isPinching = dist < this.pinchThreshold;
+        // 2. Gesture Detection
+        const d = Math.sqrt(Math.pow(thumb.x - index.x, 2) + Math.pow(thumb.y - index.y, 2));
+        const wasPinching = s.isPinching;
+        s.isPinching = d < this.pinchThreshold;
         
-        // 3. Hovering Logic
-        if (!state.isPinching) {
-            const hoverTarget = window.handScene.getObjectAt(state.x, state.y);
-            window.handScene.objects.forEach(obj => {
-                if (obj.grabbedBy.length === 0) obj.setHover(obj === hoverTarget);
-            });
+        if (s.isPinching && !wasPinching) {
+            // Check for GENESIS mode first
+            const seed = window.genesisEngine.getSeedAt(s.x, s.y);
+            if (seed) {
+                s.mode = 'creating';
+                window.genesisEngine.startCreation(seed, side, s.x, s.y);
+            } else {
+                // Otherwise try grab existing
+                const target = window.handScene.getObjectAt(s.x, s.y);
+                if (target) {
+                    s.mode = 'grabbing';
+                    this.grabObject(s, target, side);
+                }
+            }
+        } else if (!s.isPinching && wasPinching) {
+            // Release
+            if (s.mode === 'creating') window.genesisEngine.finalizeCreation(s.x, s.y);
+            else if (s.mode === 'grabbing') this.releaseObject(s);
+            s.mode = 'idle';
         }
 
-        // 4. Interaction Logic
-        if (state.isPinching && !prevPinching) {
-            // New pinch: try grab
-            const target = window.handScene.getObjectAt(state.x, state.y);
-            if (target) this.grabObject(state, target, side);
-        } else if (!state.isPinching && prevPinching) {
-            // Released
-            this.releaseObject(state);
+        // 3. Execution
+        if (s.mode === 'creating') window.genesisEngine.updateCreation(s.x, s.y);
+        else if (s.mode === 'grabbing' && s.target) this.handleManipulation(s);
+        else {
+            // Hover logic
+            const hover = window.handScene.getObjectAt(s.x, s.y);
+            window.handScene.objects.forEach(o => { if (!o.grabbedBy.length) o.setHover(o === hover); });
         }
         
-        // 5. Manipulation
-        if (state.isPinching && state.target) {
-            this.handleManipulation(state);
-        }
-        
-        // Update Rulers (Visual Only)
-        if (side === 'Right') {
-            this.rulerX.style.top = `${state.y}px`;
-            this.rulerY.style.left = `${state.x}px`;
-        }
+        s.prevX = s.x; s.prevY = s.y;
     }
 
     grabObject(handState, target, handSide) {
         handState.target = target;
-        if (!target.grabbedBy.includes(handSide)) {
-            target.grabbedBy.push(handSide.toLowerCase());
-        }
+        if (!target.grabbedBy.includes(handSide)) target.grabbedBy.push(handSide.toLowerCase());
         target.state = target.grabbedBy.length === 2 ? 'grabbed_dual' : 'grabbed_single';
-        target.targetScale = 1.1;
         
-        // Initial distance/angle for dual transform
         if (target.state === 'grabbed_dual') {
-            const hL = this.handStates['Left'];
-            const hR = this.handStates['Right'];
+            const hL = this.handStates['Left']; const hR = this.handStates['Right'];
             target.initialDist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2));
             target.initialAngle = Math.atan2(hR.y - hL.y, hR.x - hL.x) * (180 / Math.PI);
             target.initialScale = target.scale;
@@ -194,66 +178,37 @@ class HandEngine {
     }
 
     releaseObject(handState) {
-        const target = handState.target;
-        if (!target) return;
-        
-        const sideIdx = target.grabbedBy.indexOf(handState === this.handStates['Left'] ? 'left' : 'right');
-        if (sideIdx > -1) target.grabbedBy.splice(sideIdx, 1);
-        
+        const target = handState.target; if (!target) return;
+        const side = handState === this.handStates['Left'] ? 'left' : 'right';
+        const idx = target.grabbedBy.indexOf(side);
+        if (idx > -1) target.grabbedBy.splice(idx, 1);
         target.state = target.grabbedBy.length === 1 ? 'grabbed_single' : 'idle';
         if (target.state === 'idle') {
-            target.targetScale = 1.0;
-            // Add slight inertia
-            target.vx = (handState.x - handState.prevX || 0) * 0.5;
-            target.vy = (handState.y - handState.prevY || 0) * 0.5;
+            target.vx = (handState.x - handState.prevX) * 0.5;
+            target.vy = (handState.y - handState.prevY) * 0.5;
         }
         handState.target = null;
     }
 
     handleManipulation(handState) {
-        const target = handState.target;
-        
-        if (target.state === 'grabbed_single') {
-            // Simple Drag
-            target.x = handState.x;
-            target.y = handState.y;
-            // Tilt based on movement
-            target.rotationY = (handState.x - window.innerWidth / 2) * 0.05;
-            target.rotationX = -(handState.y - window.innerHeight / 2) * 0.05;
-        } else if (target.state === 'grabbed_dual') {
-            // Dual Transform: Scale & Rotate & Position
-            const hL = this.handStates['Left'];
-            const hR = this.handStates['Right'];
-            
-            // Midpoint Position
-            target.x = (hL.x + hR.x) / 2;
-            target.y = (hL.y + hR.y) / 2;
-            
-            // Scale
-            const currentDist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2));
-            const scaleFactor = currentDist / target.initialDist;
-            target.currentScale = target.initialScale * scaleFactor;
-            
-            // Rotate
-            const currentAngle = Math.atan2(hR.y - hL.y, hR.x - hL.x) * (180 / Math.PI);
-            target.rotationZ = target.initialRot + (currentAngle - target.initialAngle);
+        const t = handState.target;
+        if (t.state === 'grabbed_single') {
+            t.x = handState.x; t.y = handState.y;
+        } else if (t.state === 'grabbed_dual') {
+            const hL = this.handStates['Left']; const hR = this.handStates['Right'];
+            t.x = (hL.x + hR.x) / 2; t.y = (hL.y + hR.y) / 2;
+            const dist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2));
+            t.currentScale = t.initialScale * (dist / t.initialDist);
+            const angle = Math.atan2(hR.y - hL.y, hR.x - hL.x) * (180 / Math.PI);
+            t.rotationZ = t.initialRot + (angle - t.initialAngle);
         }
-        
-        handState.prevX = handState.x;
-        handState.prevY = handState.y;
     }
 
     loop() {
-        const now = performance.now();
-        const dt = now - this.lastTime;
-        this.lastTime = now;
-        
-        if (this.fpsCounter) this.fpsCounter.innerText = `FPS: ${Math.round(1000 / dt) || 0}`;
-        
-        if (window.handScene) window.handScene.update(dt);
-        
+        const dt = performance.now() - this.lastTime; this.lastTime = performance.now();
+        if (document.getElementById('fps-counter')) document.getElementById('fps-counter').innerText = `FPS: ${Math.round(1000/dt)}`;
+        if (window.handScene) window.handScene.update();
         requestAnimationFrame(() => this.loop());
     }
 }
-
 window.handEngine = new HandEngine();
