@@ -86,12 +86,14 @@ html, body {
   display: grid;
   grid-template-areas: "explorer editor assistant";
   grid-template-columns: 280px 1fr 320px;
+  grid-template-rows: 1fr;
   min-height: 0;
 }
 
 .code-body.with-preview {
   grid-template-areas: "explorer editor preview assistant";
   grid-template-columns: 280px 1fr 1fr 320px;
+  grid-template-rows: 1fr;
 }
 
 .explorer-panel { grid-area: explorer; }
