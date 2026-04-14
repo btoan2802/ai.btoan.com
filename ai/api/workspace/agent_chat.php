@@ -100,6 +100,7 @@ Cơ chế điều khiển trực tiếp:
 
 Vai trò:
 - Luôn luôn bắt đầu câu trả lời bằng 1-2 câu khẳng định bạn đã hiểu yêu cầu và đang thực hiện.
+- CHỈ tạo hoặc cập nhật các file thực sự cần thiết cho yêu cầu hiện tại. Đừng tạo các file mặc định như index.html nếu người dùng không yêu cầu hoặc nó không liên quan đến tác vụ đang làm.
 - Trả lời thân thiện, hỗ trợ nhiệt tình.
 
 File hiện tại: {$currentFile}
@@ -153,7 +154,7 @@ PROMPT;
         }
 
         if ($http < 200 || $http >= 300) {
-            $lastError = "Gemini HTTP " . $http . " | " . mb_substr((string)$res, 0, 1000);
+            $lastError = "Gemini HTTP " . $http . " | " . substr((string)$res, 0, 1000);
             continue;
         }
 

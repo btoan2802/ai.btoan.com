@@ -47,18 +47,15 @@ function api(url, options = {}) {
   })
     .then(async (res) => {
       const raw = await res.text();
-
       let data;
       try {
         data = JSON.parse(raw);
       } catch (e) {
         throw new Error(raw.slice(0, 800));
       }
-
       if (!res.ok || data.error) {
         throw new Error(data.error || "API error");
       }
-
       return data;
     })
     .catch((err) => {
@@ -68,6 +65,40 @@ function api(url, options = {}) {
       throw err;
     })
     .finally(() => clearTimeout(timeout));
+}
+
+function showModal(title, placeholder, onConfirm) {
+  const modal = document.getElementById("customModal");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalInput = document.getElementById("modalInput");
+  const confirmBtn = document.getElementById("modalConfirm");
+  const cancelBtn = document.getElementById("modalCancel");
+
+  modalTitle.textContent = title;
+  modalInput.placeholder = placeholder;
+  modalInput.value = "";
+  modal.style.display = "flex";
+  modalInput.focus();
+
+  const close = () => {
+    modal.style.display = "none";
+    confirmBtn.onclick = null;
+    cancelBtn.onclick = null;
+  };
+
+  confirmBtn.onclick = () => {
+    const val = modalInput.value.trim();
+    if (val) {
+      onConfirm(val);
+      close();
+    }
+  };
+
+  cancelBtn.onclick = close;
+  modalInput.onkeydown = (e) => {
+    if (e.key === "Enter") confirmBtn.onclick();
+    if (e.key === "Escape") close();
+  };
 }
 
 function getLanguageFromPath(path) {
@@ -536,41 +567,37 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (newFileBtn) {
-    newFileBtn.onclick = async () => {
-      const path = prompt("Nhập tên file, ví dụ: src/index.html");
-      if (!path) return;
-
-      try {
-        await api("/ai/api/workspace/create_file.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path, content: "" })
-        });
-
-        await loadTree();
-        await openFile(path);
-      } catch (e) {
-        alert(e.message);
-      }
+    newFileBtn.onclick = () => {
+      showModal("Tạo File Mới", "Tên file (VD: src/app.js)", async (path) => {
+        try {
+          await api("/ai/api/workspace/create_file.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path, content: "" })
+          });
+          await loadTree();
+          await openFile(path);
+        } catch (e) {
+          alert(e.message);
+        }
+      });
     };
   }
 
   if (newFolderBtn) {
-    newFolderBtn.onclick = async () => {
-      const path = prompt("Nhập tên folder, ví dụ: src/components");
-      if (!path) return;
-
-      try {
-        await api("/ai/api/workspace/create_folder.php", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path })
-        });
-
-        await loadTree();
-      } catch (e) {
-        alert(e.message);
-      }
+    newFolderBtn.onclick = () => {
+      showModal("Tạo Thư Mục Mới", "Tên thư mục (VD: assets/images)", async (path) => {
+        try {
+          await api("/ai/api/workspace/create_folder.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path })
+          });
+          await loadTree();
+        } catch (e) {
+          alert(e.message);
+        }
+      });
     };
   }
 

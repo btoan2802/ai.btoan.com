@@ -103,6 +103,50 @@
     </nav>
   </div>
 
+  <!-- Custom Modal -->
+  <div id="customModal" class="modal-overlay" style="display:none;">
+    <div class="modal-content">
+      <h3 id="modalTitle">Tạo mới</h3>
+      <input type="text" id="modalInput" class="search-input" placeholder="Tên file/thư mục...">
+      <div class="modal-actions">
+        <button id="modalCancel" class="top-btn">Hủy</button>
+        <button id="modalConfirm" class="top-btn primary">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(10px);
+      z-index: 5000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-content {
+      background: #18181c;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    }
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+    #modalTitle { margin: 0; font-size: 18px; color: #fff; }
+  </style>
+
   <script>
     if (!localStorage.getItem("user_id")) {
       alert("Bạn cần đăng nhập trước");
