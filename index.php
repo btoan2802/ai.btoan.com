@@ -744,26 +744,24 @@
     </style>
 
 
-  <!-- 🚀 AIR MOUSE & AIR DRAW SYSTEM v7.0 -->
+  <!-- 🚀 AIR MOUSE, DRAW & ORB SYSTEM v7.5 -->
   <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.1); overflow:hidden;">
     
     <!-- Drawing Canvas Layer -->
     <canvas id="draw-canvas" style="position:absolute; inset:0; pointer-events:none; z-index:10;"></canvas>
 
-    <!-- Professional HUD -->
+    <!-- Orb Container -->
+    <div id="orb-container" style="position:absolute; inset:0; pointer-events:none; z-index:15;"></div>
+
+    <!-- HUD -->
     <div id="hud-container" style="position:absolute; inset:0; pointer-events:none; font-family:'JetBrains Mono', monospace;">
-        <!-- Top Status Bar -->
         <div style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:center; pointer-events:none;">
-            <div id="mode-badge-container" style="display:flex; align-items:center; gap:15px;">
+            <div style="display:flex; align-items:center; gap:15px;">
                 <div id="hand-mode-label" style="font-size:14px; font-weight:900; color:#00ffcc; background:rgba(0,0,0,0.8); padding:6px 15px; border:1px solid #00ffcc; letter-spacing:2px; box-shadow:0 0 15px rgba(0,255,204,0.3);">NO_HAND</div>
-                <div id="interaction-status" style="font-size:10px; color:#00ffcc; opacity:0.6;">SYSTEM: READY</div>
             </div>
             <div id="drawing-controls" style="display:none; pointer-events:auto; gap:10px;">
-                <button onclick="window.handDraw.clear()" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:5px 12px; font-size:11px; cursor:pointer; font-family:inherit;">CLEAR CANVAS</button>
-                <button onclick="window.handDraw.undo()" style="background:rgba(0,0,0,0.6); border:1px solid #00ffcc; color:#00ffcc; padding:5px 12px; font-size:11px; cursor:pointer; font-family:inherit;">UNDO</button>
-            </div>
-            <div style="text-align:right;">
-                <div id="fps-counter" style="color:#00ffcc; font-size:11px; opacity:0.5;">FPS: --</div>
+                <button onclick="window.handDraw.clear()" style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:5px 12px; font-size:11px; cursor:pointer;">CLEAR</button>
+                <button onclick="window.handDraw.undo()" style="background:rgba(0,0,0,0.6); border:1px solid #00ffcc; color:#00ffcc; padding:5px 12px; font-size:11px; cursor:pointer;">UNDO</button>
             </div>
         </div>
     </div>
@@ -805,11 +803,12 @@
     .seed-node { animation: genesis-pulse 3s infinite ease-in-out; }
   </style>
 
-  <script src="login/SignUp_LogIn_Form.js?v=13"></script>
-  <script src="./app.js?v=13"></script>
-  <script src="hand_scene.js?v=4"></script>
-  <script src="hand_draw.js?v=1"></script>
-  <script src="hand_engine.js?v=4"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=14"></script>
+  <script src="./app.js?v=14"></script>
+  <script src="hand_scene.js?v=5"></script>
+  <script src="hand_draw.js?v=2"></script>
+  <script src="hand_orb.js?v=1"></script>
+  <script src="hand_engine.js?v=5"></script>
 </body>
 
 </html>
