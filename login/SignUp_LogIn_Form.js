@@ -352,6 +352,24 @@ function closeFaceEnrollModal() {
   capturedFaceImage = "";
 }
 
+async function loginWithFace() {
+  if (isFaceLoginActive) return;
+  isFaceLoginActive = true;
+  const usernameInput = getActiveUsernameInput();
+  const username = usernameInput ? usernameInput.value.trim() : "";
+
+  if (!username) {
+    setFaceLoginMessage("Vui lòng nhập username trước", true);
+    isFaceLoginActive = false;
+    return;
+  }
+
+  if (typeof aie_aic !== "function") {
+    setFaceLoginMessage("Chưa tải xong thư viện nhận diện khuôn mặt", true);
+    isFaceLoginActive = false;
+    return;
+  }
+
   try {
     console.log("[FaceID Login] Starting for user:", username);
     const profileRes = await fetch("ai/api/get_face_profile.php?username=" + encodeURIComponent(username));
@@ -448,3 +466,4 @@ function closeFaceEnrollModal() {
     isFaceLoginActive = false;
     setFaceLoginMessage("Không kiểm tra được dữ liệu khuôn mặt", true);
   }
+}
