@@ -698,7 +698,7 @@
 
   <script src="login/SignUp_LogIn_Form.js?v=5"></script>
   <script src="./app.js?v=5"></script>
-  <script src="https://api.1aie.com/?key=839c8d618a53c29f602af9943ad7fcc5&active=kyc"></script>
+  <script src="./app.js?v=6"></script>
 </body>
 
 </html>

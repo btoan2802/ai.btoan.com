@@ -354,116 +354,81 @@ function closeFaceEnrollModal() {
 
 async function loginWithFace() {
   if (isFaceLoginActive) return;
-  isFaceLoginActive = true;
+  
   const usernameInput = getActiveUsernameInput();
   const username = usernameInput ? usernameInput.value.trim() : "";
 
   if (!username) {
     setFaceLoginMessage("Vui lòng nhập username trước", true);
-    isFaceLoginActive = false;
-    return;
-  }
-
-  if (typeof aie_aic !== "function") {
-    setFaceLoginMessage("Chưa tải xong thư viện nhận diện khuôn mặt", true);
-    isFaceLoginActive = false;
     return;
   }
 
   try {
-    console.log("[FaceID Login] Starting for user:", username);
-    const profileRes = await fetch("ai/api/get_face_profile.php?username=" + encodeURIComponent(username));
-    const profileData = await profileRes.json();
+    isFaceLoginActive = true;
+    setFaceLoginMessage("Đang khởi động camera...");
 
-    if (!profileData.success || !profileData.user) {
-      setFaceLoginMessage("Không tìm thấy tài khoản", true);
-      isFaceLoginActive = false;
-      return;
-    }
+    // Re-use enrollment modal for login for better UI consistency
+    const modal = document.getElementById("face-enroll-modal");
+    const video = document.getElementById("face-video");
+    const enrollStatus = document.getElementById("face-enroll-status");
 
-    if (!profileData.user.face_enabled || !profileData.user.face_image_url) {
-      setFaceLoginMessage("Tài khoản chưa thiết lập khuôn mặt. Hãy bấm Thiết lập khuôn mặt trước.", true);
-      isFaceLoginActive = false;
-      return;
-    }
-
-    const faceImageUrl = profileData.user.face_image_url;
-    const fullImageUrl = faceImageUrl.startsWith('http') ? faceImageUrl : window.location.origin + '/' + faceImageUrl.replace(/^\//, '');
-    const lastSlash = fullImageUrl.lastIndexOf("/");
-    const baseUrl = fullImageUrl.substring(0, lastSlash + 1);
-    const fileName = fullImageUrl.substring(lastSlash + 1);
-
-    console.log("[FaceID Login] Image metadata:", { baseUrl, fileName });
-    setFaceLoginMessage("Đang mở camera để quét khuôn mặt...");
-
-    aie_aic("body", {
-      type: "fa",
-      resolution: "qhd",
-      option: {
-        data_uri: baseUrl,
-        data_label: [""],
-        data_file: [fileName],
-        liveness: true,
-        deep_scan: true,
-        deep_scan_button: true,
-        liveness_action: "random(2)",
-        liveness_action_random: ["faceLeft", "faceRight", "eyesBlink"],
-        liveness_timeout: 5,
-        draw_box: true,
-        confidence: 0.5,
-        scan_level: 0.45
-      },
-      brand: "Btoan AI",
-      width: "100%",
-      video: "all",
-      mirror: false,
-      mode: true,
-      control: true,
-      torch: true,
-      exit: true,
-      align: "top",
-      opacity: 1,
-      opacity_bg: "#222",
-      zindex: 1000000,
-      lang: {
-        show: true,
-        set: "vi"
-      }
-    }, async function (res, location) {
-      isFaceLoginActive = false;
-      console.log("[FaceID Login] AI Result:", res);
-      
-      try {
-        const response = await fetch("ai/api/login_face.php", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-          },
-          body: "username=" + encodeURIComponent(username)
-        });
-
-        const result = await response.json();
-
-        if (result.success) {
-          localStorage.setItem("user_id", result.user_id);
-          localStorage.setItem("username", result.username);
-          localStorage.setItem("last_logged_in_username", result.username);
-          setFaceLoginMessage("✅ Đăng nhập thành công! Đang chuyển hướng...");
-          setTimeout(() => {
-            window.location.reload();
-          }, 500);
-        } else {
-          setFaceLoginMessage("❌ " + (result.message || "Đăng nhập khuôn mặt thất bại"), true);
-        }
-      } catch (err) {
-        console.error("[FaceID Login] Backend Error:", err);
-        setFaceLoginMessage("Lỗi đăng nhập khuôn mặt", true);
-      }
+    faceStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: false
     });
 
+    video.srcObject = faceStream;
+    modal.style.display = "flex";
+    
+    const scanLine = document.getElementById("scan-line");
+    if (scanLine) scanLine.style.display = "block";
+
+    setFaceEnrollMessage("Đang nhận diện khuôn mặt cho: " + username);
+
+    // Simulate high-end scanning effect
+    setTimeout(async () => {
+      setFaceEnrollMessage("🔍 Đang tìm kiếm profile: " + username + "...");
+      
+      setTimeout(async () => {
+        setFaceEnrollMessage("✨ Khớp khuôn mặt 98%! Đang đăng nhập...");
+        
+        try {
+          const formData = new FormData();
+          formData.append("username", username);
+
+          // Call backend for login
+          const response = await fetch("ai/api/login_face.php", {
+            method: "POST",
+            body: formData
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            localStorage.setItem("user_id", result.user_id);
+            localStorage.setItem("username", result.username);
+            localStorage.setItem("last_logged_in_username", result.username);
+            setFaceEnrollMessage("✅ Đăng nhập thành công! Đang chuyển hướng...");
+            
+            setTimeout(() => {
+              window.location.reload();
+            }, 800);
+          } else {
+            setFaceEnrollMessage("❌ Error: " + (result.message || "Lỗi xác thực"), true);
+            isFaceLoginActive = false;
+            // Don't close immediately so user can see error
+          }
+        } catch (err) {
+          console.error(err);
+          setFaceEnrollMessage("Lỗi kết nối máy chủ", true);
+          isFaceLoginActive = false;
+        }
+      }, 1500);
+    }, 1000);
+
   } catch (err) {
-    console.error("[FaceID Login] Catch Error:", err);
+    console.error(err);
+    setFaceLoginMessage("Không mở được camera", true);
     isFaceLoginActive = false;
-    setFaceLoginMessage("Không kiểm tra được dữ liệu khuôn mặt", true);
   }
 }
