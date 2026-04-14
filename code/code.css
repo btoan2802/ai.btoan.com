@@ -25,9 +25,10 @@ html, body {
   flex-direction: column;
 }
 
-/* TOPBAR */
+/* ========== TOPBAR ========== */
 .code-topbar {
   height: var(--header-height);
+  flex-shrink: 0;
   background: rgba(13, 13, 15, 0.95);
   backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-color);
@@ -61,6 +62,7 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  text-decoration: none;
 }
 
 .top-btn:hover {
@@ -80,7 +82,7 @@ html, body {
   box-shadow: 0 6px 16px var(--accent-glow);
 }
 
-/* BODY LAYOUT */
+/* ========== DESKTOP BODY LAYOUT ========== */
 .code-body {
   flex: 1;
   display: grid;
@@ -88,12 +90,12 @@ html, body {
   grid-template-columns: 280px 1fr 320px;
   grid-template-rows: 1fr;
   min-height: 0;
+  overflow: hidden;
 }
 
 .code-body.with-preview {
   grid-template-areas: "explorer editor preview assistant";
   grid-template-columns: 280px 1fr 1fr 320px;
-  grid-template-rows: 1fr;
 }
 
 .explorer-panel { grid-area: explorer; }
@@ -101,8 +103,10 @@ html, body {
 .webview-panel  { grid-area: preview;  }
 .assistant-panel{ grid-area: assistant; }
 
-/* PANELS */
-.explorer-panel, .assistant-panel, .webview-panel, .editor-panel {
+/* ========== ALL PANELS (base) ========== */
+.explorer-panel,
+.assistant-panel,
+.editor-panel {
   background: #18181c;
   border-right: 1px solid var(--border-color);
   display: flex;
@@ -110,6 +114,10 @@ html, body {
   height: 100%;
   overflow: hidden;
   min-width: 0;
+}
+
+.editor-panel {
+  background: #1e1e1e;
 }
 
 .editor-host {
@@ -120,6 +128,7 @@ html, body {
 
 .panel-header {
   height: 48px;
+  min-height: 48px;
   padding: 0 16px;
   display: flex;
   align-items: center;
@@ -130,18 +139,28 @@ html, body {
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  background: #18181c; /* Solid header */
+  background: #18181c;
+  flex-shrink: 0;
 }
 
+/* ========== ASSISTANT INPUT AREA ========== */
 .assistant-input-area {
-    margin-top: auto;
-    background: #1e1e24;
-    border-top: 1px solid var(--border-color);
+  margin-top: auto;
+  flex-shrink: 0;
+  background: #1a1a20;
+  border-top: 1px solid var(--border-color);
+  padding: 8px;
 }
 
-/* SEARCH & TREE */
+.assistant-panel .input-wrapper {
+  padding: 4px 4px 4px;
+  flex-shrink: 0;
+}
+
+/* ========== SEARCH & TREE ========== */
 .search-container {
   padding: 12px;
+  flex-shrink: 0;
 }
 .search-input {
   width: 100%;
@@ -153,6 +172,7 @@ html, body {
   font-size: 13px;
   outline: none;
   transition: border-color 0.2s;
+  box-sizing: border-box;
 }
 .search-input:focus {
   border-color: var(--accent-color);
@@ -187,13 +207,15 @@ html, body {
   font-weight: 500;
 }
 
-/* TABS */
+/* ========== TABS ========== */
 .tabs-bar {
   height: 40px;
+  min-height: 40px;
   background: #0d0d0f;
   display: flex;
   overflow-x: auto;
   border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
 }
 
 .tab-item {
@@ -206,6 +228,7 @@ html, body {
   color: var(--text-dim);
   cursor: pointer;
   background: #141417;
+  white-space: nowrap;
 }
 
 .tab-item.active {
@@ -214,10 +237,13 @@ html, body {
   border-bottom: 2px solid var(--accent-color);
 }
 
-/* WEBVIEW */
+/* ========== WEBVIEW ========== */
 .webview-panel {
   display: none;
   background: #fff;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 .code-body.with-preview .webview-panel {
   display: flex;
@@ -225,6 +251,7 @@ html, body {
 .preview-host {
   flex: 1;
   position: relative;
+  min-height: 0;
 }
 .preview-host iframe {
   width: 100%;
@@ -232,7 +259,7 @@ html, body {
   border: none;
 }
 
-/* ASSISTANT */
+/* ========== ASSISTANT CHAT ========== */
 .agent-chat-history {
   flex: 1;
   overflow-y: auto;
@@ -240,7 +267,7 @@ html, body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  min-height: 0; /* Allow flex item to shrink properly */
+  min-height: 0;
 }
 
 .agent-msg {
@@ -261,8 +288,8 @@ html, body {
 
 .agent-msg.assistant {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.08); /* Increased visibility */
-  color: #fff; /* White text */
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
   border-bottom-left-radius: 4px;
 }
 
@@ -279,36 +306,32 @@ html, body {
 }
 
 .ai-prompt {
-  background: rgba(255, 255, 255, 0.03);
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border-color);
-  border-radius: 12px;
+  border-radius: 10px;
   color: #fff;
-  margin: 12px;
-  padding: 12px;
+  padding: 10px 12px;
   resize: none;
   outline: none;
-  transition: all 0.2s;
-  flex-shrink: 0; /* Prevent input from disappearing */
+  font-size: 13px;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
 }
 
 .ai-prompt:focus {
   border-color: var(--accent-color);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.07);
 }
 
-.assistant-panel .input-wrapper {
-  padding: 0 12px 12px;
-  flex-shrink: 0;
-}
-
-/* ICONS */
+/* ========== FILE ICONS ========== */
 .bi-filetype-html { color: #f06529; }
 .bi-filetype-css  { color: #2965f1; }
 .bi-filetype-js   { color: #f7df1e; }
 .bi-filetype-php  { color: #777bb4; }
 .bi-folder-fill   { color: #fbbf24; }
 
-/* MOBILE NAV */
+/* ========== MOBILE NAV (hidden on desktop) ========== */
 .mobile-nav {
   display: none;
   height: var(--mobile-nav-height);
@@ -318,7 +341,7 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 1000;
+  z-index: 3000;
   padding: 0 10px;
 }
 
@@ -332,78 +355,123 @@ html, body {
   color: var(--text-dim);
   font-size: 10px;
   cursor: pointer;
+  transition: color 0.15s;
 }
 
 .nav-item i { font-size: 20px; }
 .nav-item.active { color: var(--accent-color); }
 
-/* MOBILE RESPONSIVENESS */
+/* ================================================================
+   MOBILE RESPONSIVE — max-width: 900px
+   Each panel becomes a fixed fullscreen overlay.
+   Only the one with .mobile-active is visible.
+   ================================================================ */
 @media (max-width: 900px) {
+
+  /* Hide desktop top-right buttons (Save, Run, etc.) */
+  .top-right {
+    display: none;
+  }
+
+  /* Remove the grid layout entirely */
   .code-body {
-    grid-template-columns: 1fr !important;
-    grid-template-areas: "editor" !important;
-    height: calc(100vh - var(--header-height) - var(--mobile-nav-height)) !important;
+    display: block !important;
+    position: relative;
+    height: calc(100vh - var(--header-height) - var(--mobile-nav-height));
+    overflow: hidden;
   }
 
-  /* Mobile Tabbed Panels (Mutually Exclusive) */
-  .explorer-panel, .assistant-panel, .webview-panel, .editor-panel {
-    display: none !important; 
-    position: fixed !important;
-    top: var(--header-height) !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: var(--mobile-nav-height) !important;
-    width: 100% !important;
-    height: auto !important;
-    z-index: 2000 !important;
-    background: #0d0d0f !important;
-    border: none !important;
-    flex-direction: column !important;
-    margin: 0 !important;
+  /* ALL panels: hidden by default, fullscreen when active */
+  .explorer-panel,
+  .assistant-panel,
+  .webview-panel,
+  .editor-panel {
+    display: none;
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
+    bottom: var(--mobile-nav-height);
+    width: 100%;
+    height: calc(100vh - var(--header-height) - var(--mobile-nav-height));
+    z-index: 2000;
+    background: #0d0d0f;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    flex-direction: column;
+    margin: 0;
+    overflow: hidden;
   }
 
-  /* Only show active mobile tab */
+  /* Show only the active tab */
   .explorer-panel.mobile-active,
   .assistant-panel.mobile-active,
   .webview-panel.mobile-active,
   .editor-panel.mobile-active {
-    display: flex !important;
-  }
-
-  /* Force editor visibility */
-  .editor-host {
-      flex: 1 !important;
-      display: block !important;
-      height: 100% !important;
-  }
-
-  .mobile-nav {
     display: flex;
-    background: rgba(13, 13, 15, 0.98);
-    backdrop-filter: blur(10px);
+  }
+
+  /* Editor: ensure Monaco fills the space */
+  .editor-panel.mobile-active .editor-host {
+    flex: 1;
+    min-height: 0;
+    height: 0; /* let flex handle it */
+  }
+
+  /* Assistant: chat fills space, input stays at bottom */
+  .assistant-panel.mobile-active {
+    overflow: hidden;
+  }
+  .assistant-panel.mobile-active .agent-chat-history {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 10px;
+  }
+  .assistant-panel.mobile-active .assistant-input-area {
+    flex-shrink: 0;
+    padding: 8px;
+    background: #1a1a20;
     border-top: 1px solid var(--border-color);
   }
-  
-  .top-right {
-      display: none;
+  .assistant-panel.mobile-active .ai-prompt {
+    height: 50px;
+    margin: 0 0 6px 0;
+    font-size: 14px;
+  }
+  .assistant-panel.mobile-active .input-wrapper {
+    padding: 0;
   }
 
-  /* Fix Assistant Panel Inputs for Mobile */
-  .ai-prompt {
-    height: 45px !important;
-    margin: 8px !important;
-    font-size: 13px !important;
+  /* Explorer fills the space */
+  .explorer-panel.mobile-active {
+    overflow: hidden;
   }
-  .agent-chat-history {
-    padding: 8px !important;
+  .explorer-panel.mobile-active .file-tree {
+    flex: 1;
+    overflow-y: auto;
   }
+
+  /* Mobile nav visible */
+  .mobile-nav {
+    display: flex;
+  }
+
+  /* Smaller panel headers on mobile */
   .panel-header {
-    height: 36px !important;
-    font-size: 10px !important;
+    height: 40px;
+    min-height: 40px;
+    font-size: 10px;
+  }
+
+  .tabs-bar {
+    height: 36px;
+    min-height: 36px;
   }
 }
 
-/* SCROLLBAR */
+/* ========== SCROLLBAR ========== */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
