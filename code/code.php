@@ -76,7 +76,7 @@
         <textarea id="agentInput" class="ai-prompt" rows="4"
           placeholder="Yêu cầu sửa code, tạo file..."></textarea>
 
-        <div style="padding: 0 12px 12px;">
+        <div class="input-wrapper">
           <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
         </div>
       </aside>

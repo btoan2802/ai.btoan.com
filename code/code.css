@@ -286,11 +286,17 @@ html, body {
   resize: none;
   outline: none;
   transition: all 0.2s;
+  flex-shrink: 0; /* Prevent input from disappearing */
 }
 
 .ai-prompt:focus {
   border-color: var(--accent-color);
   background: rgba(255, 255, 255, 0.05);
+}
+
+.assistant-panel .input-wrapper {
+  padding: 0 12px 12px;
+  flex-shrink: 0;
 }
 
 /* ICONS */
