@@ -94,59 +94,51 @@ class HandModule {
         this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
         
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            this.statusElement.textContent = "TRACKING: " + results.multiHandLandmarks.length + "H";
+            this.statusElement.textContent = "SYSTEM_ACTIVE (" + results.multiHandLandmarks.length + "H)";
             
             results.multiHandLandmarks.forEach((landmarks, index) => {
-                // Drawing Wireframe Skeleton (Cyan color like video)
-                window.drawConnectors(this.canvasCtx, landmarks, window.HAND_CONNECTIONS, { color: '#00ffcc', lineWidth: 2 });
-                window.drawLandmarks(this.canvasCtx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 2 });
+                // Drawing Architect Wireframe
+                window.drawConnectors(this.canvasCtx, landmarks, window.HAND_CONNECTIONS, { color: '#00ffcc', lineWidth: 1.5 });
+                window.drawLandmarks(this.canvasCtx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 1.5 });
 
-                // Process input from the first hand for cursor control
-                if (index === 0) this.processInput(landmarks);
+                if (index === 0) {
+                    this.processInput(landmarks); // First hand: Position/Grab
+                } else if (index === 1 && this.draggedElement) {
+                    this.processRotationInput(landmarks); // Second hand: Flip/Rotate
+                }
             });
         } else {
-            this.statusElement.textContent = "READY_SEARCHING...";
+            this.statusElement.textContent = "SCANNING_FOR_INPUT...";
             this.releaseElement();
         }
         
         this.canvasCtx.restore();
     }
 
-    processInput(landmarks) {
-        const thumb = landmarks[4];
-        const indexTip = landmarks[8];
+    processRotationInput(landmarks) {
+        // Use the palm center to determine rotation angle
+        const wrist = landmarks[0];
+        const indexBase = landmarks[5];
         
-        // Pinch Detection
-        const dx = thumb.x - indexTip.x;
-        const dy = thumb.y - indexTip.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-
-        // Screen Mapping (Mirrored)
-        const rawX = (1 - indexTip.x) * window.innerWidth;
-        const rawY = indexTip.y * window.innerHeight;
-
-        // Smoothing
-        this.cursorX += (rawX - this.cursorX) * this.lerpAmount;
-        this.cursorY += (rawY - this.cursorY) * this.lerpAmount;
-
-        this.updateHUD(this.cursorX, this.cursorY, dist);
-
-        // Logic
-        if (dist < this.pinchThreshold) {
-            if (!this.isPinching) {
-                this.isPinching = true;
-                this.tryPickElement(this.cursorX, this.cursorY);
-            }
-        } else {
-            if (this.isPinching) {
-                this.isPinching = false;
-                this.releaseElement();
-            }
+        const angle = Math.atan2(indexBase.y - wrist.y, indexBase.x - wrist.x) * (180 / Math.PI);
+        this.currentRotation = angle + 90; // Adjust for vertical orientation
+        
+        if (this.draggedElement) {
+            this.updateObjectTransform();
         }
+    }
 
-        if (this.isPinching && this.draggedElement) {
-            this.moveElement(this.cursorX, this.cursorY);
-        }
+    updateObjectTransform() {
+        if (!this.draggedElement) return;
+        
+        // Combine Position + Flip/Rotate logic
+        const flipX = (this.cursorY / window.innerHeight) * 40 - 20;
+        const flipY = (this.cursorX / window.innerWidth) * 40 - 20;
+        const rotateZ = this.currentRotation || 0;
+
+        this.draggedElement.style.left = `${this.cursorX}px`;
+        this.draggedElement.style.top = `${this.cursorY}px`;
+        this.draggedElement.style.transform = `translate(-50%, -50%) rotateX(${flipX}deg) rotateY(${flipY}deg) rotateZ(${rotateZ}deg) scale(1.1)`;
     }
 
     updateHUD(x, y, dist) {
