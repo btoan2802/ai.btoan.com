@@ -20,26 +20,26 @@ class HandModule {
         // Interaction state
         this.isPinching = false;
         this.draggedElement = null;
-        this.pinchThreshold = 0.05; 
+        this.pinchThreshold = 0.08; // Looser for easier grabbing
         
         // Smoothing
         this.cursorX = 0;
         this.cursorY = 0;
-        this.lerpAmount = 0.3;
+        this.lerpAmount = 0.45; // Faster response
 
         this.init();
     }
 
     async init() {
-        console.log("HandModule: Initializing...");
+        console.log("HandModule: Initializing High-Performance Mode...");
         try {
             this.hands = new Hands({
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`
             });
 
             this.hands.setOptions({
-                maxNumHands: 1, // Single hand for maximum stability
-                modelComplexity: 1,
+                maxNumHands: 2, // Dual-hand enabled
+                modelComplexity: 1, // Higher precision
                 minDetectionConfidence: 0.5,
                 minTrackingConfidence: 0.5
             });
