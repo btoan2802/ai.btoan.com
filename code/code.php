@@ -8,28 +8,40 @@
   <link rel="icon" href="/favicon.ico">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="./code.css?v=2.7">
+  <link rel="stylesheet" href="./code.css?v=2.8">
   <style>
+    html, body, .code-app {
+      height: 100vh !important;
+      overflow: hidden !important;
+      margin: 0;
+      padding: 0;
+    }
+    .code-body {
+      height: calc(100vh - 60px) !important; /* Header is ~60px */
+      overflow: hidden !important;
+    }
     .assistant-panel {
       display: flex !important;
       flex-direction: column !important;
       height: 100% !important;
       min-height: 0;
+      overflow: hidden !important;
     }
     .agent-chat-history {
-      flex: 1 1 auto !important;
-      min-height: 200px !important;
+      flex: 1 1 0% !important; /* Force to take remaining space but allow shrink */
+      min-height: 0 !important;
       overflow-y: auto !important;
     }
     .input-wrapper {
       flex: 0 0 auto !important;
-      min-height: 150px !important;
       background: #1e1e24;
       padding: 10px;
+      border-top: 1px solid #333;
     }
     .ai-prompt {
       height: 80px !important;
-      margin-bottom: 10px !important;
+      margin-bottom: 5px !important;
+      flex-shrink: 0 !important;
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
@@ -181,6 +193,6 @@
     });
   </script>
 
-  <script src="workspace.js?v=2.7"></script>
+  <script src="workspace.js?v=2.8"></script>
 </body>
 </html>

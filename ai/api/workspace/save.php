@@ -13,8 +13,9 @@ if (!is_allowed_text_file($full)) {
     json_out(["error" => "File không được phép lưu"], 400);
 }
 
-if (!file_exists($full)) {
-    json_out(["error" => "File không tồn tại"], 404);
+$dir = dirname($full);
+if (!is_dir($dir)) {
+    mkdir($dir, 0777, true);
 }
 
 file_put_contents($full, $content);
