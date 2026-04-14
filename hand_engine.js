@@ -194,29 +194,54 @@ class HandEngine {
     }
 
     releaseObject(handState) {
-        const target = handState.lockTarget; if (!target) return;
-        const sideKey = handState === this.handStates['Left'] ? 'left' : 'right';
-        const idx = target.grabbedBy.indexOf(sideKey);
-        if (idx > -1) target.grabbedBy.splice(idx, 1);
-        target.state = target.grabbedBy.length === 1 ? 'grabbed_single' : 'idle';
+        const target = handState.lockTarget;
+        if (!target) return;
+
+        const sideKey = (handState === this.handStates['Left']) ? 'left' : 'right';
+        
+        // Safety guard for grabbedBy array
+        if (target.grabbedBy && Array.isArray(target.grabbedBy)) {
+            const idx = target.grabbedBy.indexOf(sideKey);
+            if (idx > -1) target.grabbedBy.splice(idx, 1);
+            
+            // Re-evaluate state
+            target.state = target.grabbedBy.length === 1 ? 'grabbed_single' : 'idle';
+        } else {
+            target.state = 'idle';
+        }
+
         if (target.state === 'idle') {
             target.vx = (handState.x - handState.prevX) * 0.4;
             target.vy = (handState.y - handState.prevY) * 0.4;
         }
+
         handState.lockTarget = null;
     }
 
     handleManipulation(handState) {
         const t = handState.lockTarget;
+        if (!t) return;
+
         if (t.state === 'grabbed_single') {
-            t.x = handState.x; t.y = handState.y;
+            t.x = handState.x;
+            t.y = handState.y;
         } else if (t.state === 'grabbed_dual') {
-            const hL = this.handStates['Left']; const hR = this.handStates['Right'];
-            t.x = (hL.x + hR.x) / 2; t.y = (hL.y + hR.y) / 2;
+            const hL = this.handStates['Left'];
+            const hR = this.handStates['Right'];
+            
+            // Midpoint position
+            t.x = (hL.x + hR.x) / 2;
+            t.y = (hL.y + hR.y) / 2;
+            
             const dist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)) || 1;
-            t.scale = t.initialScale * (dist / target.initialDist);
+            
+            // Use safe initialDist reference
+            if (t.initialDist) {
+                t.scale = t.initialScale * (dist / t.initialDist);
+            }
+            
             const angle = Math.atan2(hR.y - hL.y, hR.x - hL.x) * (180 / Math.PI);
-            t.rotationZ = t.initialRot + (angle - target.initialAngle);
+            t.rotationZ = t.initialRot + (angle - t.initialAngle);
         }
     }
 
