@@ -191,7 +191,10 @@ function switchToTab(path) {
 }
 
 function updateCurrentFileLabel() {
-  document.getElementById("currentFileLabel").textContent = currentFile || "Chưa chọn file";
+  const el = document.getElementById("currentFileLabel");
+  if (el) {
+    el.textContent = currentFile || "Chưa chọn file";
+  }
 }
 
 function highlightActiveFile() {

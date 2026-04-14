@@ -42,11 +42,14 @@ if ($userId <= 0) {
 }
 
 $projectRoot = dirname(dirname(dirname(__DIR__)));
-define("WORKSPACE_BASE", $projectRoot . DIRECTORY_SEPARATOR . "uploads" . DIRECTORY_SEPARATOR . "workspaces");
+// Use DIRECTORY_SEPARATOR for cross-platform compatibility
+$uploadsDir = $projectRoot . DIRECTORY_SEPARATOR . "uploads";
+$workspacesDir = $uploadsDir . DIRECTORY_SEPARATOR . "workspaces";
 
-if (!is_dir(WORKSPACE_BASE)) {
-    mkdir(WORKSPACE_BASE, 0777, true);
-}
+if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0777, true);
+if (!is_dir($workspacesDir)) mkdir($workspacesDir, 0777, true);
+
+define("WORKSPACE_BASE", $workspacesDir);
 
 define("WORKSPACE_ROOT", WORKSPACE_BASE . "/user_" . $userId);
 
