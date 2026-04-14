@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Hand Interaction Module (Architect Mode)
- * Inspired by @ztuden TikTok: Realistic gesture control with HUD and Wireframe effects
+ * Btoan AI - Hand Interaction Module (FINAL STABLE v5)
+ * Simplified interaction for reliable Grab & Drag
  */
 
 class HandModule {
@@ -13,12 +13,6 @@ class HandModule {
         this.cursorElement = document.getElementById('hand-cursor');
         this.cursorStatus = document.getElementById('cursor-status');
         
-        // HUD Elements
-        this.rulerX = document.getElementById('hud-ruler-x');
-        this.rulerY = document.getElementById('hud-ruler-y');
-        this.valX = document.getElementById('hud-val-x');
-        this.valY = document.getElementById('hud-val-y');
-        
         this.hands = null;
         this.camera = null;
         this.isActive = false;
@@ -26,37 +20,35 @@ class HandModule {
         // Interaction state
         this.isPinching = false;
         this.draggedElement = null;
-        this.pinchThreshold = 0.045; // Tighter for precision
+        this.pinchThreshold = 0.05; 
         
-        // Smoothing (Enhanced)
+        // Smoothing
         this.cursorX = 0;
         this.cursorY = 0;
-        this.lerpAmount = 0.25;
+        this.lerpAmount = 0.3;
 
         this.init();
     }
 
     async init() {
-        console.log("HandModule: Initializing MediaPipe Hands...");
+        console.log("HandModule: Initializing...");
         try {
             this.hands = new Hands({
                 locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`
             });
 
             this.hands.setOptions({
-                maxNumHands: 2,
+                maxNumHands: 1, // Single hand for maximum stability
                 modelComplexity: 1,
-                minDetectionConfidence: 0.6,
-                minTrackingConfidence: 0.6
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
             });
 
             this.hands.onResults(this.onResults.bind(this));
-            console.log("HandModule: Hands initialized successfully.");
 
             const toggleBtn = document.getElementById('toggleHandMode');
-            if (toggleBtn) {
-                toggleBtn.onclick = () => this.toggle();
-            }
+            if (toggleBtn) toggleBtn.onclick = () => this.toggle();
+            
         } catch (e) {
             console.error("HandModule Init Error:", e);
         }
@@ -69,8 +61,7 @@ class HandModule {
 
     async start() {
         this.overlayElement.style.display = 'block';
-        this.statusElement.textContent = "SCANNING...";
-        document.getElementById('toggleHandMode').classList.add('active');
+        this.statusElement.textContent = "STARTING...";
         
         try {
             if (!this.camera) {
@@ -85,8 +76,10 @@ class HandModule {
             await this.camera.start();
             this.isActive = true;
             this.cursorElement.style.display = 'block';
+            this.statusElement.textContent = "ACTIVE";
         } catch (err) {
-            this.statusElement.textContent = "ERR: CAMERA_FAILED";
+            this.statusElement.textContent = "CAM_ERR";
+            console.error(err);
         }
     }
 
@@ -95,7 +88,7 @@ class HandModule {
         this.isActive = false;
         this.overlayElement.style.display = 'none';
         this.cursorElement.style.display = 'none';
-        document.getElementById('toggleHandMode').classList.remove('active');
+        this.releaseElement();
     }
 
     onResults(results) {
@@ -103,86 +96,79 @@ class HandModule {
         this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
         
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            this.statusElement.textContent = "SYSTEM_ACTIVE (" + results.multiHandLandmarks.length + "H)";
+            const landmarks = results.multiHandLandmarks[0];
             
-            results.multiHandLandmarks.forEach((landmarks, index) => {
-                // Drawing Architect Wireframe
-                window.drawConnectors(this.canvasCtx, landmarks, window.HAND_CONNECTIONS, { color: '#00ffcc', lineWidth: 1.5 });
-                window.drawLandmarks(this.canvasCtx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 1.5 });
+            // Draw skeleton
+            window.drawConnectors(this.canvasCtx, landmarks, window.HAND_CONNECTIONS, { color: '#00ffcc', lineWidth: 2 });
+            window.drawLandmarks(this.canvasCtx, landmarks, { color: '#ffffff', lineWidth: 1, radius: 2 });
 
-                if (index === 0) {
-                    this.processInput(landmarks); // First hand: Position/Grab
-                } else if (index === 1 && this.draggedElement) {
-                    this.processRotationInput(landmarks); // Second hand: Flip/Rotate
-                }
-            });
+            this.processInput(landmarks);
         } else {
-            this.statusElement.textContent = "SCANNING_FOR_INPUT...";
+            this.isPinching = false;
             this.releaseElement();
         }
         
         this.canvasCtx.restore();
     }
 
-    processRotationInput(landmarks) {
-        // Use the palm center to determine rotation angle
-        const wrist = landmarks[0];
-        const indexBase = landmarks[5];
+    processInput(landmarks) {
+        const thumb = landmarks[4];
+        const indexTip = landmarks[8];
         
-        const angle = Math.atan2(indexBase.y - wrist.y, indexBase.x - wrist.x) * (180 / Math.PI);
-        this.currentRotation = angle + 90; // Adjust for vertical orientation
-        
-        if (this.draggedElement) {
-            this.updateObjectTransform();
+        // Pinch Detection
+        const dx = thumb.x - indexTip.x;
+        const dy = thumb.y - indexTip.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+
+        // Mapping (Mirrored)
+        const rawX = (1 - indexTip.x) * window.innerWidth;
+        const rawY = indexTip.y * window.innerHeight;
+
+        // Smoothing
+        this.cursorX += (rawX - this.cursorX) * this.lerpAmount;
+        this.cursorY += (rawY - this.cursorY) * this.lerpAmount;
+
+        this.updateCursorHUD(this.cursorX, this.cursorY, dist);
+
+        if (dist < this.pinchThreshold) {
+            if (!this.isPinching) {
+                this.isPinching = true;
+                this.tryPickElement(this.cursorX, this.cursorY);
+            }
+        } else {
+            if (this.isPinching) {
+                this.isPinching = false;
+                this.releaseElement();
+            }
+        }
+
+        if (this.isPinching && this.draggedElement) {
+            this.moveElement(this.cursorX, this.cursorY);
         }
     }
 
-    updateObjectTransform() {
-        if (!this.draggedElement) return;
-        
-        // Combine Position + Flip/Rotate logic
-        const flipX = (this.cursorY / window.innerHeight) * 40 - 20;
-        const flipY = (this.cursorX / window.innerWidth) * 40 - 20;
-        const rotateZ = this.currentRotation || 0;
-
-        this.draggedElement.style.left = `${this.cursorX}px`;
-        this.draggedElement.style.top = `${this.cursorY}px`;
-        this.draggedElement.style.transform = `translate(-50%, -50%) rotateX(${flipX}deg) rotateY(${flipY}deg) rotateZ(${rotateZ}deg) scale(1.1)`;
-    }
-
-    updateHUD(x, y, dist) {
-        // Update Cursor
+    updateCursorHUD(x, y, dist) {
         this.cursorElement.style.left = `${x}px`;
         this.cursorElement.style.top = `${y}px`;
         
-        // Update Rulers
-        this.rulerX.style.top = `${y}px`;
-        this.rulerY.style.left = `${x}px`;
-        this.valX.innerText = `X: ${Math.round(x)}`;
-        this.valX.style.left = `${x}px`;
-        this.valY.innerText = `Y: ${Math.round(y)}`;
-        this.valY.style.top = `${y}px`;
-
-        // Pulse effect when pinching
         if (this.isPinching) {
-            this.cursorElement.style.borderColor = '#ffffff';
-            this.cursorElement.style.boxShadow = "0 0 20px #00ffcc";
-            this.cursorStatus.textContent = "GRABBING (" + Math.round(dist*1000) + ")";
+            this.cursorElement.style.borderColor = "#ffffff";
+            this.cursorElement.style.transform = "scale(0.8)";
+            this.cursorStatus.textContent = "GRABBING";
         } else {
-            this.cursorElement.style.borderColor = '#00ffcc';
-            this.cursorElement.style.boxShadow = "none";
-            this.cursorStatus.textContent = "READY (" + Math.round(dist*1000) + ")";
+            this.cursorElement.style.borderColor = "#00ffcc";
+            this.cursorElement.style.transform = "scale(1)";
+            this.cursorStatus.textContent = "READY";
         }
     }
 
     tryPickElement(x, y) {
-        const boxes = document.querySelectorAll('.wireframe');
+        const boxes = document.querySelectorAll('.demo-box');
         for (const box of boxes) {
             const rect = box.getBoundingClientRect();
             if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
                 this.draggedElement = box;
-                this.draggedElement.style.borderColor = "#ffffff";
-                this.draggedElement.style.background = "rgba(0, 255, 204, 0.2)";
+                this.draggedElement.style.boxShadow = "0 0 30px #00ffcc";
                 this.draggedElement.style.zIndex = "1000001";
                 break;
             }
@@ -193,14 +179,12 @@ class HandModule {
         if (this.draggedElement) {
             this.draggedElement.style.left = `${x}px`;
             this.draggedElement.style.top = `${y}px`;
-            this.draggedElement.style.transform = `translate(-50%, -50%) rotateX(${y/10}deg) rotateY(${x/10}deg)`;
         }
     }
 
     releaseElement() {
         if (this.draggedElement) {
-            this.draggedElement.style.borderColor = "#00ffcc";
-            this.draggedElement.style.background = "rgba(0, 255, 204, 0.05)";
+            this.draggedElement.style.boxShadow = "none";
             this.draggedElement.style.zIndex = "1000000";
             this.draggedElement = null;
         }
