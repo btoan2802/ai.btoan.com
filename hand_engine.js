@@ -131,18 +131,22 @@ class HandEngine {
 
     syncUI(detected) {
         const badge = document.getElementById('hand-mode-label');
-        badge.innerText = `3D_SPATIAL [${detected.size}H]`;
+        if (badge) badge.innerText = `3D_SPATIAL [${detected.size}H]`;
+        
         ['Left', 'Right'].forEach(side => {
             const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
             if (detected.has(side)) {
-                cursor.style.display = 'block';
-                const s = this.handStates[side];
-                cursor.style.left = `${s.x}px`;
-                cursor.style.top = `${s.y}px`;
-                cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.7 : 1})`;
+                if (cursor) {
+                    cursor.style.display = 'block';
+                    const s = this.handStates[side];
+                    cursor.style.left = `${s.x}px`;
+                    cursor.style.top = `${s.y}px`;
+                    cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.7 : 1})`;
+                }
             } else { 
-                cursor.style.display = 'none'; 
+                if (cursor) cursor.style.display = 'none'; 
                 this.releaseObject(side);
+                this.handStates[side].isPinching = false; // Reset ghost state
             }
         });
     }
@@ -235,10 +239,13 @@ class HandEngine {
 
     releaseObject(side) {
         const s = this.handStates[side];
-        if (s.lockTarget) {
-            const idx = s.lockTarget.grabbedBy.indexOf(side.toLowerCase());
-            if (idx > -1) s.lockTarget.grabbedBy.splice(idx, 1);
-            s.lockTarget.state = s.lockTarget.grabbedBy.length > 0 ? 'grabbed_single' : 'idle';
+        if (s && s.lockTarget) {
+            const target = s.lockTarget;
+            if (target.grabbedBy) {
+                const idx = target.grabbedBy.indexOf(side.toLowerCase());
+                if (idx > -1) target.grabbedBy.splice(idx, 1);
+                target.state = target.grabbedBy.length > 0 ? 'grabbed_single' : 'idle';
+            }
             s.lockTarget = null;
         }
     }

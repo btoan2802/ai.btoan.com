@@ -17,31 +17,32 @@
       padding: 0;
     }
     .code-body {
-      height: calc(100vh - 60px) !important; /* Header is ~60px */
-      overflow: hidden !important;
+      flex: 1 !important;
+      display: grid !important;
+      grid-template-areas: "explorer editor assistant";
+      grid-template-columns: 280px 1fr 320px;
+      grid-template-rows: 1fr;
+      min-height: 0;
+      height: calc(100vh - var(--header-height)) !important;
+    }
+    .explorer-panel, .assistant-panel, .webview-panel, .editor-panel {
+      height: 100% !important;
+      min-height: 0;
+      overflow: hidden;
     }
     .assistant-panel {
       display: flex !important;
       flex-direction: column !important;
-      height: 100% !important;
-      min-height: 0;
-      overflow: hidden !important;
     }
     .agent-chat-history {
-      flex: 1 1 0% !important; /* Force to take remaining space but allow shrink */
+      flex: 1 1 0% !important;
       min-height: 0 !important;
       overflow-y: auto !important;
     }
-    .input-wrapper {
-      flex: 0 0 auto !important;
-      background: #1e1e24;
-      padding: 10px;
-      border-top: 1px solid #333;
-    }
-    .ai-prompt {
-      height: 80px !important;
-      margin-bottom: 5px !important;
+    .assistant-input-area {
       flex-shrink: 0 !important;
+      background: #1e1e24;
+      border-top: 1px solid var(--border-color);
     }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
