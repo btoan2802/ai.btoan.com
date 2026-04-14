@@ -14,7 +14,8 @@ document.addEventListener("DOMContentLoaded", () => {
     usernameInput.value = lastUser;
   }
 
-loginForm.classList.add('active');
+  loginForm.classList.add('active');
+  container.classList.remove('active');
   function isMobile(){
     return window.innerWidth <= 768;
   }
@@ -69,25 +70,10 @@ function setupMobile(){
 
 
 
-const faceLoginBtn = document.getElementById("face-login-btn");
-const faceEnrollBtn = document.getElementById("face-enroll-btn");
-const faceCloseBtn = document.getElementById("face-close-btn");
+const faceEnrollBtnProfile = document.getElementById("face-enroll-btn-profile");
 
-if (faceLoginBtn) {
-  faceLoginBtn.addEventListener("click", loginWithFace);
-}
-
-if (faceEnrollBtn) {
-  faceEnrollBtn.addEventListener("click", openFaceEnrollModal);
-}
-
-if (faceCloseBtn) {
-  faceCloseBtn.addEventListener("click", closeFaceEnrollModal);
-}
-
-const faceEnrollBtnReg = document.getElementById("face-enroll-btn-reg");
-if (faceEnrollBtnReg) {
-  faceEnrollBtnReg.addEventListener("click", openFaceEnrollModal);
+if (faceEnrollBtnProfile) {
+  faceEnrollBtnProfile.addEventListener("click", openFaceEnrollModal);
 }
 
 });
@@ -138,14 +124,24 @@ function getActiveUsernameInput() {
 }
 
 async function openFaceEnrollModal() {
-  const usernameInput = getActiveUsernameInput();
-  if (!usernameInput || !usernameInput.value.trim()) {
+  // Use logged in username if profile modal is open
+  const isLoggedIn = document.getElementById("chatApp").style.display !== "none";
+  let username = "";
+  
+  if (isLoggedIn) {
+      username = localStorage.getItem("username") || "";
+  } else {
+      const usernameInput = getActiveUsernameInput();
+      username = usernameInput ? usernameInput.value.trim() : "";
+  }
+
+  if (!username) {
     const isReg = document.getElementById('registerForm')?.classList.contains('active');
     const msg = isReg ? "Vui lòng nhập tên đăng ký trước" : "Vui lòng nhập username trước";
-    if (isReg) {
-       document.getElementById("registerMsg").textContent = msg;
+    if (isLoggedIn) {
+        alert(msg);
     } else {
-       setFaceLoginMessage(msg, true);
+        setFaceLoginMessage(msg, true);
     }
     return;
   }
@@ -268,8 +264,15 @@ function captureFaceImage() {
 }
 
 async function saveFaceImage() {
-  const usernameInput = getActiveUsernameInput();
-  const username = usernameInput ? usernameInput.value.trim() : "";
+  let username = "";
+  const isLoggedIn = document.getElementById("chatApp").style.display !== "none";
+
+  if (isLoggedIn) {
+      username = localStorage.getItem("username") || "";
+  } else {
+      const usernameInput = getActiveUsernameInput();
+      username = usernameInput ? usernameInput.value.trim() : "";
+  }
 
   if (!username) {
     isSavingFace = false;
@@ -432,3 +435,13 @@ async function loginWithFace() {
     isFaceLoginActive = false;
   }
 }
+
+// Add global listener for close button which is in index.php
+document.addEventListener("click", (e) => {
+    if (e.target && e.target.id === "face-close-btn") {
+        closeFaceEnrollModal();
+    }
+    if (e.target && e.target.id === "face-login-btn") {
+        loginWithFace();
+    }
+});

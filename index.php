@@ -343,7 +343,7 @@
 
   <div id="loginBox" style="display:none">
 
-    <div class="container active">
+    <div class="container">
       <div class="form-box login" id="loginForm">
         <form onsubmit="event.preventDefault(); login();">
           <div id="loginMsg" style="color:red;"></div>
@@ -367,9 +367,6 @@
         </button>
         <div id="face-login-status"></div>
 
-        <button type="button" id="face-enroll-btn" class="btn btn-face-enroll">
-          <i class='bx bx-face'></i> Thiết lập khuôn mặt (FaceID)
-        </button>
 
 
           <div class="switch-auth">
@@ -410,9 +407,6 @@
             <i class='bx bxs-lock-alt'></i>
           </div>
 
-          <button type="button" id="face-enroll-btn-reg" class="btn btn-face-enroll" style="margin-bottom:15px;">
-            <i class='bx bx-face'></i> Thiết lập khuôn mặt (Tùy chọn)
-          </button>
 
           <button type="submit" class="btn">Register</button>
           <div class="switch-auth">
@@ -644,6 +638,11 @@
 
         <!-- DOB -->
         <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
+
+        <!-- FACEID SETTING -->
+        <button type="button" id="face-enroll-btn-profile" class="btn btn-face-enroll w-100 mb-3" style="background: #edf2ff; color: #7494ec; border: none; font-size: 14px; height: 40px;">
+          <i class='bx bx-face'></i> Thiết lập khuôn mặt (FaceID)
+        </button>
 
         <!-- SAVE -->
         <button onclick="saveProfile()" class="btn btn-primary w-100">
