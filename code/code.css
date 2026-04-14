@@ -115,6 +115,13 @@ html, body {
   flex-direction: column;
   min-width: 0;
   border-right: 1px solid var(--border-color);
+  height: 100%;
+}
+
+.editor-host {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
 }
 
 .panel-header {
