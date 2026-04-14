@@ -18,7 +18,7 @@ function api(url, options = {}) {
   // Fix: Use relative path if URL starts with /ai/
   let finalUrl = url;
   if (finalUrl.startsWith("/ai/")) {
-      finalUrl = ".." + finalUrl;
+    finalUrl = ".." + finalUrl;
   }
   let finalBody = options.body;
 
@@ -35,7 +35,7 @@ function api(url, options = {}) {
       const parsed = JSON.parse(finalBody);
       parsed.user_id = userId;
       finalBody = JSON.stringify(parsed);
-    } catch (e) {}
+    } catch (e) { }
   }
 
   return fetch(finalUrl, {
@@ -266,7 +266,7 @@ async function saveCurrentFile() {
 function runProject() {
   const body = document.querySelector(".code-body");
   body.classList.add("with-preview");
-  
+
   const iframe = document.getElementById("previewIframe");
   if (!iframe) return;
 
@@ -274,18 +274,18 @@ function runProject() {
   const ext = currentFile ? currentFile.split(".").pop().toLowerCase() : "";
 
   if (ext === "html") {
-      // SMART INJECTION: Try to find style.css if it exists in models
-      if (models["style.css"]) {
-          const css = models["style.css"].getValue();
-          content = content.replace("</head>", `<style>${css}</style></head>`);
-      }
-      if (models["script.js"]) {
-          const js = models["script.js"].getValue();
-          content = content.replace("</body>", `<script>${js}</script></body>`);
-      }
-      iframe.srcdoc = content;
+    // SMART INJECTION: Try to find style.css if it exists in models
+    if (models["style.css"]) {
+      const css = models["style.css"].getValue();
+      content = content.replace("</head>", `<style>${css}</style></head>`);
+    }
+    if (models["script.js"]) {
+      const js = models["script.js"].getValue();
+      content = content.replace("</body>", `<script>${js}</script></body>`);
+    }
+    iframe.srcdoc = content;
   } else {
-      iframe.srcdoc = `<html><body style="background:#fff; color:#000; font-family:sans-serif; padding:20px;">
+    iframe.srcdoc = `<html><body style="background:#fff; color:#000; font-family:sans-serif; padding:20px;">
         <h3>File: ${currentFile || "Unknown"}</h3>
         <pre>${content.replace(/</g, "&lt;")}</pre>
       </body></html>`;
@@ -293,48 +293,42 @@ function runProject() {
 }
 
 function switchMobileTab(tab) {
-    const explorer = document.getElementById("explorerPanel");
-    const assistant = document.getElementById("assistantPanel");
-    const preview = document.getElementById("webviewPanel");
-    const body = document.getElementById("mainBody");
+  const explorer = document.getElementById("explorerPanel");
+  const assistant = document.getElementById("assistantPanel");
+  const preview = document.getElementById("webviewPanel");
+  const body = document.getElementById("mainBody");
 
-    // Reset
-    explorer.classList.remove("mobile-active");
-    assistant.classList.remove("mobile-active");
-    preview.classList.remove("mobile-active");
-    document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+  // Reset
+  explorer.classList.remove("mobile-active");
+  assistant.classList.remove("mobile-active");
+  preview.classList.remove("mobile-active");
+  document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
 
-    if (tab === "explorer") {
-        explorer.classList.add("mobile-active");
-    } else if (tab === "ai") {
-        assistant.classList.add("mobile-active");
-    } else if (tab === "preview") {
-        preview.classList.add("mobile-active");
-        runProject();
-    }
-    
-    // Find nav item to activate
-    const items = document.querySelectorAll(".nav-item span");
-    items.forEach(span => {
-        if (span.textContent.toLowerCase().includes(tab)) {
-            span.parentElement.classList.add("active");
-        }
-    });
-}
-      // Basic text preview for non-html
-      iframe.srcdoc = `<html><body style="background:#fff; color:#000; font-family:sans-serif; padding:20px;">
-        <h3>File: ${currentFile || "Unknown"}</h3>
-        <pre>${content.replace(/</g, "&lt;")}</pre>
-      </body></html>`;
+  if (tab === "explorer") {
+    explorer.classList.add("mobile-active");
+  } else if (tab === "ai") {
+    assistant.classList.add("mobile-active");
+  } else if (tab === "preview") {
+    preview.classList.add("mobile-active");
+    runProject();
   }
+
+  // Find nav item to activate
+  const items = document.querySelectorAll(".nav-item span");
+  items.forEach(span => {
+    if (span.textContent.toLowerCase().includes(tab)) {
+      span.parentElement.classList.add("active");
+    }
+  });
 }
+window.switchMobileTab = switchMobileTab;
 
 function togglePreview() {
-    const body = document.querySelector(".code-body");
-    body.classList.toggle("with-preview");
-    if (body.classList.contains("with-preview")) {
-        runProject();
-    }
+  const body = document.querySelector(".code-body");
+  body.classList.toggle("with-preview");
+  if (body.classList.contains("with-preview")) {
+    runProject();
+  }
 }
 
 async function searchWorkspace() {
@@ -429,30 +423,30 @@ function initMonaco() {
       fontFamily: "JetBrains Mono, Consolas, monospace",
       tabSize: 2
     });
-    
+
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, function () {
-  editor.getAction("editor.action.commentLine").run();
-});
+      editor.getAction("editor.action.commentLine").run();
+    });
 
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, function () {
-  const searchInput = document.getElementById("globalSearchInput");
-  if (searchInput) {
-    searchInput.focus();
-    searchInput.select();
-  }
-});
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyF, function () {
+      const searchInput = document.getElementById("globalSearchInput");
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    });
 
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
-  saveCurrentFile();
-});
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+      saveCurrentFile();
+    });
 
-editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, function () {
-  const searchInput = document.getElementById("globalSearchInput");
-  if (searchInput) {
-    searchInput.focus();
-    searchInput.select();
-  }
-});
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, function () {
+      const searchInput = document.getElementById("globalSearchInput");
+      if (searchInput) {
+        searchInput.focus();
+        searchInput.select();
+      }
+    });
 
     loadTree();
   });
@@ -461,18 +455,18 @@ editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyP, function () {
 document.addEventListener("DOMContentLoaded", () => {
   initMonaco();
   const agentSendBtn = document.getElementById("agentSendBtn");
-const agentInput = document.getElementById("agentInput");
+  const agentInput = document.getElementById("agentInput");
 
-if (agentSendBtn) agentSendBtn.onclick = sendAgentMessage;
+  if (agentSendBtn) agentSendBtn.onclick = sendAgentMessage;
 
-if (agentInput) {
-  agentInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendAgentMessage();
-    }
-  });
-}
+  if (agentInput) {
+    agentInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendAgentMessage();
+      }
+    });
+  }
   const uploadWorkspaceFolder = document.getElementById("uploadWorkspaceFolder");
 
   if (uploadWorkspaceFolder) {
@@ -605,7 +599,7 @@ if (agentInput) {
 
   const runBtn = document.getElementById("runBtn");
   const closeWebviewBtn = document.getElementById("closeWebviewBtn");
-  
+
   if (runBtn) runBtn.onclick = togglePreview;
   if (closeWebviewBtn) closeWebviewBtn.onclick = togglePreview;
 });
@@ -651,26 +645,26 @@ async function sendAgentMessage() {
 
     // New: Check for structured tags in reply
     if (data.reply) {
-        const fileBlockRegex = /<file_content\s+path=["'](.+?)["']\s*>([\s\S]*?)<\/file_content>/gi;
-        let match;
-        while ((match = fileBlockRegex.exec(data.reply)) !== null) {
-            const path = match[1];
-            const content = match[2].trim();
-            
-            // Apply it to the workspace!
-            await api("/ai/api/workspace/save.php", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ path, content })
-            });
+      const fileBlockRegex = /<file_content\s+path=["'](.+?)["']\s*>([\s\S]*?)<\/file_content>/gi;
+      let match;
+      while ((match = fileBlockRegex.exec(data.reply)) !== null) {
+        const path = match[1];
+        const content = match[2].trim();
 
-            appendAgentMessage("assistant", `⚡ Đã tự động cập nhật file: ${path}`);
-            await loadTree();
-            await openFile(path);
-            if (document.querySelector(".code-body").classList.contains("with-preview")) {
-                runProject();
-            }
+        // Apply it to the workspace!
+        await api("/ai/api/workspace/save.php", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path, content })
+        });
+
+        appendAgentMessage("assistant", `⚡ Đã tự động cập nhật file: ${path}`);
+        await loadTree();
+        await openFile(path);
+        if (document.querySelector(".code-body").classList.contains("with-preview")) {
+          runProject();
         }
+      }
     }
   } catch (e) {
     appendAgentMessage("assistant", "Lỗi: " + e.message);
