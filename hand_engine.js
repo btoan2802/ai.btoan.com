@@ -96,12 +96,12 @@ class HandEngine {
 
     updateGlobalMode(detected) {
         let newMode = 'NO_HAND';
-        if (detected.size === 1) newMode = 'MOUSE_DRAW';
-        else if (detected.size === 2) newMode = 'STRETCH';
+        if (detected.size === 1) newMode = '3D_SPATIAL';
+        else if (detected.size === 2) newMode = '3D_SPATIAL';
         
         if (this.mode !== newMode) {
-            if (this.mode === 'MOUSE_DRAW') window.handDraw.endStroke();
             this.mode = newMode;
+            this.spatialState.isDualOnSame = false;
         }
     }
 
@@ -169,22 +169,13 @@ class HandEngine {
                 if (!target.grabbedBy.includes(side.toLowerCase())) target.grabbedBy.push(side.toLowerCase());
             } else {
                 s.pinchStartTime = now;
-                if (this.mode === 'MOUSE_DRAW') window.handDraw.startStroke(s.x, s.y);
             }
         } else if (!s.isPinching && s.prevPinching) {
             if (s.lockTarget) {
                 this.releaseObject(side);
             } else if (now - s.pinchStartTime < this.tapWindow) {
-                if (this.mode === 'MOUSE_DRAW') window.handDraw.clear(); // Abort small stroke for click
                 this.virtualClick(s.x, s.y);
-            } else {
-                if (this.mode === 'MOUSE_DRAW') window.handDraw.endStroke();
             }
-        }
-
-        // DRAW FEEDBACK
-        if (s.isPinching && !s.lockTarget && this.mode === 'MOUSE_DRAW') {
-             window.handDraw.addPoint(s.x, s.y);
         }
 
         // Apply Independent Movement

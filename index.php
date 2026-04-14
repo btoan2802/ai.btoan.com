@@ -796,12 +796,9 @@
     </style>
 
 
-  <!-- 🚀 3D SPATIAL & SHAPE SPAWNING v11.0 -->
+  <!-- 🚀 3D SPATIAL & INTERACTION SYSTEM v12.0 -->
   <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.05); overflow:hidden;">
     
-    <!-- Drawing Canvas Layer -->
-    <canvas id="draw-canvas" style="position:absolute; inset:0; pointer-events:none; z-index:10;"></canvas>
-
     <!-- 3D Interaction Stage -->
     <div id="shape-container" style="position:absolute; inset:0; pointer-events:none; z-index:15; perspective: 1200px; transform-style: preserve-3d;"></div>
 
@@ -854,13 +851,11 @@
     .seed-node { animation: genesis-pulse 3s infinite ease-in-out; }
   </style>
 
-  <script src="login/SignUp_LogIn_Form.js?v=17"></script>
-  <script src="./app.js?v=17"></script>
-  <script src="hand_scene.js?v=8"></script>
-  <script src="hand_geometry.js?v=2"></script>
-  <script src="hand_draw.js?v=4"></script>
-  <script src="hand_shapes.js?v=3"></script>
-  <script src="hand_engine.js?v=8"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=18"></script>
+  <script src="./app.js?v=18"></script>
+  <script src="hand_scene.js?v=9"></script>
+  <script src="hand_shapes.js?v=4"></script>
+  <script src="hand_engine.js?v=9"></script>
 </body>
 
 </html>

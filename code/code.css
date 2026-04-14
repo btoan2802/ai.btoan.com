@@ -346,58 +346,35 @@ html, body {
     height: calc(100vh - var(--header-height) - var(--mobile-nav-height)) !important;
   }
 
-  /* Drawer Backdrop */
-  .explorer-panel, .webview-panel {
+  /* Mobile Tabbed Panels (Mutually Exclusive) */
+  .explorer-panel, .assistant-panel, .webview-panel, .editor-panel {
     display: none !important;
     position: fixed;
-    bottom: 0; left: 0; right: 0; top: 0;
-    z-index: 2000;
-    background: rgba(13, 13, 15, 0.98);
-    backdrop-filter: blur(20px);
-    animation: drawerUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .assistant-panel {
-    display: none !important;
-    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    right: 0;
     bottom: var(--mobile-nav-height);
-    left: 0; right: 0;
-    top: 55%; /* Keep editor visible at top */
-    z-index: 2500;
-    background: #18181c;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    box-shadow: 0 -30px 60px rgba(0,0,0,0.9);
-    animation: drawerUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 100% !important;
+    height: auto !important;
+    z-index: 1000;
+    background: #0d0d0f;
+    border: none;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    animation: fadeInTab 0.2s ease-out;
   }
 
-  .explorer-panel::before, .assistant-panel::before, .webview-panel::before {
-    content: '';
-    width: 40px;
-    height: 4px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 2px;
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
+  @keyframes fadeInTab {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  @keyframes drawerUp {
-    from { transform: translateY(100%); }
-    to { transform: translateY(0); }
-  }
-
+  /* Only show active mobile tab */
   .explorer-panel.mobile-active,
   .assistant-panel.mobile-active,
-  .webview-panel.mobile-active {
+  .webview-panel.mobile-active,
+  .editor-panel.mobile-active {
     display: flex !important;
-  }
-
-  .editor-panel {
-    width: 100vw !important;
-    height: 100% !important;
-    z-index: 10;
   }
 
   .mobile-nav {
