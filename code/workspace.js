@@ -679,8 +679,10 @@ async function sendAgentMessage() {
       })
     });
 
-    thinkingDiv.textContent = data.reply || "(không có phản hồi)";
-    thinkingDiv.classList.remove("thinking");
+    if (thinkingDiv) {
+      thinkingDiv.textContent = data.reply || "(không có phản hồi)";
+      thinkingDiv.classList.remove("thinking");
+    }
 
     if (data.action?.type === "create_file") {
       await loadTree();

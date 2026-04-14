@@ -41,7 +41,8 @@ if ($userId <= 0) {
     exit;
 }
 
-define("WORKSPACE_BASE", realpath(__DIR__ . "/../../../uploads") . "/workspaces");
+$projectRoot = dirname(dirname(dirname(__DIR__)));
+define("WORKSPACE_BASE", $projectRoot . DIRECTORY_SEPARATOR . "uploads" . DIRECTORY_SEPARATOR . "workspaces");
 
 if (!is_dir(WORKSPACE_BASE)) {
     mkdir(WORKSPACE_BASE, 0777, true);

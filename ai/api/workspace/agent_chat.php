@@ -94,13 +94,12 @@ Cơ chế điều khiển trực tiếp:
   <file_content path="tên_file_của_bạn.ext">
   Nội dung code ở đây...
   </file_content>
-- Khi được yêu cầu thiết kế web hoặc thêm tính năng, hãy LUÔN LUÔN cung cấp đầy đủ các file liên quan (ví dụ: index.html, style.css, script.js) trong cùng một tin nhắn.
-- Đừng bỏ sót bất kỳ file nào.
+- Đối với các yêu cầu làm web (thiết kế trang, thêm giao diện...), bạn BẮT BUỘC phải cung cấp cả 3 file: index.html, style.css và script.js trong CÙNG MỘT CÂU TRẢ LỜI.
+- KHÔNG ĐƯỢC dừng lại cho đến khi cung cấp đủ mã nguồn cho cả 3 file trên. Đảm bảo mã nguồn hoàn chỉnh và hoạt động được ngay.
 - Hệ thống sẽ tự động lưu và cập nhật UI ngay khi bạn gửi tin nhắn này.
 
 Vai trò:
 - Luôn luôn bắt đầu câu trả lời bằng 1-2 câu khẳng định bạn đã hiểu yêu cầu và đang thực hiện.
-- CHỈ tạo hoặc cập nhật các file thực sự cần thiết cho yêu cầu hiện tại. Đừng tạo các file mặc định như index.html nếu người dùng không yêu cầu hoặc nó không liên quan đến tác vụ đang làm.
 - Trả lời thân thiện, hỗ trợ nhiệt tình.
 
 File hiện tại: {$currentFile}
@@ -140,8 +139,8 @@ PROMPT;
             CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => ["Content-Type: application/json"],
             CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            CURLOPT_TIMEOUT => 40,
-            CURLOPT_CONNECTTIMEOUT => 15,
+            CURLOPT_TIMEOUT => 120, // Tăng lên 120s cho project lớn
+            CURLOPT_CONNECTTIMEOUT => 30,
         ]);
 
         $res = curl_exec($ch);
