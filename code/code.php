@@ -106,11 +106,12 @@
 
         <div id="agentChatHistory" class="agent-chat-history"></div>
 
-        <textarea id="agentInput" class="ai-prompt" rows="4"
-          placeholder="Yêu cầu sửa code, tạo file..."></textarea>
-
-        <div class="input-wrapper">
-          <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
+        <div class="assistant-input-area">
+            <textarea id="agentInput" class="ai-prompt" rows="3"
+              placeholder="Yêu cầu sửa code, tạo file..."></textarea>
+            <div class="input-wrapper">
+              <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
+            </div>
         </div>
       </aside>
     </div>
@@ -193,6 +194,6 @@
     });
   </script>
 
-  <script src="workspace.js?v=2.9"></script>
+  <script src="workspace.js?v=3.0"></script>
 </body>
 </html>
