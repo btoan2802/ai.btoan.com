@@ -437,3 +437,5 @@ async function loginWithFace() {
 document.addEventListener("click", (e) => {
     // Listener logic
 });
+
+}); // END DOMContentLoaded
