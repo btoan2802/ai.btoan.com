@@ -20,9 +20,9 @@ class HandEngine {
         };
         
         // --- PRECISION CONFIG ---
-        this.smooth = 0.5;
-        this.pinchThresh = 0.052;
-        this.tapWindow = 220; 
+        this.smooth = 0.35;
+        this.pinchThresh = 0.055;
+        this.tapWindow = 250; 
         
         // --- SPATIAL ANCHORS ---
         this.spatialState = {

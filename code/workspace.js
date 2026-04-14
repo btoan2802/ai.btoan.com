@@ -328,43 +328,35 @@ function runProject() {
 }
 
 function switchMobileTab(tab) {
-  const explorer = document.getElementById("explorerPanel");
-  const assistant = document.getElementById("assistantPanel");
-  const preview = document.getElementById("webviewPanel");
-  const editorPanel = document.getElementById("editorPanel");
+  const panels = {
+    explorer: document.getElementById("explorerPanel"),
+    editor: document.getElementById("editorPanel"),
+    preview: document.getElementById("webviewPanel"),
+    ai: document.getElementById("assistantPanel")
+  };
 
-  // Reset
-  explorer.classList.remove("mobile-active");
-  assistant.classList.remove("mobile-active");
-  preview.classList.remove("mobile-active");
-  if (editorPanel) editorPanel.classList.remove("mobile-active");
-  
+  // Hide all panels
+  Object.values(panels).forEach(p => { if (p) p.classList.remove("mobile-active"); });
+
+  // Deactivate all nav items
   document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
 
-  if (tab === "explorer") {
-    explorer.classList.add("mobile-active");
-  } else if (tab === "ai") {
-    assistant.classList.add("mobile-active");
-  } else if (tab === "preview") {
-    preview.classList.add("mobile-active");
-    runProject();
-  } else if (tab === "editor") {
-    if (editorPanel) editorPanel.classList.add("mobile-active");
+  // Show target panel
+  if (panels[tab]) {
+    panels[tab].classList.add("mobile-active");
   }
 
-  // Find nav item to activate by text content match
-  const navItems = document.querySelectorAll(".nav-item");
-  navItems.forEach(item => {
-    const text = item.querySelector("span")?.textContent.toLowerCase() || "";
-    if (text.includes(tab)) {
-      item.classList.add("active");
-    }
-  });
+  // Activate matching nav item via data-tab attribute
+  const navItem = document.querySelector(`.nav-item[data-tab="${tab}"]`);
+  if (navItem) navItem.classList.add("active");
 
-  // Critical: Force editor layout after UI change on mobile
-  setTimeout(() => {
-    if (editor) editor.layout();
-  }, 50); // Fast layout
+  // Run preview if needed
+  if (tab === "preview") runProject();
+
+  // Force Monaco editor layout recalculation
+  if (tab === "editor") {
+    setTimeout(() => { if (editor) editor.layout(); }, 100);
+  }
 }
 window.switchMobileTab = switchMobileTab;
 
