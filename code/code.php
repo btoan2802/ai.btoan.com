@@ -37,15 +37,16 @@
 
     
 
-    <div class="code-body">
-      <aside class="explorer-panel">
+    <div class="code-body" id="mainBody">
+      <aside class="explorer-panel" id="explorerPanel">
         <div class="panel-header">
-          <span>EXPLORER</span>
-          <button id="reloadTreeBtn">↻</button>
+          <span>PROJECT</span>
+          <button id="reloadTreeBtn" class="sm-btn"><i class="bi bi-arrow-clockwise"></i></button>
         </div>
 
-        <input id="globalSearchInput" class="search-input" placeholder="Tìm file hoặc nội dung...">
-        <button id="globalSearchBtn" class="search-btn">Search</button>
+        <div class="search-container">
+          <input id="globalSearchInput" class="search-input" placeholder="Tìm kiếm...">
+        </div>
 
         <div id="fileTree" class="file-tree"></div>
       </aside>
@@ -57,30 +58,49 @@
 
       <aside id="webviewPanel" class="webview-panel">
         <div class="panel-header">
-          <span>PREVIEW / WEBVIEW</span>
-          <button id="closeWebviewBtn">×</button>
+          <span>PREVIEW</span>
+          <button id="closeWebviewBtn" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">×</button>
         </div>
         <div class="preview-host">
           <iframe id="previewIframe" sandbox="allow-scripts allow-same-origin allow-forms allow-modals"></iframe>
         </div>
       </aside>
 
-      <aside class="assistant-panel">
+      <aside id="assistantPanel" class="assistant-panel">
         <div class="panel-header">
           <span>AI AGENT</span>
         </div>
 
-        <div class="small-label">File đang mở</div>
-        <div id="currentFileLabel" class="current-file-label">Chưa chọn file</div>
-
         <div id="agentChatHistory" class="agent-chat-history"></div>
 
-        <textarea id="agentInput" class="ai-prompt" rows="6"
-          placeholder="Hỏi AI, yêu cầu sửa code, tạo file, tạo folder..."></textarea>
+        <textarea id="agentInput" class="ai-prompt" rows="4"
+          placeholder="Yêu cầu sửa code, tạo file..."></textarea>
 
-        <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
+        <div style="padding: 0 12px 12px;">
+          <button id="agentSendBtn" class="top-btn primary w-100">Gửi cho AI</button>
+        </div>
       </aside>
     </div>
+
+    <!-- MOBILE NAV -->
+    <nav class="mobile-nav">
+      <div class="nav-item" onclick="switchMobileTab('explorer')">
+        <i class="bi bi-folder2-open"></i>
+        <span>Explorer</span>
+      </div>
+      <div class="nav-item active" onclick="switchMobileTab('editor')">
+        <i class="bi bi-code-slash"></i>
+        <span>Editor</span>
+      </div>
+      <div class="nav-item" onclick="switchMobileTab('preview')">
+        <i class="bi bi-play-circle"></i>
+        <span>Preview</span>
+      </div>
+      <div class="nav-item" onclick="switchMobileTab('ai')">
+        <i class="bi bi-robot"></i>
+        <span>AI Agent</span>
+      </div>
+    </nav>
   </div>
 
   <script>

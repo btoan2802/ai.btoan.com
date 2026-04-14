@@ -15,7 +15,11 @@ function api(url, options = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("timeout"), 120000);
 
+  // Fix: Use relative path if URL starts with /ai/
   let finalUrl = url;
+  if (finalUrl.startsWith("/ai/")) {
+      finalUrl = ".." + finalUrl;
+  }
   let finalBody = options.body;
 
   // GET => thêm user_id vào query
@@ -266,13 +270,57 @@ function runProject() {
   const iframe = document.getElementById("previewIframe");
   if (!iframe) return;
 
-  // If current file is HTML, preview it. If it's JS/CSS, try to find an index.html or just show current as text.
-  const content = editor.getValue();
+  let content = editor.getValue();
   const ext = currentFile ? currentFile.split(".").pop().toLowerCase() : "";
 
   if (ext === "html") {
+      // SMART INJECTION: Try to find style.css if it exists in models
+      if (models["style.css"]) {
+          const css = models["style.css"].getValue();
+          content = content.replace("</head>", `<style>${css}</style></head>`);
+      }
+      if (models["script.js"]) {
+          const js = models["script.js"].getValue();
+          content = content.replace("</body>", `<script>${js}</script></body>`);
+      }
       iframe.srcdoc = content;
   } else {
+      iframe.srcdoc = `<html><body style="background:#fff; color:#000; font-family:sans-serif; padding:20px;">
+        <h3>File: ${currentFile || "Unknown"}</h3>
+        <pre>${content.replace(/</g, "&lt;")}</pre>
+      </body></html>`;
+  }
+}
+
+function switchMobileTab(tab) {
+    const explorer = document.getElementById("explorerPanel");
+    const assistant = document.getElementById("assistantPanel");
+    const preview = document.getElementById("webviewPanel");
+    const body = document.getElementById("mainBody");
+
+    // Reset
+    explorer.classList.remove("mobile-active");
+    assistant.classList.remove("mobile-active");
+    preview.classList.remove("mobile-active");
+    document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
+
+    if (tab === "explorer") {
+        explorer.classList.add("mobile-active");
+    } else if (tab === "ai") {
+        assistant.classList.add("mobile-active");
+    } else if (tab === "preview") {
+        preview.classList.add("mobile-active");
+        runProject();
+    }
+    
+    // Find nav item to activate
+    const items = document.querySelectorAll(".nav-item span");
+    items.forEach(span => {
+        if (span.textContent.toLowerCase().includes(tab)) {
+            span.parentElement.classList.add("active");
+        }
+    });
+}
       // Basic text preview for non-html
       iframe.srcdoc = `<html><body style="background:#fff; color:#000; font-family:sans-serif; padding:20px;">
         <h3>File: ${currentFile || "Unknown"}</h3>
@@ -443,7 +491,7 @@ if (agentInput) {
 
       try {
         const userId = localStorage.getItem("user_id");
-        const res = await fetch("/ai/api/workspace/upload_folder.php", {
+        const res = await fetch("../ai/api/workspace/upload_folder.php", {
           method: "POST",
           body: fd,
           credentials: "same-origin"
@@ -534,7 +582,7 @@ if (agentInput) {
 
       try {
         const userId = localStorage.getItem("user_id");
-        const res = await fetch("/ai/api/workspace/upload.php", {
+        const res = await fetch("../ai/api/workspace/upload.php", {
           method: "POST",
           body: fd,
           credentials: "same-origin"
