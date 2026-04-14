@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Professional Hand Engine v7.5 (MOUSE + DRAW + ORBS)
- * Fixed Click, Smooth Draw, and Gesture-based Orb Creation.
+ * Btoan AI - Professional Hand Engine v8.0 (SHAPE SNAPPING & STRETCH)
+ * Integrated with Physics, Recognition, and Absolute Click.
  */
 
 class HandEngine {
@@ -10,46 +10,33 @@ class HandEngine {
         this.ctx = this.canvas.getContext('2d');
         this.overlay = document.getElementById('hand-overlay');
         
-        this.hands = null;
-        this.camera = null;
         this.isActive = false;
-        
         this.mode = 'NO_HAND';
+        
         this.handStates = {
-            'Left': { x: 0, y: 0, isPinching: false, prevPinching: false, pinchStartTime: 0, lockTarget: null, mode: 'idle' },
-            'Right': { x: 0, y: 0, isPinching: false, prevPinching: false, pinchStartTime: 0, lockTarget: null, mode: 'idle' }
+            'Left': { x: 0, y: 0, isPinching: false, prevPinching: false, pinchStartTime: 0, lockTarget: null, prevX: 0, prevY: 0 },
+            'Right': { x: 0, y: 0, isPinching: false, prevPinching: false, pinchStartTime: 0, lockTarget: null, prevX: 0, prevY: 0 }
         };
         
-        this.smoothFactor = 0.5;
-        this.pinchThreshold = 0.055;
-        this.tapWindow = 250; // Max ms for a tap/click
-        this.creationHoldTime = 600; // ms to hold for spawning orb
+        // --- PRECISION CONFIG ---
+        this.smooth = 0.5;
+        this.pinchThresh = 0.052;
+        this.tapWindow = 220; 
         
-        this.lastTime = 0;
         this.init();
     }
 
     async init() {
-        this.hands = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${file}`
-        });
-        this.hands.setOptions({
-            maxNumHands: 2,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.65,
-            minTrackingConfidence: 0.65
-        });
+        this.hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}` });
+        this.hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
         this.hands.onResults(this.onResults.bind(this));
         
-        const toggleBtn = document.getElementById('toggleHandMode');
-        if (toggleBtn) toggleBtn.onclick = () => this.toggle();
+        const toggle = document.getElementById('toggleHandMode');
+        if (toggle) toggle.onclick = () => this.toggle();
         this.loop();
     }
 
-    toggle() {
-        if (this.isActive) this.stop();
-        else this.start();
-    }
+    toggle() { this.isActive ? this.stop() : this.start(); }
 
     async start() {
         this.overlay.style.display = 'block';
@@ -75,14 +62,15 @@ class HandEngine {
     onResults(results) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        const detected = new Set();
+        const detectedArr = [];
+        const detectedSet = new Set();
         
-        if (results.multiHandLandmarks && results.multiHandedness) {
+        if (results.multiHandLandmarks) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
                 const label = results.multiHandedness[i].label;
-                detected.add(label);
+                detectedSet.add(label);
+                detectedArr.push({ label, landmarks });
                 
-                // Professional Skeleton
                 window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS, { color: 'rgba(255,255,255,0.1)', lineWidth: 1 });
                 window.drawLandmarks(this.ctx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 1 });
                 
@@ -90,28 +78,25 @@ class HandEngine {
             });
         }
         
-        this.updateMode(detected);
-        this.syncUI(detected);
+        this.updateGlobalMode(detectedSet);
+        this.syncUI(detectedSet);
         this.ctx.restore();
     }
 
-    updateMode(detected) {
+    updateGlobalMode(detected) {
         let newMode = 'NO_HAND';
-        if (detected.size === 1) newMode = 'MOUSE';
-        else if (detected.size === 2) newMode = 'DRAW';
+        if (detected.size === 1) newMode = 'MOUSE_DRAW';
+        else if (detected.size === 2) newMode = 'STRETCH';
         
         if (this.mode !== newMode) {
-            if (this.mode === 'DRAW') window.handDraw.endStroke();
+            if (this.mode === 'MOUSE_DRAW') window.handDraw.endStroke();
             this.mode = newMode;
         }
     }
 
     syncUI(detected) {
         const badge = document.getElementById('hand-mode-label');
-        const controls = document.getElementById('drawing-controls');
         badge.innerText = this.mode;
-        controls.style.display = (this.mode === 'DRAW') ? 'flex' : 'none';
-        
         ['Left', 'Right'].forEach(side => {
             const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
             if (detected.has(side)) {
@@ -119,141 +104,127 @@ class HandEngine {
                 const s = this.handStates[side];
                 cursor.style.left = `${s.x}px`;
                 cursor.style.top = `${s.y}px`;
-                cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.75 : 1})`;
-            } else {
-                cursor.style.display = 'none';
-            }
+                cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.7 : 1})`;
+            } else { cursor.style.display = 'none'; }
         });
     }
 
     processHand(side, landmarks) {
         const s = this.handStates[side];
-        const thumb = landmarks[4];
-        const index = landmarks[8];
-        
-        // Smoothing
+        const thumb = landmarks[4]; const index = landmarks[8];
         const rawX = (1 - index.x) * window.innerWidth;
         const rawY = index.y * window.innerHeight;
-        s.x = s.x + (rawX - s.x) * this.smoothFactor;
-        s.y = s.y + (rawY - s.y) * this.smoothFactor;
         
-        // Pinch
+        s.x += (rawX - s.x) * this.smooth;
+        s.y += (rawY - s.y) * this.smooth;
+        
         const d = Math.sqrt(Math.pow(thumb.x - index.x, 2) + Math.pow(thumb.y - index.y, 2));
         s.prevPinching = s.isPinching;
-        s.isPinching = d < this.pinchThreshold;
+        s.isPinching = d < this.pinchThresh;
         
         const now = Date.now();
         if (s.isPinching && !s.prevPinching) s.pinchStartTime = now;
 
-        if (this.mode === 'MOUSE') {
-            this.handleMouseLogic(s, now);
-        } else if (this.mode === 'DRAW') {
-            this.handleDrawLogic();
+        if (this.mode === 'MOUSE_DRAW') {
+            this.handleMouseDraw(side, s, now);
+        } else if (this.mode === 'STRETCH') {
+            this.handleStretch();
         }
         
         s.prevX = s.x; s.prevY = s.y;
     }
 
-    handleMouseLogic(s, now) {
-        const duration = now - s.pinchStartTime;
-
+    handleMouseDraw(side, s, now) {
         if (s.isPinching) {
-            // Check for Orb interaction or Creation start
             if (!s.lockTarget) {
-                const targetOrb = window.orbManager.getOrbAt(s.x, s.y);
-                if (targetOrb) {
-                    s.lockTarget = targetOrb;
-                    targetOrb.state = 'dragging';
-                } else if (duration > this.creationHoldTime && s.mode !== 'creating') {
-                    // Start Orb Creation Visualization
-                    s.mode = 'creating';
-                    this.createSpawnRipple(s.x, s.y);
+                const shape = window.shapeManager.getShapeAt(s.x, s.y);
+                if (shape) {
+                    s.lockTarget = shape;
+                    shape.state = 'dragging';
+                } else {
+                    // Start Stroke
+                    if (!s.prevPinching) window.handDraw.startStroke(s.x, s.y);
+                    window.handDraw.addPoint(s.x, s.y);
                 }
             } else {
-                // Dragging Orb
+                // Move Shape
                 s.lockTarget.x = s.x;
                 s.lockTarget.y = s.y;
-                s.lockTarget.vx = (s.x - s.prevX) * 0.5;
-                s.lockTarget.vy = (s.y - s.prevY) * 0.5;
             }
         } else {
-            // RELEASE OR CLICK
             if (s.prevPinching) {
-                if (s.lockTarget) {
-                    s.lockTarget.state = 'idle';
-                    s.lockTarget = null;
-                } else if (s.mode === 'creating') {
-                    // Finalize Orb
-                    window.orbManager.spawn(s.x, s.y);
-                } else if (duration < this.tapWindow) {
-                    // Tap -> CLICK
-                    this.virtualClick(s.x, s.y);
+                if (s.lockTarget) { s.lockTarget.state = 'idle'; s.lockTarget = null; }
+                else {
+                    const dur = now - s.pinchStartTime;
+                    if (dur < this.tapWindow) {
+                        window.handDraw.strokes.pop(); // Remove click-dot
+                        this.virtualClick(s.x, s.y);
+                    } else {
+                        window.handDraw.endStroke();
+                    }
                 }
             }
-            s.mode = 'idle';
-            // Hover logic for orbs
-            const hoverOrb = window.orbManager.getOrbAt(s.x, s.y);
-            window.orbManager.orbs.forEach(o => o.setHover(o === hoverOrb));
+            // Hover logic
+            const hover = window.shapeManager.getShapeAt(s.x, s.y);
+            window.shapeManager.shapes.forEach(sh => sh.setHover(sh === hover));
         }
     }
 
-    handleDrawLogic() {
-        const trigger = this.handStates['Left'];
-        const pen = this.handStates['Right'];
-        if (trigger.isPinching && !trigger.prevPinching) window.handDraw.startStroke(pen.x, pen.y);
-        else if (trigger.isPinching) window.handDraw.addPoint(pen.x, pen.y);
-        else if (!trigger.isPinching && trigger.prevPinching) window.handDraw.endStroke();
+    handleStretch() {
+        const hL = this.handStates['Left']; const hR = this.handStates['Right'];
+        if (hL.isPinching && hR.isPinching) {
+            const centerX = (hL.x + hR.x) / 2;
+            const centerY = (hL.y + hR.y) / 2;
+            const target = window.shapeManager.getShapeAt(centerX, centerY);
+            
+            if (target) {
+                target.state = 'stretching';
+                const dist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2));
+                if (!target.initialDist) {
+                    target.initialDist = dist;
+                    target.initialW = target.w;
+                    target.initialH = target.h;
+                }
+                const ratio = dist / target.initialDist;
+                target.w = target.initialW * ratio;
+                target.h = target.initialH * ratio;
+            }
+        } else {
+            // Reset stretch anchors when fingers release
+            window.shapeManager.shapes.forEach(s => { 
+                if (s.state === 'stretching') s.state = 'idle'; 
+                s.initialDist = null;
+            });
+        }
     }
 
-    virtualClick(x, y) {
-        // --- THE FIX ---
-        // 1. Mark overlay as non-clickable
-        this.overlay.style.pointerEvents = 'none';
-        
-        // 2. Find target element
+    async virtualClick(x, y) {
+        this.overlay.style.display = 'none';
+        await new Promise(r => requestAnimationFrame(r));
         const el = document.elementFromPoint(x, y);
-        
-        // 3. Dispatch
         if (el) {
-            console.log("Virtual Click on:", el.tagName, el.id);
             const props = { bubbles: true, cancelable: true, view: window };
             el.dispatchEvent(new MouseEvent('mousedown', props));
             el.dispatchEvent(new MouseEvent('mouseup', props));
             el.click();
             this.createRipple(x, y);
         }
-        
-        // 4. Restore
-        this.overlay.style.pointerEvents = 'auto'; // Will be 'none' anyway, but managed by engine
+        this.overlay.style.display = 'block';
     }
 
     createRipple(x, y) {
         const r = document.createElement('div');
-        r.style.cssText = `position:absolute; left:${x}px; top:${y}px; width:10px; height:10px; background:rgba(0,255,204,0.5); border-radius:50%; transform:translate(-50%, -50%); animation:ripple-v5 0.5s forwards; pointer-events:none; z-index:999999;`;
+        r.style.cssText = `position:absolute; left:${x}px; top:${y}px; width:10px; height:10px; background:rgba(255,255,255,0.6); border-radius:50%; transform:translate(-50%, -50%); animation:ripple-v8 0.4s forwards; pointer-events:none; z-index:999999;`;
         document.body.appendChild(r);
-        setTimeout(() => r.remove(), 500);
-        if (!document.getElementById('v5-ripple')) {
-            const s = document.createElement('style'); s.id='v5-ripple';
-            s.textContent = `@keyframes ripple-v5 { to { width:120px; height:120px; opacity:0; } }`;
+        setTimeout(() => r.remove(), 400);
+        if (!document.getElementById('v8-ripple')) {
+            const s = document.createElement('style'); s.id='v8-ripple';
+            s.textContent = `@keyframes ripple-v8 { to { width:100px; height:100px; opacity:0; } }`;
             document.head.appendChild(s);
         }
     }
 
-    createSpawnRipple(x, y) {
-        const r = document.createElement('div');
-        r.style.cssText = `position:absolute; left:${x}px; top:${y}px; width:40px; height:40px; border:3px solid #00ffcc; border-radius:50%; transform:translate(-50%, -50%); animation:spawn-pulse 0.6s infinite; pointer-events:none; z-index:999999;`;
-        document.body.appendChild(r);
-        setTimeout(() => r.remove(), 600);
-        if (!document.getElementById('spawn-pulse-css')) {
-            const s = document.createElement('style'); s.id='spawn-pulse-css';
-            s.textContent = `@keyframes spawn-pulse { 0% { transform:translate(-50%,-50%) scale(1); opacity:1; } 100% { transform:translate(-50%,-50%) scale(1.5); opacity:0; } }`;
-            document.head.appendChild(s);
-        }
-    }
-
-    loop() {
-        requestAnimationFrame(() => this.loop());
-    }
+    loop() { requestAnimationFrame(() => this.loop()); }
 }
 
 window.handEngine = new HandEngine();
