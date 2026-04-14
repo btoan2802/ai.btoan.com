@@ -84,11 +84,13 @@ html, body {
 .code-body {
   flex: 1;
   display: grid;
+  grid-template-areas: "explorer editor assistant";
   grid-template-columns: 280px 1fr 320px;
   min-height: 0;
 }
 
 .code-body.with-preview {
+  grid-template-areas: "explorer editor preview assistant";
   grid-template-columns: 280px 1fr 1fr 320px;
 }
 
@@ -111,8 +113,6 @@ html, body {
   flex-direction: column;
   min-width: 0;
   border-right: 1px solid var(--border-color);
-  z-index: 10;
-  position: relative;
 }
 
 .panel-header {

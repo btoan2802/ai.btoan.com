@@ -606,6 +606,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (runBtn) runBtn.onclick = togglePreview;
   if (closeWebviewBtn) closeWebviewBtn.onclick = togglePreview;
+
+  window.addEventListener("resize", () => {
+    if (editor) editor.layout();
+  });
 });
 function appendAgentMessage(role, text) {
   const box = document.getElementById("agentChatHistory");
