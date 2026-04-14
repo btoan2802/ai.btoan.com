@@ -74,7 +74,21 @@ const faceEnrollBtnProfile = document.getElementById("face-enroll-btn-profile");
 
 if (faceEnrollBtnProfile) {
   faceEnrollBtnProfile.addEventListener("click", openFaceEnrollModal);
-}let isAiReady = false;
+}
+
+// Face Login button
+const faceLoginBtn = document.getElementById("face-login-btn");
+if (faceLoginBtn) {
+  faceLoginBtn.addEventListener("click", loginWithFace);
+}
+
+// Face Close button
+const faceCloseBtn = document.getElementById("face-close-btn");
+if (faceCloseBtn) {
+  faceCloseBtn.addEventListener("click", closeFaceEnrollModal);
+}
+
+let isAiReady = false;
 
 // Initialize Face-API
 async function initFaceAI() {
