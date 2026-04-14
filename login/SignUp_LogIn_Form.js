@@ -390,18 +390,16 @@ async function loginWithFace() {
     const baseUrl = fullImageUrl.substring(0, lastSlash + 1);
     const fileName = fullImageUrl.substring(lastSlash + 1);
 
-    setFaceLoginMessage("Đang dọn dẹp camera...");
-    await stopAllCameras();
-    await new Promise(r => setTimeout(r, 1000));
-
     setFaceLoginMessage("Đang mở camera để quét khuôn mặt...");
 
     aie_aic("body", {
       type: "fa",
+      resolution: "qhd",
       option: {
         data_uri: baseUrl,
         data_label: [""],
         data_file: [fileName],
+        liveness: true,
         deep_scan: true,
         deep_scan_button: true,
         liveness_action: "random(2)",
