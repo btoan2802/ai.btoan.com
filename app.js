@@ -4042,8 +4042,7 @@ function setMode(m) {
     const btn = document.getElementById("modeBtn")
 
 
-
-
+    if (btn) {
 
     if (m === "thinking") {
 
@@ -4056,6 +4055,8 @@ function setMode(m) {
 
         btn.innerText = "⚡ Fast"
 
+
+    }
 
     }
 
