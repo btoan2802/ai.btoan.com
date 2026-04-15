@@ -1,6 +1,6 @@
 /**
- * Btoan AI - Professional Hand Engine v9.0 (3D SPATIAL & INDEPENDENT DUAL)
- * Pure 3D Manipulation: 1H Move, 1H Rotate (Two objects), or 2H Dual Rotation.
+ * Btoan AI - Hand Engine v10.0 (STABLE TRACKING)
+ * Ultra-smooth cursor, reliable click, 3D object manipulation.
  */
 
 class HandEngine {
@@ -11,23 +11,26 @@ class HandEngine {
         this.overlay = document.getElementById('hand-overlay');
         
         this.isActive = false;
-        this.mode = '3D SPATIAL';
-        
-        // --- INDEPENDENT HAND CONTROLLERS ---
+
+        // --- HAND STATE (per hand) ---
         this.handStates = {
-            'Left': { x: 0, y: 0, isPinching: false, prevPinching: false, lockTarget: null, prevX: 0, prevY: 0 },
-            'Right': { x: 0, y: 0, isPinching: false, prevPinching: false, lockTarget: null, prevX: 0, prevY: 0 }
+            'Left':  this._newHandState(),
+            'Right': this._newHandState()
         };
-        
-        // --- PRECISION CONFIG ---
-        this.smooth = 0.35;
-        this.pinchThresh = 0.055;
-        this.tapWindow = 250; 
-        
-        // --- SPATIAL ANCHORS ---
+
+        // --- TRACKING CONFIG ---
+        this.smoothFactor = 0.15;       // Low = smoother (0.1-0.2 ideal)
+        this.deadZone = 3;              // Ignore movement < 3px
+        this.historySize = 5;           // Average over 5 frames
+        this.pinchEnter = 0.055;        // Threshold to START pinch
+        this.pinchExit  = 0.072;        // Threshold to END pinch (hysteresis)
+        this.tapWindow  = 300;          // ms: pinch shorter than this = click
+
+        // --- DUAL HAND STATE ---
         this.spatialState = {
             isDualOnSame: false,
             initialDist: 0,
+            initialAngle: 0,
             initialRotX: 0,
             initialRotY: 0,
             initialRotZ: 0
@@ -36,11 +39,32 @@ class HandEngine {
         this.init();
     }
 
+    _newHandState() {
+        return {
+            x: 0, y: 0,
+            smoothX: 0, smoothY: 0,
+            prevX: 0, prevY: 0,
+            isPinching: false,
+            prevPinching: false,
+            lockTarget: null,
+            pinchStartTime: 0,
+            pinchEmpty: false,
+            history: []    // [{x,y}, ...] for averaging
+        };
+    }
+
     async init() {
-        this.hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}` });
-        this.hands.setOptions({ maxNumHands: 2, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.7 });
+        this.hands = new Hands({
+            locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}`
+        });
+        this.hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.7
+        });
         this.hands.onResults(this.onResults.bind(this));
-        
+
         const toggle = document.getElementById('toggleHandMode');
         if (toggle) toggle.onclick = () => this.toggle();
         this.loop();
@@ -53,7 +77,9 @@ class HandEngine {
         try {
             if (!this.camera) {
                 this.camera = new Camera(this.video, {
-                    onFrame: async () => { if (this.isActive) await this.hands.send({ image: this.video }); },
+                    onFrame: async () => {
+                        if (this.isActive) await this.hands.send({ image: this.video });
+                    },
                     width: 1280, height: 720
                 });
             }
@@ -69,51 +95,173 @@ class HandEngine {
         ['Left', 'Right'].forEach(side => this.releaseObject(side));
     }
 
+    // ========== CORE TRACKING PIPELINE ==========
+
+    /**
+     * Step 1: Raw point from MediaPipe
+     * Step 2: Multi-frame history average (removes spikes)
+     * Step 3: Dead zone filter (ignores micro-jitter)
+     * Step 4: Exponential smoothing (makes motion fluid)
+     */
+    stabilizePosition(s, rawX, rawY) {
+        // Step 2: History average
+        s.history.push({ x: rawX, y: rawY });
+        if (s.history.length > this.historySize) s.history.shift();
+
+        let avgX = 0, avgY = 0;
+        for (const p of s.history) { avgX += p.x; avgY += p.y; }
+        avgX /= s.history.length;
+        avgY /= s.history.length;
+
+        // Step 3: Dead zone
+        const dx = avgX - s.smoothX;
+        const dy = avgY - s.smoothY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < this.deadZone) {
+            // Too small — don't move at all
+            return;
+        }
+
+        // Step 4: Exponential smoothing
+        s.smoothX += dx * this.smoothFactor;
+        s.smoothY += dy * this.smoothFactor;
+
+        s.x = s.smoothX;
+        s.y = s.smoothY;
+    }
+
+    /**
+     * Pinch detection with hysteresis:
+     * - Need distance < pinchEnter to START pinching
+     * - Need distance > pinchExit to STOP pinching
+     * This prevents flickering at the threshold boundary.
+     */
+    detectPinch(s, thumb, index) {
+        const d = Math.sqrt(
+            Math.pow(thumb.x - index.x, 2) +
+            Math.pow(thumb.y - index.y, 2)
+        );
+
+        s.prevPinching = s.isPinching;
+
+        if (s.isPinching) {
+            // Currently pinching — need larger distance to release
+            s.isPinching = d < this.pinchExit;
+        } else {
+            // Not pinching — need smaller distance to start
+            s.isPinching = d < this.pinchEnter;
+        }
+    }
+
+    // ========== RESULTS HANDLER ==========
+
     onResults(results) {
         this.ctx.save();
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        const detectedArr = [];
         const detectedSet = new Set();
-        
+
         if (results.multiHandLandmarks) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
                 const label = results.multiHandedness[i].label;
                 detectedSet.add(label);
-                detectedArr.push({ label, landmarks });
-                
-                window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS, { color: 'rgba(255,255,255,0.1)', lineWidth: 1 });
-                window.drawLandmarks(this.ctx, landmarks, { color: '#00ffcc', lineWidth: 1, radius: 1 });
-                
+
+                // Draw skeleton (subtle)
+                window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS,
+                    { color: 'rgba(255,255,255,0.08)', lineWidth: 1 });
+                window.drawLandmarks(this.ctx, landmarks,
+                    { color: '#00ffcc', lineWidth: 1, radius: 1 });
+
                 this.processHand(label, landmarks);
             });
         }
-        
-        // Sync Logic for Shared Objects
+
         this.evaluateMultiHandState();
         this.syncUI(detectedSet);
         this.ctx.restore();
     }
 
-    updateGlobalMode(detected) {
-        let newMode = 'NO_HAND';
-        if (detected.size === 1) newMode = '3D_SPATIAL';
-        else if (detected.size === 2) newMode = '3D_SPATIAL';
-        
-        if (this.mode !== newMode) {
-            this.mode = newMode;
-            this.spatialState.isDualOnSame = false;
+    // ========== PER-HAND PROCESSING ==========
+
+    processHand(side, landmarks) {
+        const s = this.handStates[side];
+        const thumb = landmarks[4];
+        const index = landmarks[8];
+
+        // Raw position (mirror X for natural feel)
+        const rawX = (1 - index.x) * window.innerWidth;
+        const rawY = index.y * window.innerHeight;
+
+        // Stabilize
+        this.stabilizePosition(s, rawX, rawY);
+
+        // Pinch with hysteresis
+        this.detectPinch(s, thumb, index);
+
+        const now = Date.now();
+
+        // === PINCH START ===
+        if (s.isPinching && !s.prevPinching) {
+            s.pinchStartTime = now;
+            const target = window.shapeManager.getShapeAt(s.x, s.y);
+            if (target) {
+                target.state = 'grabbed_single';
+                s.lockTarget = target;
+                s.pinchEmpty = false;
+                if (!target.grabbedBy.includes(side.toLowerCase())) {
+                    target.grabbedBy.push(side.toLowerCase());
+                }
+            } else {
+                s.pinchEmpty = true;
+            }
         }
+
+        // === PINCH END ===
+        if (!s.isPinching && s.prevPinching) {
+            if (s.lockTarget) {
+                this.releaseObject(side);
+            } else if (s.pinchEmpty && (now - s.pinchStartTime < this.tapWindow)) {
+                this.virtualClick(s.x, s.y);
+            }
+            s.pinchEmpty = false;
+        }
+
+        // === MOVE GRABBED OBJECT ===
+        if (s.isPinching && s.lockTarget && s.lockTarget.state === 'grabbed_single') {
+            s.lockTarget.x = s.x;
+            s.lockTarget.y = s.y;
+            s.lockTarget.vx = (s.x - s.prevX) * 0.3;
+            s.lockTarget.vy = (s.y - s.prevY) * 0.3;
+        }
+
+        // === DUAL ROTATION ===
+        if (this.spatialState.isDualOnSame) {
+            this.handleDualSpatial();
+        }
+
+        // === HOVER ===
+        if (!s.isPinching) {
+            const h = window.shapeManager.getShapeAt(s.x, s.y);
+            window.shapeManager.shapes.forEach(sh => sh.setHover(sh === h));
+        }
+
+        s.prevX = s.x;
+        s.prevY = s.y;
     }
+
+    // ========== MULTI-HAND ==========
 
     evaluateMultiHandState() {
         const hL = this.handStates['Left'];
         const hR = this.handStates['Right'];
-        
+
         if (hL.lockTarget && hR.lockTarget && hL.lockTarget === hR.lockTarget) {
             const t = hL.lockTarget;
             if (!this.spatialState.isDualOnSame) {
                 this.spatialState.isDualOnSame = true;
-                this.spatialState.initialDist = Math.sqrt(Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)) || 1;
+                this.spatialState.initialDist = Math.sqrt(
+                    Math.pow(hL.x - hR.x, 2) + Math.pow(hL.y - hR.y, 2)
+                ) || 1;
                 this.spatialState.initialAngle = Math.atan2(hR.y - hL.y, hR.x - hL.x);
                 this.spatialState.initialRotX = t.rotationX || 0;
                 this.spatialState.initialRotY = t.rotationY || 0;
@@ -129,113 +277,62 @@ class HandEngine {
         }
     }
 
-    syncUI(detected) {
-        const badge = document.getElementById('hand-mode-label');
-        if (badge) badge.innerText = `3D_SPATIAL [${detected.size}H]`;
-        
-        ['Left', 'Right'].forEach(side => {
-            const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
-            if (detected.has(side)) {
-                if (cursor) {
-                    cursor.style.display = 'block';
-                    const s = this.handStates[side];
-                    cursor.style.left = `${s.x}px`;
-                    cursor.style.top = `${s.y}px`;
-                    cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.7 : 1})`;
-                }
-            } else { 
-                if (cursor) cursor.style.display = 'none'; 
-                this.releaseObject(side);
-                this.handStates[side].isPinching = false; // Reset ghost state
-            }
-        });
-    }
-
-    processHand(side, landmarks) {
-        const s = this.handStates[side];
-        const thumb = landmarks[4]; const index = landmarks[8];
-        const rawX = (1 - index.x) * window.innerWidth;
-        const rawY = index.y * window.innerHeight;
-        
-        s.x += (rawX - s.x) * this.smooth;
-        s.y += (rawY - s.y) * this.smooth;
-        
-        const d = Math.sqrt(Math.pow(thumb.x - index.x, 2) + Math.pow(thumb.y - index.y, 2));
-        s.prevPinching = s.isPinching;
-        s.isPinching = d < this.pinchThresh;
-        
-        const now = Date.now();
-        if (s.isPinching && !s.prevPinching) {
-            const target = window.shapeManager.getShapeAt(s.x, s.y);
-            if (target) {
-                target.state = 'grabbed_single';
-                s.lockTarget = target;
-                if (!target.grabbedBy.includes(side.toLowerCase())) target.grabbedBy.push(side.toLowerCase());
-            } else {
-                s.pinchStartTime = now;
-            }
-        } else if (!s.isPinching && s.prevPinching) {
-            if (s.lockTarget) {
-                this.releaseObject(side);
-            } else if (now - s.pinchStartTime < this.tapWindow) {
-                this.virtualClick(s.x, s.y);
-            }
-        }
-
-        // Apply Independent Movement
-        if (s.isPinching && s.lockTarget && s.lockTarget.state === 'grabbed_single') {
-            s.lockTarget.x = s.x;
-            s.lockTarget.y = s.y;
-            s.lockTarget.vx = (s.x - s.prevX) * 0.5;
-            s.lockTarget.vy = (s.y - s.prevY) * 0.5;
-        }
-        
-        // Handle Shared Rotation Logic
-        if (this.spatialState.isDualOnSame) {
-            this.handleDualSpatial();
-        }
-
-        // Hover Effect
-        if (!s.isPinching) {
-             const h = window.shapeManager.getShapeAt(s.x, s.y);
-             window.shapeManager.shapes.forEach(sh => sh.setHover(sh === h));
-        }
-        
-        s.prevX = s.x; s.prevY = s.y;
-    }
-
     handleDualSpatial() {
         const hL = this.handStates['Left'];
         const hR = this.handStates['Right'];
-        const t = hL.lockTarget; 
-        
-        // Safety guard: if target lost or not the same, abort
+        const t = hL.lockTarget;
+
         if (!t || t !== hR.lockTarget) {
             this.spatialState.isDualOnSame = false;
             return;
         }
 
         const ss = this.spatialState;
-        
         const dx = hR.x - hL.x;
         const dy = hR.y - hL.y;
-        const dist = Math.sqrt(dx*dx + dy*dy) || 1;
         const angle = Math.atan2(dy, dx);
-        
-        // Z-Rotation 
-        t.rotationZ = ss.initialRotZ + (angle - ss.initialAngle) * (180/Math.PI);
-        
-        // XY Rotation delta
+
+        // Z-Rotation
+        t.rotationZ = ss.initialRotZ + (angle - ss.initialAngle) * (180 / Math.PI);
+
+        // XY Rotation (from both hands combined movement)
         const diffX = (hL.x - hL.prevX) + (hR.x - hR.prevX);
         const diffY = (hL.y - hL.prevY) + (hR.y - hR.prevY);
-        
-        t.rotationY += diffX * 0.3;
-        t.rotationX -= diffY * 0.3;
-        
-        // Midpoint
+        t.rotationY += diffX * 0.2;
+        t.rotationX -= diffY * 0.2;
+
+        // Center object between hands
         t.x = (hL.x + hR.x) / 2;
         t.y = (hL.y + hR.y) / 2;
     }
+
+    // ========== UI ==========
+
+    syncUI(detected) {
+        const badge = document.getElementById('hand-mode-label');
+        if (badge) badge.innerText = `3D_SPATIAL [${detected.size}H]`;
+
+        ['Left', 'Right'].forEach(side => {
+            const cursor = document.getElementById(`cursor-${side.toLowerCase()}`);
+            if (!cursor) return;
+
+            if (detected.has(side)) {
+                const s = this.handStates[side];
+                cursor.style.display = 'block';
+                cursor.style.left = `${s.x}px`;
+                cursor.style.top = `${s.y}px`;
+                cursor.style.transform = `translate(-50%, -50%) scale(${s.isPinching ? 0.6 : 1})`;
+                cursor.style.opacity = s.isPinching ? '1' : '0.7';
+            } else {
+                cursor.style.display = 'none';
+                this.releaseObject(side);
+                this.handStates[side].isPinching = false;
+                this.handStates[side].history = [];
+            }
+        });
+    }
+
+    // ========== ACTIONS ==========
 
     releaseObject(side) {
         const s = this.handStates[side];
@@ -251,27 +348,52 @@ class HandEngine {
     }
 
     async virtualClick(x, y) {
+        // Hide overlay so elementFromPoint can find the real element
         this.overlay.style.display = 'none';
         await new Promise(r => requestAnimationFrame(r));
+
         const el = document.elementFromPoint(x, y);
         if (el) {
-            const props = { bubbles: true, cancelable: true, view: window };
+            const props = { bubbles: true, cancelable: true, view: window, clientX: x, clientY: y };
             el.dispatchEvent(new MouseEvent('mousedown', props));
             el.dispatchEvent(new MouseEvent('mouseup', props));
             el.click();
             this.createRipple(x, y);
         }
+
         this.overlay.style.display = 'block';
     }
 
     createRipple(x, y) {
         const r = document.createElement('div');
-        r.style.cssText = `position:absolute; left:${x}px; top:${y}px; width:10px; height:10px; background:rgba(255,255,255,0.6); border-radius:50%; transform:translate(-50%, -50%); animation:ripple-v9 0.4s forwards; pointer-events:none; z-index:999999;`;
+        r.style.cssText = `
+            position: fixed; left: ${x}px; top: ${y}px;
+            width: 20px; height: 20px;
+            background: rgba(0, 255, 204, 0.5);
+            border: 2px solid rgba(0, 255, 204, 0.8);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            animation: hand-ripple 0.5s ease-out forwards;
+            pointer-events: none; z-index: 999999;
+        `;
         document.body.appendChild(r);
-        setTimeout(() => r.remove(), 400);
+        setTimeout(() => r.remove(), 500);
     }
 
     loop() { requestAnimationFrame(() => this.loop()); }
+}
+
+// Inject ripple animation CSS
+if (!document.getElementById('hand-ripple-css')) {
+    const s = document.createElement('style');
+    s.id = 'hand-ripple-css';
+    s.textContent = `
+        @keyframes hand-ripple {
+            0%   { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(s);
 }
 
 window.handEngine = new HandEngine();
