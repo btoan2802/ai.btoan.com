@@ -853,10 +853,10 @@
 
   <script src="facelib/face-api.min.js"></script>
   <script src="login/SignUp_LogIn_Form.js?v=19"></script>
-  <script src="./app.js?v=19"></script>
+  <script src="./app.js?v=20"></script>
   <script src="hand_scene.js?v=9"></script>
   <script src="hand_shapes.js?v=4"></script>
-  <script src="hand_engine.js?v=9"></script>
+  <script src="hand_engine.js?v=10"></script>
 </body>
 
 </html>

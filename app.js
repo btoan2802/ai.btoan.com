@@ -1617,7 +1617,7 @@ async function callGemini(userText, images, files) {
             temperature: isThinking ? 0.7 : 0.5,
 
 
-            maxOutputTokens: isThinking ? 20000 : 4000
+            maxOutputTokens: isThinking ? 20000 : 16000
 
 
         }
