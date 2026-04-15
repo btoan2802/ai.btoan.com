@@ -164,22 +164,35 @@ class HandEngine {
         s.prevPinching = s.isPinching;
         s.isPinching = d < this.pinchThresh;
         
-        const now = Date.now();
         if (s.isPinching && !s.prevPinching) {
+            // === PINCH START ===
             const target = window.shapeManager.getShapeAt(s.x, s.y);
             if (target) {
+                // Pinch trúng ô vuông → grab nó
                 target.state = 'grabbed_single';
                 s.lockTarget = target;
+                s.pinchEmpty = false;
                 if (!target.grabbedBy.includes(side.toLowerCase())) target.grabbedBy.push(side.toLowerCase());
             } else {
-                s.pinchStartTime = now;
+                // Pinch không trúng ô vuông → đánh dấu để click khi thả
+                s.pinchEmpty = true;
+                this.showPinchIndicator(s.x, s.y, side);
             }
         } else if (!s.isPinching && s.prevPinching) {
+            // === PINCH END (thả tay) ===
             if (s.lockTarget) {
                 this.releaseObject(side);
-            } else if (now - s.pinchStartTime < this.tapWindow) {
+            } else if (s.pinchEmpty) {
+                // Chụm tay mà không trúng ô vuông → Click tại vị trí đó
                 this.virtualClick(s.x, s.y);
             }
+            s.pinchEmpty = false;
+            this.hidePinchIndicator(side);
+        }
+
+        // Cập nhật vị trí indicator khi đang pinch empty
+        if (s.isPinching && s.pinchEmpty) {
+            this.updatePinchIndicator(s.x, s.y, side);
         }
 
         // Apply Independent Movement
@@ -269,6 +282,53 @@ class HandEngine {
         r.style.cssText = `position:absolute; left:${x}px; top:${y}px; width:10px; height:10px; background:rgba(255,255,255,0.6); border-radius:50%; transform:translate(-50%, -50%); animation:ripple-v9 0.4s forwards; pointer-events:none; z-index:999999;`;
         document.body.appendChild(r);
         setTimeout(() => r.remove(), 400);
+    }
+
+    showPinchIndicator(x, y, side) {
+        let indicator = document.getElementById(`pinch-indicator-${side}`);
+        if (!indicator) {
+            indicator = document.createElement('div');
+            indicator.id = `pinch-indicator-${side}`;
+            indicator.style.cssText = `
+                position: fixed; width: 36px; height: 36px;
+                border: 2px solid rgba(0, 255, 204, 0.8);
+                border-radius: 50%; pointer-events: none; z-index: 999998;
+                transform: translate(-50%, -50%); 
+                background: rgba(0, 255, 204, 0.1);
+                box-shadow: 0 0 15px rgba(0, 255, 204, 0.4);
+                animation: pinch-pulse 0.6s ease-in-out infinite alternate;
+            `;
+            document.body.appendChild(indicator);
+        }
+        indicator.style.display = 'block';
+        indicator.style.left = `${x}px`;
+        indicator.style.top = `${y}px`;
+
+        // Inject CSS animation if not exists
+        if (!document.getElementById('pinch-indicator-style')) {
+            const style = document.createElement('style');
+            style.id = 'pinch-indicator-style';
+            style.textContent = `
+                @keyframes pinch-pulse {
+                    0% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+                    100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.4; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    updatePinchIndicator(x, y, side) {
+        const indicator = document.getElementById(`pinch-indicator-${side}`);
+        if (indicator) {
+            indicator.style.left = `${x}px`;
+            indicator.style.top = `${y}px`;
+        }
+    }
+
+    hidePinchIndicator(side) {
+        const indicator = document.getElementById(`pinch-indicator-${side}`);
+        if (indicator) indicator.style.display = 'none';
     }
 
     loop() { requestAnimationFrame(() => this.loop()); }
