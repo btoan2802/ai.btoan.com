@@ -143,8 +143,10 @@ function addImages(files) {
     const imgInput = document.getElementById("fileImg")
     const dt = new DataTransfer()
 
-    // giữ file cũ
-    Array.from(imgInput.files).forEach(f => dt.items.add(f))
+    // giữ file cũ (chỉ add nếu files không phải từ chính input đó)
+    if (files !== imgInput.files && files !== document.getElementById("fileCam")?.files) {
+        Array.from(imgInput.files).forEach(f => dt.items.add(f))
+    }
 
     Array.from(files).forEach(file => {
 

@@ -19,9 +19,9 @@ class HandEngine {
         };
 
         // --- TRACKING CONFIG ---
-        this.smoothFactor = 0.15;       // Low = smoother (0.1-0.2 ideal)
-        this.deadZone = 3;              // Ignore movement < 3px
-        this.historySize = 5;           // Average over 5 frames
+        this.smoothFactor = 0.35;       // Tăng để chuột theo tay nhanh hơn (bỏ cảm giác bị trễ/lag)
+        this.deadZone = 2;              // Giảm một chút để nhạy hơn
+        this.historySize = 3;           // Chỉ lấy trung bình 3 frame để giảm độ trễ (latency)
         this.pinchEnter = 0.055;        // Threshold to START pinch
         this.pinchExit  = 0.072;        // Threshold to END pinch (hysteresis)
         this.tapWindow  = 300;          // ms: pinch shorter than this = click
@@ -59,9 +59,9 @@ class HandEngine {
         });
         this.hands.setOptions({
             maxNumHands: 2,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.7
+            modelComplexity: 0, // Đổi từ 1 xuống 0 (Lite Model): Giảm tải CPU, tăng gấp đôi FPS, vô cùng mượt mà
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
         });
         this.hands.onResults(this.onResults.bind(this));
 
@@ -80,7 +80,7 @@ class HandEngine {
                     onFrame: async () => {
                         if (this.isActive) await this.hands.send({ image: this.video });
                     },
-                    width: 1280, height: 720
+                    width: 640, height: 480 // 🔴 RẤT QUAN TRỌNG: Giảm độ phân giải Camera vì MediaPipe cũng chỉ resize về 256x256. Để 720p là uống sạch CPU.
                 });
             }
             await this.camera.start();
