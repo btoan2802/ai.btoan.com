@@ -933,6 +933,12 @@ function createMessageActions({ text, exportType = null, onExport = null }) {
                 exportDOCX(text)
 
 
+            } else if (exportType === "pdf") {
+
+
+                exportPDF(text)
+
+
             } else {
 
 
@@ -4955,28 +4961,10 @@ async function exportFile(content) {
 
 
 
-    // 🔥 render link chuẩn
 
 
-    addBotBubble(`
-
-
-    📄 File đã sẵn sàng:
-
-
-
-
-
-    👉 <a href="${data.url}" target="_blank">
-
-
-    Mở bằng trình duyệt
-
-
-    </a>
-
-
-    `)
+    // 🔥 render link chuẩn (dùng innerHTML trực tiếp, không qua markdown)
+    showDownloadLink("📄 File đã sẵn sàng:", data.url, "Tải file")
 
 
 }
