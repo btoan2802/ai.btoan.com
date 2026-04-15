@@ -1656,7 +1656,12 @@ async function exportFile(content) {
 }
 async function exportDOCX(content) {
 
-    const clean = fixLatex(extractExportContent(cleanExportContent(content)))
+    if (!content.trim()) {
+        addBotBubble("❌ chưa có nội dung")
+        return
+    }
+
+    localStorage.setItem("lastExportContent", content)
 
     const res = await fetch("/ai/api/upload.php", {
         method: "POST",
@@ -1664,7 +1669,7 @@ async function exportDOCX(content) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            content: clean,
+            content: content,
             ext: "docx"
         })
     })
@@ -1707,7 +1712,12 @@ async function exportDOCX(content) {
 
 async function exportPDF(content) {
 
-    const clean = fixLatex(extractExportContent(cleanExportContent(content)))
+    if (!content.trim()) {
+        addBotBubble("❌ chưa có nội dung")
+        return
+    }
+
+    localStorage.setItem("lastExportContent", content)
 
     const res = await fetch("/ai/api/upload.php", {
         method: "POST",
@@ -1715,7 +1725,7 @@ async function exportPDF(content) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            content: clean,
+            content: content,
             ext: "pdf"
         })
     })
