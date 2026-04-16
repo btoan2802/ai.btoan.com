@@ -22,8 +22,8 @@ class HandEngine {
         this.smoothFactor = 0.35;       // Tăng để chuột theo tay nhanh hơn (bỏ cảm giác bị trễ/lag)
         this.deadZone = 2;              // Giảm một chút để nhạy hơn
         this.historySize = 3;           // Chỉ lấy trung bình 3 frame để giảm độ trễ (latency)
-        this.pinchEnter = 0.08;         // Threshold to START pinch (nới rộng để dễ trigger)
-        this.pinchExit  = 0.10;         // Threshold to END pinch (hysteresis)
+        this.pinchEnter = 0.35;         // Threshold to START pinch (normalized by hand size)
+        this.pinchExit  = 0.50;         // Threshold to END pinch (hysteresis)
         this.tapWindow  = 300;          // ms: pinch shorter than this = click
 
         // --- DUAL HAND STATE ---
@@ -134,29 +134,52 @@ class HandEngine {
     }
 
     /**
-     * Pinch detection with hysteresis:
-     * - Need distance < pinchEnter to START pinching
-     * - Need distance > pinchExit to STOP pinching
-     * This prevents flickering at the threshold boundary.
+     * Pinch detection — normalize theo hand size để ổn định với mọi khoảng cách camera.
+     *
+     * rawDist = khoảng cách thumb tip (4) ↔ index tip (8) trong MediaPipe 0-1 space
+     * handSize = wrist (0) ↔ middle_mcp (9), đại diện kích thước bàn tay
+     * normDist = rawDist / handSize  ⇒  so sánh với pinchEnter/pinchExit
+     *
+     * Khi chụm ngón: normDist ≈ 0.1 – 0.3
+     * Khi mở tay:   normDist ≈ 0.6 – 1.2
      */
-    detectPinch(s, thumb, index) {
-        const d = Math.sqrt(
+    detectPinch(s, thumb, index, landmarks) {
+        // Raw distance trong normalized 0-1 space
+        const rawDist = Math.sqrt(
             Math.pow(thumb.x - index.x, 2) +
             Math.pow(thumb.y - index.y, 2)
         );
 
+        // Hand size: wrist (0) → middle MCP (9)
+        const wrist   = landmarks[0];
+        const midMcp  = landmarks[9];
+        const handSize = Math.sqrt(
+            Math.pow(wrist.x - midMcp.x, 2) +
+            Math.pow(wrist.y - midMcp.y, 2)
+        ) || 0.001;
+
+        const normDist = rawDist / handSize;
+
         s.prevPinching = s.isPinching;
 
         if (s.isPinching) {
-            s.isPinching = d < this.pinchExit;
+            s.isPinching = normDist < this.pinchExit;
         } else {
-            s.isPinching = d < this.pinchEnter;
+            s.isPinching = normDist < this.pinchEnter;
         }
 
-        // Debug: in mỗi 90 frame (~1.5 giây)
-        s._dbgFrame = (s._dbgFrame || 0) + 1;
-        if (s._dbgFrame % 90 === 0) {
-            console.log(`[HandEngine] pinch dist=${d.toFixed(4)} enter=${this.pinchEnter} isPinching=${s.isPinching}`);
+        // Debug dày mỗi 300ms — in đủ 7 giá trị để trace
+        const now = Date.now();
+        if (!s._dbgTs || now - s._dbgTs > 300) {
+            s._dbgTs = now;
+            console.log(
+                `[Pinch] thumb(${thumb.x.toFixed(3)},${thumb.y.toFixed(3)}) ` +
+                `index(${index.x.toFixed(3)},${index.y.toFixed(3)}) ` +
+                `raw=${rawDist.toFixed(4)} handSz=${handSize.toFixed(4)} ` +
+                `norm=${normDist.toFixed(3)} ` +
+                `enter=${this.pinchEnter} exit=${this.pinchExit} ` +
+                `isPinching=${s.isPinching}`
+            );
         }
     }
 
@@ -201,8 +224,8 @@ class HandEngine {
         // Stabilize
         this.stabilizePosition(s, rawX, rawY);
 
-        // Pinch with hysteresis
-        this.detectPinch(s, thumb, index);
+        // Pinch with hysteresis + hand-size normalization
+        this.detectPinch(s, thumb, index, landmarks);
 
         const now = Date.now();
 
