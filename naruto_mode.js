@@ -1119,46 +1119,36 @@ document.addEventListener('DOMContentLoaded', function () {
           method: 'api'
         };
       } else {
-        // Fallback: Nếu 2 tay đang chụm lại hoặc POINTING, đoán vị trí đầu
-        const sL = window.handEngine?.handStates?.['Left'];
-        const sR = window.handEngine?.handStates?.['Right'];
-        if (sL?.landmarks && sR?.landmarks) {
-          const pL = avgPts(sL.landmarks.map(lm => lm2px(lm, 640, 480)), [0,5,9,13,17]);
-          const pR = avgPts(sR.landmarks.map(lm => lm2px(lm, 640, 480)), [0,5,9,13,17]);
-          facePos = {
-            x: (pL.x + pR.x) * 0.5,
-            y: Math.min(pL.y, pR.y) - 200, // Đầu nằm trên tay
-            w: 180, h: 220, vW: 640, vH: 480,
-            method: 'hands'
-          };
-        } else {
-           facePos = null;
-        }
+        // Không fallback theo tay nữa để tránh bị lệch và phụ thuộc vào tay
+        facePos = null;
       }
     }
 
     function drawSSJHair(face, W, H) {
       if (!hairCanvas) return;
 
-      // Mirror X coordinates for face detector to match mirrored video CSS
+      // 1. Chuyển đổi tọa độ & Mirror (để khớp với camera feed đã lật)
       const rx = (1 - face.x / face.vW) * W; 
       const ry = (face.y / face.vH) * H;
       const fw = (face.w / face.vW) * W;
       const fh = (face.h / face.vH) * H;
 
-      const tw = fw * 3.0; 
+      // 2. Kích thước (vừa phải x2.4)
+      const tw = fw * 2.4; 
       const th = tw * (hairCanvas.height / hairCanvas.width);
 
-      // Neo chân tóc: Đặt chân tóc bám sát trán, không phụ thuộc quá nhiều vào th
+      // 3. Vị trí tuyệt đối: Neo chân tóc vào trán
+      // Đỉnh mặt (ry - fh*0.5) chính là đường chân tóc/trán
       const tx = rx;
-      const ty = ry - fh * 0.48 - th * 0.15; 
+      const ty = (ry - fh * 0.5) - (th * 0.22); 
 
       nCtx.save();
       nCtx.translate(tx, ty);
-      nCtx.shadowColor = 'rgba(251, 191, 36, 0.48)'; nCtx.shadowBlur = 30;
+      nCtx.shadowColor = 'rgba(251, 191, 36, 0.45)'; nCtx.shadowBlur = 35;
       nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
       
-      if (Math.random() < 0.12) {
+      // Tia chớp nhẹ
+      if (Math.random() < 0.1) {
         nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 1.5;
         const ex = (Math.random() - 0.5) * tw * 0.4; const ey = (Math.random() - 0.5) * th * 0.4;
         nCtx.beginPath(); nCtx.moveTo(ex, ey);
