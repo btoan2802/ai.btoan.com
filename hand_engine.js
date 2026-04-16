@@ -22,8 +22,8 @@ class HandEngine {
         this.smoothFactor = 0.35;       // Tăng để chuột theo tay nhanh hơn (bỏ cảm giác bị trễ/lag)
         this.deadZone = 2;              // Giảm một chút để nhạy hơn
         this.historySize = 3;           // Chỉ lấy trung bình 3 frame để giảm độ trễ (latency)
-        this.pinchEnter = 0.055;        // Threshold to START pinch
-        this.pinchExit  = 0.072;        // Threshold to END pinch (hysteresis)
+        this.pinchEnter = 0.08;         // Threshold to START pinch (nới rộng để dễ trigger)
+        this.pinchExit  = 0.10;         // Threshold to END pinch (hysteresis)
         this.tapWindow  = 300;          // ms: pinch shorter than this = click
 
         // --- DUAL HAND STATE ---
@@ -72,20 +72,22 @@ class HandEngine {
 
     toggle() { this.isActive ? this.stop() : this.start(); }
 
-    async start() {
-        this.overlay.style.display = 'block';
+    async start(showOverlay = true) {
+        // showOverlay=false khi được gọi từ Naruto Mode (tự quản lý overlay)
+        if (showOverlay) this.overlay.style.display = 'block';
         try {
             if (!this.camera) {
                 this.camera = new Camera(this.video, {
                     onFrame: async () => {
                         if (this.isActive) await this.hands.send({ image: this.video });
                     },
-                    width: 640, height: 480 // 🔴 RẤT QUAN TRỌNG: Giảm độ phân giải Camera vì MediaPipe cũng chỉ resize về 256x256. Để 720p là uống sạch CPU.
+                    width: 640, height: 480
                 });
             }
             await this.camera.start();
             this.isActive = true;
-        } catch (e) { console.error(e); }
+            console.log('[HandEngine] Camera started, isActive=true');
+        } catch (e) { console.error('[HandEngine] start() error:', e); }
     }
 
     stop() {
@@ -146,11 +148,15 @@ class HandEngine {
         s.prevPinching = s.isPinching;
 
         if (s.isPinching) {
-            // Currently pinching — need larger distance to release
             s.isPinching = d < this.pinchExit;
         } else {
-            // Not pinching — need smaller distance to start
             s.isPinching = d < this.pinchEnter;
+        }
+
+        // Debug: in mỗi 90 frame (~1.5 giây)
+        s._dbgFrame = (s._dbgFrame || 0) + 1;
+        if (s._dbgFrame % 90 === 0) {
+            console.log(`[HandEngine] pinch dist=${d.toFixed(4)} enter=${this.pinchEnter} isPinching=${s.isPinching}`);
         }
     }
 
