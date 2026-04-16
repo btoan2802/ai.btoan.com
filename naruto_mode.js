@@ -1118,27 +1118,49 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function drawSSJHair(face, W, H) {
       if (!hairCanvas) return;
-      let rx, ry, fw, fh;
-      if (face.method === 'hands') {
-        rx = face.x / 640 * W; ry = face.y / 480 * H;
-        fw = face.w / 640 * W; fh = face.h / 480 * H;
-      } else {
-        rx = (face.x / face.vW) * W; ry = (face.y / face.vH) * H;
-        fw = (face.w / face.vW) * W; fh = (face.h / face.vH) * H;
-      }
+
+      // 1. Phóng pixel tọa độ face sang pixel canvas
+      const rx = (face.x / face.vW) * W;
+      const ry = (face.y / face.vH) * H;
+      const fw = (face.w / face.vW) * W;
+      const fh = (face.h / face.vH) * H;
+
+      // 2. Vẽ DEBUG BOX (Xóa sau khi OK)
       nCtx.save();
-      const tw = fw * 1.55; 
+      nCtx.lineWidth = 1;
+      // Khung mặt: Vàng
+      nCtx.strokeStyle = 'rgba(255,255,0,0.6)';
+      nCtx.strokeRect(rx - fw / 2, ry - fh / 2, fw, fh);
+      nCtx.restore();
+
+      // 3. Tính toán kích thước tóc
+      // Rộng bằng 1.25 lần mặt (Gohan style), không quá bè ra
+      const tw = fw * 1.25; 
       const th = tw * (hairCanvas.height / hairCanvas.width);
+
+      // Neo tóc: Đáy tóc nằm ở khoảng trán (vùng -0.45 của face box)
       const tx = rx;
-      const ty = ry - fh * 0.45 - th * 0.42; 
+      const ty = ry - fh * 0.45 - th * 0.35;
+
+      // Khung tóc: Xanh (Check xa gần)
+      nCtx.save();
+      nCtx.strokeStyle = 'rgba(0,255,255,0.4)';
+      nCtx.strokeRect(tx - tw / 2, ty - th / 2, tw, th);
+      nCtx.restore();
+
+      // 4. Vẽ tóc thực tế
+      nCtx.save();
       nCtx.translate(tx, ty);
-      nCtx.shadowColor = '#fbbf24'; nCtx.shadowBlur = 20;
-      nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
-      if (Math.random() < 0.2) {
-        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 2;
+      nCtx.shadowColor = 'rgba(251, 191, 36, 0.4)';
+      nCtx.shadowBlur = 15;
+      nCtx.drawImage(hairCanvas, -tw / 2, -th / 2, tw, th);
+      
+      // Electricity effect (vàng/xanh nhẹ)
+      if (Math.random() < 0.15) {
+        nCtx.strokeStyle = '#60a5fa'; nCtx.lineWidth = 1;
         const ex = (Math.random() - 0.5) * tw; const ey = (Math.random() - 0.5) * th;
         nCtx.beginPath(); nCtx.moveTo(ex, ey);
-        nCtx.lineTo(ex + (Math.random()-0.5)*40, ey + (Math.random()-0.5)*40);
+        nCtx.lineTo(ex + (Math.random()-0.5)*20, ey + (Math.random()-0.5)*20);
         nCtx.stroke();
       }
       nCtx.restore();
