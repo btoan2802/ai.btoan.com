@@ -1,95 +1,131 @@
 /**
- * Btoan AI — Naruto Mode v5.0  (Procedural — Generated from hand landmarks)
+ * Btoan AI — Naruto Mode v6.0
  *
- * Mọi hiệu ứng được sinh từ vị trí THỰC của từng landmark:
- *   - Palm center  (avg wrist + 4 knuckle) = tâm phát năng lượng
- *   - Fingertips   (4,8,12,16,20)          = nguồn emitter / tia sét
- *   - Hand scale   (wrist→midMCP)           = scale effect
- *   - Pinch point  (thumb ↔ index)          = điểm nén → phóng
+ * Gesture Map:
+ *   Open palm (1 tay)          → Flame Chakra / Chidori bám từng ngón
+ *   Pinch                      → Nén năng lượng → phóng shuriken
+ *   2 tay, mỗi tay 1 ngón trỏ → Dual Index Bridge (seal chakra beam)
  *
- * Tay TRÁI  → Fire/Chakra (cam/vàng)
- * Tay PHẢI  → Chidori/Lightning (xanh lam)
- * Hai tay   → Arc điện nối giữa 2 lòng bàn tay
- * Pinch     → Năng lượng nén → Ném shuriken + shockwave
+ * Tất cả effect được sinh từ landmark thật, không có sprite cố định.
  */
 
-const DEBUG_HAND_MARKER = false;
+const DEBUG_SHOW_WEBCAM = false; // true = hiện lại webcam feed trong naruto overlay
 
 document.addEventListener('DOMContentLoaded', function () {
   (function () {
 
-    /* ══ STATE ══════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════
+       STATE
+    ═══════════════════════════════════════════════════════ */
     let narutoActive = false;
     let narutoScore  = 0;
     let lastPinchL   = false, lastPinchR = false;
     let animFrame    = null;
     let nCanvas, nCtx;
-    let frameTime = 0;
+    let T = 0; // frame timestamp
 
-    // Particle pool per hand
-    const particles = { Left: [], Right: [] };
+    // Particle pools
+    const particles = { Left: [], Right: [], Bridge: [] };
+
+    // Hold counters cho gesture debounce (require N frame liên tục)
+    const hold = { Lpoint: 0, Rpoint: 0 };
+    const HOLD_FRAMES = 3; // số frame phải giữ gesture
 
     const btn = document.getElementById('toggleNarutoMode');
     if (!btn) return;
     btn.addEventListener('click', () => narutoActive ? closeNaruto() : openNaruto());
 
-    /* ══ MATH UTILS ═════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════
+       MATH
+    ═══════════════════════════════════════════════════════ */
     const lerp  = (a, b, t) => a + (b - a) * t;
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
     const rand  = (lo, hi) => lo + Math.random() * (hi - lo);
-    const dist  = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-    /**
-     * Convert MediaPipe normalized landmark → screen pixel (mirrored X)
-     */
-    function lm2px(lm, W, H) {
-      return { x: (1 - lm.x) * W, y: lm.y * H };
+    // MediaPipe normalized → screen px (mirror X)
+    function lm2px(lm, W, H) { return { x: (1 - lm.x) * W, y: lm.y * H }; }
+
+    // Average screen coords from landmark index list
+    function avgPts(pts, idxs) {
+      const s = idxs.reduce((acc, i) => ({ x: acc.x + pts[i].x, y: acc.y + pts[i].y }), { x: 0, y: 0 });
+      return { x: s.x / idxs.length, y: s.y / idxs.length };
     }
 
-    /**
-     * Average of landmark array (by index list)
-     */
-    function avgPts(pts, indices) {
-      const sel = indices.map(i => pts[i]);
-      return {
-        x: sel.reduce((s, p) => s + p.x, 0) / sel.length,
-        y: sel.reduce((s, p) => s + p.y, 0) / sel.length,
-      };
+    /* ═══════════════════════════════════════════════════════
+       GESTURE CLASSIFIERS
+       Dùng raw MediaPipe landmarks (normalized 0-1)
+       y=0 = top of screen, y=1 = bottom
+       Finger "extended" = tip.y < pip.y (tip is above pip)
+    ═══════════════════════════════════════════════════════ */
+
+    // Một ngón có extended không
+    function fingerUp(lms, tip, pip, mcp) {
+      return lms[tip].y < lms[pip].y - 0.02 && lms[pip].y < lms[mcp].y;
     }
 
-    /* ══ CLOSE ══════════════════════════════════════════════ */
+    // Index ngón trỏ extended, 3 ngón còn lại cuộn
+    function isPointingIndex(lms) {
+      if (!lms) return false;
+      const indexExt  = lms[8].y  < lms[6].y  - 0.03;
+      const middleCurl = lms[12].y > lms[10].y;
+      const ringCurl   = lms[16].y > lms[14].y;
+      const pinkyCurl  = lms[20].y > lms[18].y;
+      return indexExt && middleCurl && ringCurl && pinkyCurl;
+    }
+
+    // Bàn tay mở (>= 3 ngón extended)
+    function isOpenPalm(lms) {
+      if (!lms) return false;
+      let count = 0;
+      if (fingerUp(lms, 8, 6, 5))   count++;
+      if (fingerUp(lms, 12, 10, 9)) count++;
+      if (fingerUp(lms, 16, 14, 13)) count++;
+      if (fingerUp(lms, 20, 18, 17)) count++;
+      return count >= 3;
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       OPEN / CLOSE
+    ═══════════════════════════════════════════════════════ */
     window.closeNaruto = function () {
       narutoActive = false;
       document.getElementById('naruto-overlay').style.display = 'none';
       btn.classList.remove('naruto-active');
-      particles.Left = []; particles.Right = [];
+      particles.Left = []; particles.Right = []; particles.Bridge = [];
+      hold.Lpoint = 0; hold.Rpoint = 0;
       if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
       const ho = document.getElementById('hand-overlay');
       if (ho && window.handEngine?.isActive) ho.style.display = 'block';
     };
 
-    /* ══ OPEN ═══════════════════════════════════════════════ */
     async function openNaruto() {
       narutoActive = true;
       narutoScore  = 0;
       lastPinchL   = false; lastPinchR = false;
-      particles.Left = []; particles.Right = [];
+      particles.Left = []; particles.Right = []; particles.Bridge = [];
 
       document.getElementById('naruto-overlay').style.display = 'block';
       document.getElementById('naruto-fx-layer').innerHTML  = '';
       document.getElementById('naruto-score').textContent   = '\uD83D\uDCA0 0';
       btn.classList.add('naruto-active');
 
-      // Canvas setup
+      // Canvas
       nCanvas = document.getElementById('naruto-canvas');
       nCanvas.width  = window.innerWidth;
       nCanvas.height = window.innerHeight;
-      nCtx    = nCanvas.getContext('2d');
+      nCtx = nCanvas.getContext('2d');
       window.addEventListener('resize', () => {
-        if (nCanvas) { nCanvas.width = window.innerWidth; nCanvas.height = window.innerHeight; }
+        if (!nCanvas) return;
+        nCanvas.width  = window.innerWidth;
+        nCanvas.height = window.innerHeight;
       });
 
-      // Start handEngine (không show hand-overlay)
+      // Webcam visibility
+      const narutoCam = document.getElementById('naruto-camera');
+      if (narutoCam) narutoCam.style.opacity = DEBUG_SHOW_WEBCAM ? '0.55' : '0';
+
+      // Start handEngine
       if (window.handEngine && !window.handEngine.isActive) {
         await window.handEngine.start(false);
         await new Promise(r => setTimeout(r, 400));
@@ -98,9 +134,8 @@ document.addEventListener('DOMContentLoaded', function () {
         if (ho) ho.style.display = 'none';
       }
 
-      // Share handEngine camera → naruto background
+      // Share stream: hand-video → naruto-camera
       const handVideo = document.getElementById('hand-video');
-      const narutoCam = document.getElementById('naruto-camera');
       if (handVideo?.srcObject && narutoCam) {
         narutoCam.srcObject = handVideo.srcObject;
         narutoCam.play().catch(() => {});
@@ -111,501 +146,532 @@ document.addEventListener('DOMContentLoaded', function () {
       narutoLoop();
     }
 
-    /* ══ MAIN LOOP ══════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════
+       MAIN LOOP
+    ═══════════════════════════════════════════════════════ */
     function narutoLoop() {
       if (!narutoActive) return;
-      frameTime = performance.now();
+      T = performance.now();
 
       const W = window.innerWidth;
       const H = window.innerHeight;
 
-      if (nCtx) {
-        // Fade trail — không xóa hoàn toàn để tạo afterglow
-        nCtx.fillStyle = 'rgba(0,0,0,0.18)';
-        nCtx.fillRect(0, 0, W, H);
-      }
+      nCtx.clearRect(0, 0, W, H);
 
       const sL = window.handEngine?.handStates?.['Left'];
       const sR = window.handEngine?.handStates?.['Right'];
       const Lactive = sL?.history?.length > 0 && sL.landmarks;
       const Ractive = sR?.history?.length > 0 && sR.landmarks;
 
-      if (Lactive) drawHandEffect(sL, 'Left',  W, H);
-      if (Ractive) drawHandEffect(sR, 'Right', W, H);
+      // ── Gesture hold debounce ──
+      hold.Lpoint = Lactive && isPointingIndex(sL.landmarks) ? hold.Lpoint + 1 : 0;
+      hold.Rpoint = Ractive && isPointingIndex(sR.landmarks) ? hold.Rpoint + 1 : 0;
 
-      // Arc giữa 2 lòng bàn tay khi cả 2 tay đều detect
-      if (Lactive && Ractive) drawDualArc(sL, sR, W, H);
+      const Lpointing = hold.Lpoint >= HOLD_FRAMES;
+      const Rpointing = hold.Rpoint >= HOLD_FRAMES;
+      const dualBridge = Lpointing && Rpointing;
 
-      // Pinch
+      // ── PRIORITY: Dual Bridge overrides single-hand effects ──
+      if (dualBridge) {
+        drawDualIndexBridge(sL, sR, W, H);
+      } else {
+        if (Lactive) drawHandEffect(sL, 'Left',  W, H);
+        if (Ractive) drawHandEffect(sR, 'Right', W, H);
+      }
+
+      // ── Pinch → launch (kể cả trong bridge mode) ──
       ['Left', 'Right'].forEach(side => {
         const s      = window.handEngine?.handStates?.[side];
-        const active = s?.history?.length > 0;
+        const active = s?.history?.length > 0 && s.landmarks;
         if (!active) return;
         const isPinch = s.isPinching;
-        const wasLast = (side === 'Left') ? lastPinchL : lastPinchR;
-        if (isPinch && !wasLast && s.landmarks) {
+        const wasLast = side === 'Left' ? lastPinchL : lastPinchR;
+        if (isPinch && !wasLast) {
           const lms = s.landmarks;
-          // Điểm giữa thumb tip và index tip
-          const px = ((1 - lms[4].x) + (1 - lms[8].x)) * 0.5 * W;
-          const py = (lms[4].y + lms[8].y) * 0.5 * H;
-          onPinchFire(px, py, side === 'Left');
+          const px  = ((1 - lms[4].x) + (1 - lms[8].x)) * 0.5 * W;
+          const py  = (lms[4].y + lms[8].y) * 0.5 * H;
+          doPinchFire(px, py, side === 'Left', W, H);
         }
         if (side === 'Left') lastPinchL = isPinch;
         else                 lastPinchR = isPinch;
       });
 
+      // ── Particle pools (always) ──
+      drawParticles('Left',   false);
+      drawParticles('Right',  true);
+      drawParticles('Bridge', null);
+
       animFrame = requestAnimationFrame(narutoLoop);
     }
 
-    /* ══ PER-HAND PROCEDURAL EFFECT ════════════════════════ */
+    /* ═══════════════════════════════════════════════════════
+       SINGLE HAND EFFECT
+    ═══════════════════════════════════════════════════════ */
     function drawHandEffect(s, side, W, H) {
-      const lms   = s.landmarks;
-      const t     = frameTime;
-      const isLeft = (side === 'Left');
+      const lms    = s.landmarks;
+      const isLeft = side === 'Left';
 
-      // Convert all 21 landmarks to screen pixels
+      // All 21 points → screen px
       const pts = lms.map(lm => lm2px(lm, W, H));
 
       // Palm center = avg wrist(0) + 4 MCP knuckles(5,9,13,17)
-      const palm = avgPts(pts, [0, 5, 9, 13, 17]);
+      const palm   = avgPts(pts, [0, 5, 9, 13, 17]);
+      const handSz = dist2(pts[0], pts[9]); // wrist → middle MCP
 
-      // Hand scale = wrist(0) → middle MCP(9)
-      const handSz = dist(pts[0], pts[9]);
+      // Fingertip + MCP pairs for energy lines
+      const fingerPairs = [
+        { tip: 4,  mcp: 2  }, // thumb
+        { tip: 8,  mcp: 5  }, // index
+        { tip: 12, mcp: 9  }, // middle
+        { tip: 16, mcp: 13 }, // ring
+        { tip: 20, mcp: 17 }, // pinky
+      ];
 
-      // Fingertip indices: thumb=4, index=8, middle=12, ring=16, pinky=20
-      const tipIdx = [4, 8, 12, 16, 20];
-      const tips   = tipIdx.map(i => pts[i]);
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
 
-      // MCP base indices (knuckles): 2,5,9,13,17
-      const mcpIdx = [2, 5, 9, 13, 17];
-      const mcps   = mcpIdx.map(i => pts[i]);
+      if (!s.isPinching) {
+        // ── Palm organic glow ──
+        drawOrganicCore(palm, handSz, isLeft);
 
-      const isPinching = s.isPinching;
-
-      if (!isPinching) {
-        // ── 1. Palm glow core ──
-        drawPalmCore(palm, handSz, t, isLeft);
-
-        // ── 2. Energy lines palm → each fingertip ──
-        for (let i = 0; i < tips.length; i++) {
-          drawEnergyLine(palm, tips[i], mcps[i], t + i * 37, isLeft);
+        // ── Energy tendrils palm → each fingertip ──
+        for (const { tip, mcp } of fingerPairs) {
+          drawTendril(palm, pts[mcp], pts[tip], isLeft);
         }
 
-        // ── 3. Fingertip spark emitters ──
-        for (let i = 0; i < tips.length; i++) {
-          emitTipParticle(tips[i], side, t + i * 11, isLeft);
+        // ── Chakra ring (segmented, imperfect) ──
+        drawImperfectRing(palm, handSz * 0.95, isLeft);
+
+        // ── Emit sparks from extended fingertips ──
+        for (const { tip } of fingerPairs) {
+          if (Math.random() < 0.4) {
+            spawnParticle(pts[tip], side, isLeft);
+          }
         }
-
-        // ── 4. Rotating chakra ring at palm ──
-        drawChakraRing(palm, handSz * 0.9, t, isLeft);
-
-        // ── 5. Draw + update particles ──
-        updateParticles(side, isLeft);
-
       } else {
-        // ── Pinch state: energy concentrates to pinch point ──
-        const pinchPt = {
-          x: (pts[4].x + pts[8].x) * 0.5,
-          y: (pts[4].y + pts[8].y) * 0.5,
-        };
-        drawPinchCharge(pinchPt, palm, handSz, t, isLeft);
+        // ── Pinch: energy compresses to thumb-index midpoint ──
+        const pinchX = (pts[4].x + pts[8].x) * 0.5;
+        const pinchY = (pts[4].y + pts[8].y) * 0.5;
+        drawPinchCore({ x: pinchX, y: pinchY }, palm, handSz, isLeft);
       }
-    }
 
-    /* ── Palm Core Glow ─────────────────────────────────── */
-    function drawPalmCore(palm, sz, t, isLeft) {
-      const pulse = 1 + Math.sin(t * 0.005) * 0.18;
-      const r     = sz * 0.75 * pulse;
-
-      const [c0, c1, c2] = isLeft
-        ? ['rgba(255,140,20,0.85)', 'rgba(249,90,0,0.45)', 'rgba(249,50,0,0.00)']
-        : ['rgba(180,220,255,0.85)', 'rgba(60,130,255,0.50)', 'rgba(20,60,255,0.00)'];
-
-      const g = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, r);
-      g.addColorStop(0,   c0);
-      g.addColorStop(0.45, c1);
-      g.addColorStop(1,   c2);
-
-      nCtx.save();
-      nCtx.globalCompositeOperation = 'screen';
-      nCtx.fillStyle = g;
-      nCtx.beginPath();
-      nCtx.arc(palm.x, palm.y, r, 0, Math.PI * 2);
-      nCtx.fill();
       nCtx.restore();
     }
 
-    /* ── Energy Line: Palm → Fingertip  (lightning-like) ── */
-    function drawEnergyLine(from, to, knuckle, t, isLeft) {
-      // 2 passes: glow + bright core
-      const flicker = 0.5 + 0.5 * Math.sin(t * 0.009 + Math.random() * 2);
-      const color   = isLeft
-        ? `rgba(255,160,30,${0.55 * flicker})`
-        : `rgba(80,170,255,${0.60 * flicker})`;
-      const bright  = isLeft ? '#fff0aa' : '#d0eeff';
+    /* ── Organic (non-perfect) palm glow ────────────────── */
+    function drawOrganicCore(palm, sz, isLeft) {
+      const t     = T;
+      const pulse = 1 + Math.sin(t * 0.004) * 0.2 + Math.sin(t * 0.0071) * 0.08;
+      const r     = sz * 0.72 * pulse;
 
-      const segs = 6;
-      const dx   = to.x - knuckle.x;
-      const dy   = to.y - knuckle.y;
-      const len  = Math.hypot(dx, dy) || 1;
-      const nx   = -dy / len;  // normal vector for jitter
-      const ny   =  dx / len;
+      // Multiple offset glow blobs → organic feel
+      const offsets = [
+        { dx:  0.08 * sz, dy: -0.06 * sz, r: 0.85 },
+        { dx: -0.06 * sz, dy:  0.09 * sz, r: 0.75 },
+        { dx:  0,          dy:  0,          r: 1.0  },
+      ];
 
-      nCtx.save();
-      nCtx.globalCompositeOperation = 'screen';
+      const [c0, c1, edge] = isLeft
+        ? ['rgba(255,130,15,0.85)', 'rgba(253,80,0,0.40)', 'rgba(255,50,0,0)']
+        : ['rgba(160,215,255,0.88)', 'rgba(50,120,255,0.45)', 'rgba(20,50,255,0)'];
 
-      // Glow pass
-      nCtx.beginPath();
-      nCtx.moveTo(from.x, from.y);
-      for (let i = 1; i <= segs; i++) {
-        const p  = i / segs;
-        const jx = nx * rand(-len * 0.06, len * 0.06);
-        const jy = ny * rand(-len * 0.06, len * 0.06);
-        nCtx.lineTo(knuckle.x + dx * p + jx, knuckle.y + dy * p + jy);
+      for (const { dx, dy, r: scl } of offsets) {
+        const cx = palm.x + dx; const cy = palm.y + dy;
+        const radius = r * scl;
+        const g = nCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+        g.addColorStop(0,   c0);
+        g.addColorStop(0.5, c1);
+        g.addColorStop(1,   edge);
+        nCtx.fillStyle = g;
+        nCtx.beginPath(); nCtx.arc(cx, cy, radius, 0, Math.PI * 2); nCtx.fill();
       }
+
+      // Flame tendrils from core (small upward wisps)
+      const numWisps = 5;
+      for (let i = 0; i < numWisps; i++) {
+        const angle  = (i / numWisps) * Math.PI * 2 + T * 0.001 + Math.random() * 0.3;
+        const wLen   = sz * rand(0.4, 0.9);
+        const ex     = palm.x + Math.cos(angle) * wLen;
+        const ey     = palm.y + Math.sin(angle) * wLen - wLen * 0.3; // bias upward
+        nCtx.beginPath(); nCtx.moveTo(palm.x, palm.y);
+        // Quadratic curve for organic wisp
+        const cpx = palm.x + (ex - palm.x) * 0.5 + rand(-sz * 0.15, sz * 0.15);
+        const cpy = palm.y + (ey - palm.y) * 0.5 + rand(-sz * 0.15, sz * 0.15);
+        nCtx.quadraticCurveTo(cpx, cpy, ex, ey);
+        const flick = rand(0.2, 0.55);
+        nCtx.strokeStyle = isLeft ? `rgba(255,200,80,${flick})` : `rgba(100,180,255,${flick})`;
+        nCtx.lineWidth   = rand(1, 2.2);
+        nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
+        nCtx.shadowBlur  = 8;
+        nCtx.stroke();
+      }
+    }
+
+    /* ── Lightning tendril: palm → knuckle → fingertip ──── */
+    function drawTendril(from, knuckle, tip, isLeft) {
+      const flick = rand(0.45, 0.9);
+      const color = isLeft ? `rgba(255,170,40,${flick})` : `rgba(80,170,255,${flick})`;
+      const bright = isLeft ? `rgba(255,240,180,${flick * 0.8})` : `rgba(200,235,255,${flick * 0.8})`;
+
+      // Segment: palm → knuckle → tip, with jitter
+      const drawBolt = (a, b, alpha, width) => {
+        const dx = b.x - a.x; const dy = b.y - a.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len; const ny = dx / len;
+        const segs = 5;
+        nCtx.beginPath(); nCtx.moveTo(a.x, a.y);
+        for (let i = 1; i <= segs; i++) {
+          const p  = i / segs;
+          const jx = nx * rand(-len * 0.07, len * 0.07);
+          const jy = ny * rand(-len * 0.07, len * 0.07);
+          nCtx.lineTo(a.x + dx * p + jx, a.y + dy * p + jy);
+        }
+        nCtx.strokeStyle = alpha;
+        nCtx.lineWidth   = width;
+        nCtx.shadowBlur  = 10;
+        nCtx.stroke();
+      };
+
+      nCtx.shadowColor = isLeft ? '#ff8800' : '#3399ff';
+      drawBolt(from, knuckle, color,  3.5);
+      drawBolt(from, knuckle, bright, 1.2);
+      drawBolt(knuckle, tip,  color,  2.5);
+      drawBolt(knuckle, tip,  bright, 1.0);
+    }
+
+    /* ── Imperfect segmented ring ─────────────────────────── */
+    function drawImperfectRing(palm, r, isLeft) {
+      const t      = T;
+      const segs   = isLeft ? 7 : 11; // prime numbers = less symmetric feel
+      const rot1   = (t * 0.0013) % (Math.PI * 2);
+      const rot2   = -(t * 0.0009) % (Math.PI * 2);
+      const color  = isLeft ? 'rgba(255,150,30,0.60)' : 'rgba(70,160,255,0.65)';
+      const color2 = isLeft ? 'rgba(255,220,100,0.40)' : 'rgba(150,210,255,0.40)';
+
       nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
-      nCtx.shadowBlur  = 12;
-      nCtx.strokeStyle = color;
-      nCtx.lineWidth   = 3.5;
-      nCtx.stroke();
 
-      // Bright core pass
-      nCtx.beginPath();
-      nCtx.moveTo(from.x, from.y);
-      for (let i = 1; i <= segs; i++) {
-        const p  = i / segs;
-        const jx = nx * rand(-len * 0.03, len * 0.03);
-        const jy = ny * rand(-len * 0.03, len * 0.03);
-        nCtx.lineTo(knuckle.x + dx * p + jx, knuckle.y + dy * p + jy);
+      // Outer ring, uneven segments
+      for (let i = 0; i < segs; i++) {
+        const t0 = rot1 + (Math.PI * 2 / segs) * i;
+        // Vary gap size per segment for imperfect look
+        const gapFrac = 0.08 + (i % 3) * 0.04;
+        const arcLen  = (Math.PI * 2 / segs) * (1 - gapFrac);
+        // Slight radius wobble
+        const rWobble = r * (1 + Math.sin(t * 0.003 + i) * 0.06);
+        nCtx.beginPath(); nCtx.arc(palm.x, palm.y, rWobble, t0, t0 + arcLen);
+        nCtx.strokeStyle = color;
+        nCtx.lineWidth   = 2.0 + Math.sin(t * 0.004 + i) * 0.5;
+        nCtx.shadowBlur  = 8;
+        nCtx.stroke();
       }
-      nCtx.shadowBlur  = 4;
-      nCtx.strokeStyle = isLeft ? `rgba(255,230,180,${0.8 * flicker})` : `rgba(200,235,255,${0.9 * flicker})`;
-      nCtx.lineWidth   = 1.2;
-      nCtx.stroke();
+
+      // Inner counter-rotating ring
+      const segs2 = segs + 2;
+      for (let i = 0; i < segs2; i++) {
+        const t0    = rot2 + (Math.PI * 2 / segs2) * i;
+        const arcLen = (Math.PI * 2 / segs2) * 0.72;
+        nCtx.beginPath(); nCtx.arc(palm.x, palm.y, r * 0.52, t0, t0 + arcLen);
+        nCtx.strokeStyle = color2;
+        nCtx.lineWidth   = 1.5;
+        nCtx.shadowBlur  = 5;
+        nCtx.stroke();
+      }
+    }
+
+    /* ── Pinch charge state ───────────────────────────────── */
+    function drawPinchCore(pinch, palm, handSz, isLeft) {
+      const pulse = 0.6 + 0.4 * Math.abs(Math.sin(T * 0.018));
+      const r     = handSz * 0.28 * pulse;
+      const [c0, c1, sh] = isLeft
+        ? ['rgba(255,255,200,0.95)', 'rgba(255,130,20,0.70)', '#ff8800']
+        : ['rgba(200,235,255,0.95)', 'rgba(60,150,255,0.72)', '#3399ff'];
+
+      const g = nCtx.createRadialGradient(pinch.x, pinch.y, 0, pinch.x, pinch.y, r * 1.6);
+      g.addColorStop(0, c0); g.addColorStop(0.4, c1); g.addColorStop(1, 'rgba(0,0,0,0)');
+      nCtx.fillStyle = g;
+      nCtx.beginPath(); nCtx.arc(pinch.x, pinch.y, r * 1.6, 0, Math.PI * 2); nCtx.fill();
+
+      // Compression ring
+      nCtx.shadowColor = sh; nCtx.shadowBlur = 20;
+      nCtx.strokeStyle = isLeft ? `rgba(255,200,60,${pulse})` : `rgba(100,190,255,${pulse})`;
+      nCtx.lineWidth   = 3;
+      nCtx.beginPath(); nCtx.arc(pinch.x, pinch.y, r, 0, Math.PI * 2); nCtx.stroke();
+
+      // Energy lines converging from palm
+      for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2 + T * 0.002;
+        const sx    = palm.x + Math.cos(angle) * handSz * 0.5;
+        const sy    = palm.y + Math.sin(angle) * handSz * 0.5;
+        nCtx.beginPath(); nCtx.moveTo(sx, sy); nCtx.lineTo(pinch.x, pinch.y);
+        nCtx.strokeStyle = isLeft ? `rgba(255,160,40,${0.4 * pulse})` : `rgba(80,160,255,${0.4 * pulse})`;
+        nCtx.lineWidth   = 1.5; nCtx.shadowBlur = 6; nCtx.stroke();
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       DUAL INDEX BRIDGE  ←  NEW EFFECT
+       Kích hoạt khi cả 2 tay đều "pointing index" (ngón trỏ lên)
+       Anchor: index_tip[8] của mỗi tay
+       Core:   midpoint giữa 2 ngón
+       Arc điện nối 2 ngón trỏ, intensity tăng khi 2 tay gần nhau
+    ═══════════════════════════════════════════════════════ */
+    function drawDualIndexBridge(sL, sR, W, H) {
+      const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
+      const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
+
+      // Anchor = index tips
+      const tipL = ptsL[8];
+      const tipR = ptsR[8];
+
+      // Mid = center between tips
+      const mid = { x: (tipL.x + tipR.x) * 0.5, y: (tipL.y + tipR.y) * 0.5 };
+      const d   = dist2(tipL, tipR);
+      const maxD = W * 0.75;
+
+      // Intensity: closer = stronger (max ~1.0 when d < 100px, 0 when d > maxD)
+      const intensity = clamp(1 - d / maxD, 0, 1);
+      const pulse = 0.75 + 0.25 * Math.sin(T * 0.012);
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+
+      // ── 1. Electric arcs between tips (3 paths, different jitter) ──
+      const arcPasses = [
+        { w: d * 0.012 + 5, alpha: 0.3 + intensity * 0.2, blur: 22, color: '80,160,255' },
+        { w: 2,              alpha: 0.6 + intensity * 0.3, blur: 8,  color: '180,230,255' },
+        { w: 0.8,            alpha: 0.9,                    blur: 3,  color: '240,255,255' },
+      ];
+
+      for (const pass of arcPasses) {
+        for (let b = 0; b < (b => Math.ceil(intensity * 3 + 1))(0); b++) {
+          drawBridgeArc(tipL, tipR, d, pass, b);
+        }
+      }
+
+      // ── 2. Energy orb at midpoint ──
+      const orbR = clamp((1 / (d + 50)) * 8000 * pulse, 10, 90);
+      drawBridgeOrb(mid, orbR, intensity, pulse);
+
+      // ── 3. Particles traveling along arc toward midpoint ──
+      if (Math.random() < 0.35 + intensity * 0.4) {
+        spawnBridgeParticle(tipL, mid);
+      }
+      if (Math.random() < 0.35 + intensity * 0.4) {
+        spawnBridgeParticle(tipR, mid);
+      }
+
+      // ── 4. Glow at both fingertips (more intense when close) ──
+      for (const tip of [tipL, tipR]) {
+        const r  = 18 + intensity * 30;
+        const g0 = nCtx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, r);
+        g0.addColorStop(0,   `rgba(200,240,255,${0.7 + intensity * 0.2})`);
+        g0.addColorStop(0.5, `rgba(80,160,255,${0.4 * pulse})`);
+        g0.addColorStop(1,   'rgba(0,0,0,0)');
+        nCtx.fillStyle = g0;
+        nCtx.beginPath(); nCtx.arc(tip.x, tip.y, r, 0, Math.PI * 2); nCtx.fill();
+      }
+
+      // ── 5. Rotating chakra seals around midpoint ──
+      if (intensity > 0.15) drawSealRing(mid, orbR * 2.2, intensity, pulse);
 
       nCtx.restore();
     }
 
-    /* ── Fingertip Particle Emitter ─────────────────────── */
-    function emitTipParticle(tip, side, t, isLeft) {
-      // Emit particles occasionally
-      if (Math.random() > 0.35) return;
+    function drawBridgeArc(tipL, tipR, d, pass, boltIdx) {
+      const segs = 10 + Math.floor(d / 30);
+      const dx   = tipR.x - tipL.x;
+      const dy   = tipR.y - tipL.y;
+      const len  = Math.hypot(dx, dy) || 1;
+      const nx   = -dy / len; const ny = dx / len;
+      // Different random seed per bolt
+      const seed = boltIdx * 137.5 + T * 0.001;
+
+      nCtx.beginPath();
+      nCtx.moveTo(tipL.x, tipL.y);
+
+      for (let i = 1; i < segs; i++) {
+        const p    = i / segs;
+        // Sinusoidal base displacement + random jitter
+        const disp = Math.sin(p * Math.PI) * d * 0.06 * (boltIdx % 2 === 0 ? 1 : -1);
+        const jx   = nx * (disp + rand(-d * 0.04, d * 0.04));
+        const jy   = ny * (disp + rand(-d * 0.04, d * 0.04));
+        nCtx.lineTo(tipL.x + dx * p + jx, tipL.y + dy * p + jy);
+      }
+      nCtx.lineTo(tipR.x, tipR.y);
+
+      nCtx.shadowColor = `rgba(${pass.color},1)`;
+      nCtx.shadowBlur  = pass.blur;
+      nCtx.strokeStyle = `rgba(${pass.color},${pass.alpha})`;
+      nCtx.lineWidth   = pass.w;
+      nCtx.stroke();
+    }
+
+    function drawBridgeOrb(mid, r, intensity, pulse) {
+      // Concentric glows
+      const layers = [
+        { r: r * 2.5, c0: 'rgba(120,180,255,0.15)', c1: 'rgba(60,120,255,0)' },
+        { r: r * 1.4, c0: `rgba(160,210,255,${0.4 * pulse})`, c1: 'rgba(80,150,255,0)' },
+        { r: r,       c0: `rgba(240,250,255,${0.85 * pulse})`, c1: `rgba(100,180,255,${0.2})` },
+        { r: r * 0.4, c0: 'rgba(255,255,255,0.98)',            c1: 'rgba(180,230,255,0.6)' },
+      ];
+
+      for (const { r: radius, c0, c1 } of layers) {
+        const g = nCtx.createRadialGradient(mid.x, mid.y, 0, mid.x, mid.y, radius);
+        g.addColorStop(0, c0); g.addColorStop(1, c1);
+        nCtx.fillStyle = g;
+        nCtx.beginPath(); nCtx.arc(mid.x, mid.y, radius, 0, Math.PI * 2); nCtx.fill();
+      }
+
+      // Orbiting bright dot
+      const orbAngle = (T * 0.003) % (Math.PI * 2);
+      const orbX = mid.x + Math.cos(orbAngle) * r * 0.9;
+      const orbY = mid.y + Math.sin(orbAngle) * r * 0.9;
+      nCtx.shadowColor = '#aadeff'; nCtx.shadowBlur = 12;
+      nCtx.fillStyle = 'rgba(255,255,255,0.95)';
+      nCtx.beginPath(); nCtx.arc(orbX, orbY, 4, 0, Math.PI * 2); nCtx.fill();
+      nCtx.shadowBlur = 0;
+    }
+
+    // Chakra seal ring around orb (Naruto hand seal vibe)
+    function drawSealRing(mid, r, intensity, pulse) {
+      const segs = 6;
+      const rot  = (T * 0.002) % (Math.PI * 2);
+      nCtx.shadowColor = '#88ccff'; nCtx.shadowBlur = 10;
+      for (let i = 0; i < segs; i++) {
+        const a0 = rot + (Math.PI * 2 / segs) * i;
+        const a1 = a0 + (Math.PI * 2 / segs) * 0.55;
+        nCtx.beginPath(); nCtx.arc(mid.x, mid.y, r, a0, a1);
+        nCtx.strokeStyle = `rgba(150,210,255,${0.5 * intensity * pulse})`;
+        nCtx.lineWidth   = 2;  nCtx.stroke();
+      }
+      // Counter ring
+      const rot2 = -(T * 0.0015) % (Math.PI * 2);
+      for (let i = 0; i < segs - 1; i++) {
+        const a0 = rot2 + (Math.PI * 2 / (segs - 1)) * i;
+        const a1 = a0  + (Math.PI * 2 / (segs - 1)) * 0.45;
+        nCtx.beginPath(); nCtx.arc(mid.x, mid.y, r * 0.7, a0, a1);
+        nCtx.strokeStyle = `rgba(200,235,255,${0.4 * intensity * pulse})`;
+        nCtx.lineWidth   = 1.5; nCtx.stroke();
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════════
+       PARTICLES
+    ═══════════════════════════════════════════════════════ */
+    function spawnParticle(pos, side, isLeft) {
       particles[side].push({
-        x:    tip.x + rand(-4, 4),
-        y:    tip.y + rand(-4, 4),
-        vx:   rand(-1.2, 1.2),
-        vy:   rand(-2.5, -0.5),
-        life: 1.0,
-        size: rand(2, 5),
-        left: isLeft,
+        x: pos.x, y: pos.y,
+        vx: rand(-1.5, 1.5), vy: rand(-3, -0.5),
+        life: 1, size: rand(2, 5), fire: isLeft,
       });
     }
 
-    function updateParticles(side, isLeft) {
+    function spawnBridgeParticle(from, target) {
+      const speed = rand(2, 5);
+      const angle = Math.atan2(target.y - from.y, target.x - from.x) + rand(-0.3, 0.3);
+      particles.Bridge.push({
+        x: from.x + rand(-8, 8), y: from.y + rand(-8, 8),
+        vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
+        life: 1, size: rand(2, 4), fire: false,
+      });
+    }
+
+    function drawParticles(key, isLeft) {
+      if (!nCtx) return;
+      const pool = particles[key];
+      if (!pool) return;
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
+      const decay = key === 'Bridge' ? 0.03 : 0.022;
 
-      particles[side] = particles[side].filter(p => {
-        p.x    += p.vx;
-        p.y    += p.vy;
-        p.vy   -= 0.05; // rise
-        p.life -= 0.028;
-
+      particles[key] = pool.filter(p => {
+        p.x += p.vx; p.y += p.vy;
+        p.vy -= key === 'Bridge' ? 0 : 0.04;
+        p.life -= decay;
         if (p.life <= 0) return false;
-
         const a = p.life;
+        const fire = key === 'Bridge' ? false : p.fire;
         nCtx.beginPath();
         nCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
-        nCtx.fillStyle = isLeft
+        nCtx.fillStyle = fire
           ? `rgba(255,200,60,${a})`
           : `rgba(140,200,255,${a})`;
-        nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
+        nCtx.shadowColor = fire ? '#ff8800' : '#4499ff';
         nCtx.shadowBlur  = 6;
         nCtx.fill();
         return true;
       });
 
-      // Cap at 120 particles per hand
-      if (particles[side].length > 120) particles[side].splice(0, particles[side].length - 120);
-
+      if (particles[key].length > 150) particles[key].splice(0, particles[key].length - 150);
       nCtx.restore();
     }
 
-    /* ── Chakra Ring (rotating segmented) ───────────────── */
-    function drawChakraRing(palm, r, t, isLeft) {
-      const segs  = isLeft ? 8 : 12;
-      const rot   = (t * (isLeft ? 0.0012 : -0.0018)) % (Math.PI * 2);
-      const gap   = 0.18; // radians gap between segments
-      const segA  = (Math.PI * 2 / segs) - gap;
-
-      nCtx.save();
-      nCtx.globalCompositeOperation = 'screen';
-      nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
-      nCtx.shadowBlur  = 10;
-      nCtx.strokeStyle = isLeft ? 'rgba(255,160,40,0.65)' : 'rgba(80,160,255,0.65)';
-      nCtx.lineWidth   = 2.5;
-
-      for (let i = 0; i < segs; i++) {
-        const startA = rot + (Math.PI * 2 / segs) * i;
-        nCtx.beginPath();
-        nCtx.arc(palm.x, palm.y, r, startA, startA + segA);
-        nCtx.stroke();
-      }
-
-      // Inner ring (counter-rotate)
-      nCtx.shadowBlur  = 6;
-      nCtx.strokeStyle = isLeft ? 'rgba(255,220,100,0.5)' : 'rgba(160,210,255,0.5)';
-      nCtx.lineWidth   = 1.5;
-      const rot2 = (-t * 0.0008) % (Math.PI * 2);
-      for (let i = 0; i < segs - 2; i++) {
-        const startA = rot2 + (Math.PI * 2 / (segs - 2)) * i;
-        nCtx.beginPath();
-        nCtx.arc(palm.x, palm.y, r * 0.55, startA, startA + segA * 0.9);
-        nCtx.stroke();
-      }
-
-      nCtx.restore();
-    }
-
-    /* ── Pinch Charge State ──────────────────────────────── */
-    function drawPinchCharge(pinch, palm, handSz, t, isLeft) {
-      // Lines from all fingers converge to pinch point
-      const pulse = 0.6 + 0.4 * Math.abs(Math.sin(t * 0.015));
-      const r     = handSz * 0.3 * pulse;
-
-      // Bright core at pinch
-      const g = nCtx.createRadialGradient(pinch.x, pinch.y, 0, pinch.x, pinch.y, r * 1.5);
-      g.addColorStop(0,   isLeft ? 'rgba(255,255,200,0.95)' : 'rgba(200,230,255,0.95)');
-      g.addColorStop(0.3, isLeft ? 'rgba(255,140,20,0.70)'  : 'rgba(80,160,255,0.70)');
-      g.addColorStop(1,   'rgba(0,0,0,0)');
-
-      nCtx.save();
-      nCtx.globalCompositeOperation = 'screen';
-      nCtx.fillStyle = g;
-      nCtx.beginPath();
-      nCtx.arc(pinch.x, pinch.y, r * 1.5, 0, Math.PI * 2);
-      nCtx.fill();
-
-      // Energy compression ring
-      nCtx.strokeStyle = isLeft ? `rgba(255,200,60,${pulse})` : `rgba(140,200,255,${pulse})`;
-      nCtx.lineWidth   = 3;
-      nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
-      nCtx.shadowBlur  = 20;
-      nCtx.beginPath();
-      nCtx.arc(pinch.x, pinch.y, r, 0, Math.PI * 2);
-      nCtx.stroke();
-
-      // Line from palm to pinch point
-      nCtx.beginPath();
-      nCtx.moveTo(palm.x, palm.y);
-      nCtx.lineTo(pinch.x, pinch.y);
-      nCtx.strokeStyle = isLeft ? 'rgba(255,160,40,0.6)' : 'rgba(80,160,255,0.6)';
-      nCtx.lineWidth   = 2;
-      nCtx.shadowBlur  = 8;
-      nCtx.stroke();
-
-      nCtx.restore();
-    }
-
-    /* ── Dual Hand Arc (nối 2 lòng bàn tay) ────────────── */
-    function drawDualArc(sL, sR, W, H) {
-      if (!sL.landmarks || !sR.landmarks) return;
-
-      const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
-      const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
-      const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
-      const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
-      const d = dist(palmL, palmR);
-
-      if (d > W * 0.85) return; // tay quá xa nhau → không vẽ
-
-      // Electric arc giữa 2 lòng bàn tay
-      const segs  = 12;
-      const t     = frameTime;
-      const mx    = (palmL.x + palmR.x) * 0.5;
-      const my    = (palmL.y + palmR.y) * 0.5;
-
-      nCtx.save();
-      nCtx.globalCompositeOperation = 'screen';
-
-      // 3 bolt paths
-      for (let b = 0; b < 3; b++) {
-        nCtx.beginPath();
-        nCtx.moveTo(palmL.x, palmL.y);
-        const dx = palmR.x - palmL.x;
-        const dy = palmR.y - palmL.y;
-        const len = Math.hypot(dx, dy) || 1;
-        const nx = -dy / len; const ny = dx / len;
-
-        for (let i = 1; i < segs; i++) {
-          const p   = i / segs;
-          const jitter = d * 0.07 * (Math.random() - 0.5);
-          nCtx.lineTo(palmL.x + dx * p + nx * jitter, palmL.y + dy * p + ny * jitter);
-        }
-        nCtx.lineTo(palmR.x, palmR.y);
-
-        nCtx.strokeStyle = b === 1 ? 'rgba(255,255,255,0.8)' : 'rgba(150,200,255,0.5)';
-        nCtx.lineWidth   = b === 1 ? 1.5 : 4;
-        nCtx.shadowColor = '#aaddff';
-        nCtx.shadowBlur  = b === 1 ? 5 : 20;
-        nCtx.stroke();
-      }
-
-      // Glow at midpoint
-      const g = nCtx.createRadialGradient(mx, my, 0, mx, my, d * 0.15);
-      g.addColorStop(0,   'rgba(180,220,255,0.6)');
-      g.addColorStop(1,   'rgba(80,140,255,0.0)');
-      nCtx.fillStyle = g;
-      nCtx.beginPath();
-      nCtx.arc(mx, my, d * 0.15, 0, Math.PI * 2);
-      nCtx.fill();
-
-      nCtx.restore();
-    }
-
-    /* ══ PINCH → LAUNCH ════════════════════════════════════ */
-    function onPinchFire(px, py, isLeft) {
+    /* ═══════════════════════════════════════════════════════
+       PINCH FIRE → Launch shuriken
+    ═══════════════════════════════════════════════════════ */
+    function doPinchFire(px, py, isLeft, W, H) {
       const angle = (-Math.PI / 2) + (Math.random() - 0.5) * Math.PI * 0.85;
       const power = 500 + Math.random() * 350;
       launchShuriken(px, py, angle, power, isLeft);
-      // Particle burst at pinch point
-      for (let i = 0; i < 20; i++) {
+      // Burst particles
+      for (let i = 0; i < 24; i++) {
         const side = isLeft ? 'Left' : 'Right';
         particles[side].push({
-          x: px, y: py,
-          vx: rand(-4, 4), vy: rand(-5, 1),
-          life: 1.0, size: rand(3, 7), left: isLeft,
+          x: px, y: py, vx: rand(-5, 5), vy: rand(-6, 1),
+          life: 1, size: rand(3, 7), fire: isLeft,
         });
       }
     }
 
-    /* ══ LAUNCH SHURIKEN ═══════════════════════════════════ */
     function launchShuriken(sx, sy, angle, power, isLeft) {
       const dx = Math.cos(angle) * power;
       const dy = Math.sin(angle) * power;
       const layer = document.getElementById('naruto-fx-layer');
       if (!layer) return;
 
-      // Shuriken = rotating 8-spoke star
+      const sz = 68;
       const el = document.createElement('div');
-      const size = 70;
       Object.assign(el.style, {
-        position:        'absolute',
-        width:           size + 'px',
-        height:          size + 'px',
-        left:            sx  + 'px',
-        top:             sy  + 'px',
-        pointerEvents:   'none',
-        zIndex:          '60',
-        transformOrigin: 'center',
-        // 8-point star
-        clipPath:        'polygon(50% 0%,54% 38%,76% 9%,62% 46%,100% 44%,66% 58%,88% 90%,50% 67%,12% 90%,34% 58%,0% 44%,38% 46%,24% 9%,46% 38%)',
-        background:      isLeft
+        position: 'absolute', width: sz + 'px', height: sz + 'px',
+        left: sx + 'px', top: sy + 'px', zIndex: '60',
+        pointerEvents: 'none', transformOrigin: 'center',
+        clipPath: 'polygon(50% 0%,54% 38%,76% 9%,62% 46%,100% 44%,66% 58%,88% 90%,50% 67%,12% 90%,34% 58%,0% 44%,38% 46%,24% 9%,46% 38%)',
+        background: isLeft
           ? 'conic-gradient(from 0deg,#fff 0%,#fde68a 20%,#f97316 50%,#fff 55%,#fbbf24 80%,#f97316 100%)'
           : 'conic-gradient(from 0deg,#fff 0%,#bae6fd 20%,#3b82f6 50%,#fff 55%,#93c5fd 80%,#3b82f6 100%)',
-        filter:          'drop-shadow(0 0 12px #fff) drop-shadow(0 0 30px ' + (isLeft ? '#f97316' : '#3b82f6') + ') brightness(1.5)',
-        willChange:      'left,top,transform,opacity',
+        filter: 'drop-shadow(0 0 10px #fff) drop-shadow(0 0 28px ' + (isLeft ? '#f97316' : '#3b82f6') + ') brightness(1.6)',
+        willChange: 'left,top,transform,opacity',
       });
       layer.appendChild(el);
 
-      // Trail elements
-      const trails = [];
-      for (let i = 0; i < 4; i++) {
-        const tr = document.createElement('div');
-        Object.assign(tr.style, {
-          position:      'absolute',
-          width:         (size * 0.6 - i * 8) + 'px',
-          height:        (size * 0.6 - i * 8) + 'px',
-          borderRadius:  '50%',
-          background:    isLeft ? 'rgba(249,115,22,0.3)' : 'rgba(59,130,246,0.3)',
-          pointerEvents: 'none',
-          zIndex:        '59',
-          filter:        'blur(4px)',
-          left:          sx + 'px',
-          top:           sy + 'px',
-          transform:     'translate(-50%,-50%)',
-        });
-        layer.appendChild(tr);
-        trails.push({ el: tr, delay: i * 0.06 });
-      }
-
-      const dur = 700;
-      const t0  = performance.now();
-
+      const t0 = performance.now();
       (function frame(now) {
-        const p  = Math.min((now - t0) / dur, 1);
-        const x  = sx + dx * p;
-        const y  = sy + dy * p;
-        const r  = p * 1260;
-        const sc = 0.8 + p * 0.6;
+        const p  = Math.min((now - t0) / 700, 1);
+        const x  = sx + dx * p; const y  = sy + dy * p;
         const o  = p < 0.65 ? 1 : 1 - (p - 0.65) / 0.35;
-
-        el.style.left      = x + 'px';
-        el.style.top       = y + 'px';
-        el.style.transform = `translate(-50%,-50%) rotate(${r}deg) scale(${sc})`;
+        el.style.left      = x + 'px'; el.style.top = y + 'px';
+        el.style.transform = `translate(-50%,-50%) rotate(${p * 1260}deg) scale(${0.8 + p * 0.6})`;
         el.style.opacity   = String(o);
-
-        // Trail follows with delay
-        trails.forEach(({ el: tr, delay }) => {
-          const pt = Math.max(0, p - delay);
-          const tx = sx + dx * pt;
-          const ty = sy + dy * pt;
-          tr.style.left    = tx + 'px';
-          tr.style.top     = ty + 'px';
-          tr.style.opacity = String(o * 0.6);
-        });
-
-        if (p < 1) {
-          requestAnimationFrame(frame);
-        } else {
-          el.remove();
-          trails.forEach(t => t.el.remove());
-          narutoScore++;
-          const scoreEl = document.getElementById('naruto-score');
-          if (scoreEl) scoreEl.textContent = '\uD83D\uDCA0 ' + narutoScore;
-          spawnImpact(x, y, isLeft);
-        }
+        if (p < 1) requestAnimationFrame(frame);
+        else { el.remove(); narutoScore++; const s = document.getElementById('naruto-score'); if (s) s.textContent = '\uD83D\uDCA0 ' + narutoScore; spawnImpact(x, y, isLeft); }
       })(t0);
     }
 
-    /* ══ IMPACT ════════════════════════════════════════════ */
     function spawnImpact(x, y, isLeft) {
       const layer = document.getElementById('naruto-fx-layer');
       if (!layer) return;
-
-      // Shockwave ring
       const ring = document.createElement('div');
-      Object.assign(ring.style, {
-        position:      'absolute',
-        width:         '10px', height: '10px',
-        left:          x + 'px', top: y + 'px',
-        borderRadius:  '50%',
-        border:        '4px solid ' + (isLeft ? 'rgba(249,115,22,0.9)' : 'rgba(59,130,246,0.9)'),
-        boxShadow:     '0 0 20px ' + (isLeft ? '#f97316' : '#3b82f6'),
-        transform:     'translate(-50%,-50%)',
-        pointerEvents: 'none',
-        zIndex:        '65',
-      });
-      layer.appendChild(ring);
-
-      // Boom emoji
+      Object.assign(ring.style, { position:'absolute', width:'10px', height:'10px', left:x+'px', top:y+'px', borderRadius:'50%', border:'4px solid '+(isLeft?'rgba(249,115,22,0.9)':'rgba(59,130,246,0.9)'), transform:'translate(-50%,-50%)', pointerEvents:'none', zIndex:'65' });
       const boom = document.createElement('div');
       boom.textContent = '\uD83D\uDCA5';
-      Object.assign(boom.style, {
-        position: 'absolute', fontSize: '64px', lineHeight: '1',
-        left: x + 'px', top: y + 'px',
-        transform: 'translate(-50%,-50%) scale(0.3)',
-        pointerEvents: 'none', zIndex: '66',
-      });
-      layer.appendChild(boom);
-
+      Object.assign(boom.style, { position:'absolute', fontSize:'64px', left:x+'px', top:y+'px', transform:'translate(-50%,-50%) scale(0.3)', pointerEvents:'none', zIndex:'66' });
+      layer.appendChild(ring); layer.appendChild(boom);
       const t0 = performance.now();
       (function frame(now) {
-        const p  = Math.min((now - t0) / 550, 1);
-        const o  = 1 - p;
+        const p = Math.min((now - t0) / 500, 1), o = 1 - p;
         ring.style.transform = `translate(-50%,-50%) scale(${1 + p * 10})`;
         ring.style.opacity   = String(o);
-        boom.style.transform = `translate(-50%,-50%) scale(${0.3 + p * 2})`;
+        boom.style.transform = `translate(-50%,-50%) scale(${0.3 + p * 2.2})`;
         boom.style.opacity   = String(o);
         if (p < 1) requestAnimationFrame(frame);
         else { ring.remove(); boom.remove(); }
