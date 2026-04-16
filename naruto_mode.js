@@ -220,8 +220,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const sL = window.handEngine?.handStates?.['Left'];
       const sR = window.handEngine?.handStates?.['Right'];
-      const Lactive = sL?.history?.length > 0 && sL.landmarks;
-      const Ractive = sR?.history?.length > 0 && sR.landmarks;
+      const Lactive = !!(sL && sL.landmarks);
+      const Ractive = !!(sR && sR.landmarks);
 
       // ── Gesture hold debounce ──
       hold.Lpoint = Lactive && isPointingIndex(sL.landmarks) ? hold.Lpoint + 1 : 0;
@@ -351,7 +351,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
       const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
       const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
-      return dist2(palmL, palmR) < W * 0.26; // 2 lòng bàn tay gần nhau
+      // Tăng tầm kích hoạt lên 0.35W để dễ chụm tay hơn
+      return dist2(palmL, palmR) < W * 0.35; 
     }
 
     /* ═══════════════════════════════════════════════════════
@@ -1124,32 +1125,30 @@ document.addEventListener('DOMContentLoaded', function () {
       const fw = (face.w / face.vW) * W;
       const fh = (face.h / face.vH) * H;
 
-      // 1. Kích thước tóc: Tăng mạnh scale để bao phủ toàn bộ vùng đầu
-      const tw = fw * 2.15; // Tăng từ 1.25 lên 2.15
+      // 1. Kích thước tóc: Bùng nổ kích thước (x3.8) - Chuẩn SSJ3
+      const tw = fw * 3.8; 
       const th = tw * (hairCanvas.height / hairCanvas.width);
 
-      // 2. Tọa độ: Đưa lên cao hơn trán để hở toàn bộ khuôn mặt
+      // 2. Tọa độ: Đẩy lên cao hơn nữa để không chạm vào mắt
       const tx = rx;
-      const ty = ry - fh * 0.55 - th * 0.45; // Đẩy lên cao hẳn
+      const ty = ry - fh * 0.65 - th * 0.48; 
 
-      // 3. Render
       nCtx.save();
-      // Khung debug Face (Vàng mờ)
-      nCtx.strokeStyle = 'rgba(255,255,0,0.2)';
+      // Debug Face (Vàng mờ)
+      nCtx.strokeStyle = 'rgba(255,255,0,0.1)';
       nCtx.strokeRect(rx - fw/2, ry - fh/2, fw, fh);
       
-      // Vẽ tóc
       nCtx.translate(tx, ty);
-      nCtx.shadowColor = 'rgba(251, 191, 36, 0.4)';
-      nCtx.shadowBlur = 20;
+      nCtx.shadowColor = 'rgba(251, 191, 36, 0.6)';
+      nCtx.shadowBlur = 35;
       nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
       
-      // Hiệu ứng tia sét
-      if (Math.random() < 0.2) {
-        nCtx.strokeStyle = '#60a5fa'; nCtx.lineWidth = 2;
-        const ex = (Math.random() - 0.5) * tw; const ey = (Math.random() - 0.5) * th;
+      // Electricity effect mạnh hơn
+      if (Math.random() < 0.25) {
+        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 2.5;
+        const ex = (Math.random() - 0.5) * tw * 0.7; const ey = (Math.random() - 0.5) * th * 0.7;
         nCtx.beginPath(); nCtx.moveTo(ex, ey);
-        nCtx.lineTo(ex + (Math.random()-0.5)*30, ey + (Math.random()-0.5)*20);
+        nCtx.lineTo(ex + (Math.random()-0.5)*50, ey + (Math.random()-0.5)*40);
         nCtx.stroke();
       }
       nCtx.restore();
