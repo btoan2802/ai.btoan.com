@@ -1083,24 +1083,6 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.strokeStyle = '#fffbeb'; nCtx.lineWidth = 4; nCtx.stroke();
       nCtx.restore();
     }
-      nCtx.lineTo(tw * 0.45, -th * 0.8);
-      nCtx.lineTo(tw * 0.55, -th * 0.35);
-      nCtx.lineTo(tw * 0.7, 0);
-      nCtx.lineTo(tw * 0.3, th * 0.25);
-      nCtx.lineTo(-tw * 0.3, th * 0.25);
-      nCtx.closePath(); nCtx.fill();
-
-      // SSJ2 Sparks
-      if (Math.random() < 0.2) {
-        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 2;
-        const rx = (Math.random() - 0.5) * tw; const ry = (Math.random() - 0.5) * th;
-        nCtx.beginPath(); nCtx.moveTo(rx, ry);
-        nCtx.lineTo(rx + (Math.random()-0.5)*30, ry + (Math.random()-0.5)*30);
-        nCtx.stroke();
-      }
-      nCtx.strokeStyle = '#fffbeb'; nCtx.lineWidth = 3; nCtx.stroke();
-      nCtx.restore();
-    }
 
 
   })();
