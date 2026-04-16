@@ -282,7 +282,29 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
 
+      // ── HUD Debug Overlay (Thấp, góc trái) ──
+      drawHUDDebug(W, H, Lactive, Ractive, dualBridge, facePos, kameha);
+
       animFrame = requestAnimationFrame(narutoLoop);
+    }
+
+    function drawHUDDebug(W, H, L, R, bridge, face, km) {
+      nCtx.save();
+      nCtx.fillStyle = 'rgba(0,40,0,0.7)';
+      nCtx.fillRect(10, H - 160, 240, 150);
+      nCtx.fillStyle = '#0f0';
+      nCtx.font = '12px monospace';
+      const lines = [
+        `DETECT: L=${L?'OK':'--'} R=${R?'OK':'--'}`,
+        `GESTURE: Bridge=${bridge?'YES':'NO'}`,
+        `FACE: ${face?'DETECTED':'SEARCHING...'}`,
+        `KAMEHA: ${km.state.toUpperCase()}`,
+        `KAME_PROG: ${(km.progress*100).toFixed(0)}%`,
+        `SP_PROG: ${(summon.progress*100).toFixed(0)}%`,
+        `T: ${Math.floor(T)}`
+      ];
+      lines.forEach((l, i) => nCtx.fillText(l, 20, H - 140 + i * 18));
+      nCtx.restore();
     }
 
     /* ── KAMEHAMEHA DETECTOR ──────────────────────────────────── */
@@ -332,11 +354,11 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.globalCompositeOperation = 'screen';
 
       if (!s.isPinching) {
-        // scale visual mạnh hơn theo độ mở
-        const scl = openAmount;
+        // scale visual mạnh hơn hẳn theo độ mở
+        const scl = openAmount * 1.25;
 
         // ── Palm organic glow ──
-        drawOrganicCore(palm, handSz * (0.6 + scl * 0.9), isLeft);
+        drawOrganicCore(palm, handSz * (0.8 + scl * 2.5), isLeft);
 
         // ── Energy tendrils palm → mỗi đầu ngón ──
         for (const { tip, mcp } of fingerPairs) {
@@ -344,7 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
 
         // ── Chakra ring ──
-        drawImperfectRing(palm, handSz * 1.1 * scl, isLeft);
+        drawImperfectRing(palm, handSz * 1.5 * scl, isLeft);
 
         // ── Emit sparks from extended fingertips ──
         for (const { tip } of fingerPairs) {
@@ -616,15 +638,9 @@ document.addEventListener('DOMContentLoaded', function () {
             nCtx.strokeStyle = `rgba(130,200,255,${a})`;
             nCtx.lineWidth   = 1.4 * ph2; nCtx.stroke();
           }
-          // Palm core grow
-          const coreR = dist2(pts[0], pts[9]) * (0.55 + ph2 * 1.0) * pulse;
-          const gl = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, coreR);
-          gl.addColorStop(0,   `rgba(220,245,255,${0.75 * ph2})`);
-          gl.addColorStop(0.3, `rgba(110,185,255,${0.45 * ph2})`);
-          gl.addColorStop(0.7, `rgba(50,110,255,${0.18 * ph2})`);
-          gl.addColorStop(1,    'rgba(0,0,0,0)');
-          nCtx.fillStyle = gl;
-          nCtx.beginPath(); nCtx.arc(palm.x, palm.y, coreR, 0, Math.PI * 2); nCtx.fill();
+          // Palm core grow (Bỏ vẽ đốm sáng ở palm trong bridge mode)
+          // const coreR = dist2(pts[0], pts[9]) * (0.55 + ph2 * 1.0) * pulse;
+          // ... (xóa logic vẽ gradient tại đây)
         }
 
         // Bridge arc mờ (bắt đầu từ ph2 > 0.35)
@@ -1006,32 +1022,67 @@ document.addEventListener('DOMContentLoaded', function () {
       const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }));
       if (result) {
         const box = result.box;
+        // Btoan: Lưu tọa độ pixel gốc của video để map chính xác lên Canvas
         facePos = {
-          x: 1 - (box.x + box.width / 2) / video.videoWidth,
-          y: (box.y + box.height / 2) / video.videoHeight,
-          w: box.width / video.videoWidth, h: box.height / video.videoHeight
+          x: box.x + box.width / 2,
+          y: box.y + box.height / 2,
+          w: box.width,
+          h: box.height,
+          vW: video.videoWidth,
+          vH: video.videoHeight
         };
       } else facePos = null;
     }
 
     function drawSSJHair(face, W, H) {
-      const cx = face.x * W; const cy = face.y * H;
-      const fw = face.w * W; const fh = face.h * H;
+      const rx = (face.x / face.vW) * W;
+      const ry = (face.y / face.vH) * H;
+      const fw = (face.w / face.vW) * W;
+      const fh = (face.h / face.vH) * H;
+
+      // Debug face box (mờ) - Nếu thấy box này bám đúng mặt là OK
       nCtx.save();
-      const tx = cx; const ty = cy - fh * 0.45;
-      const tw = fw * 1.5; const th = fh * 1.2;
+      nCtx.strokeStyle = 'rgba(255,255,0,0.3)';
+      nCtx.strokeRect(rx - fw/2, ry - fh/2, fw, fh);
+      nCtx.restore();
+
+      nCtx.save();
+      // Đẩy tóc lên cao hơn trán và scale to hơn
+      const tx = rx;
+      const ty = ry - fh * 0.70;
+      const tw = fw * 2.2; 
+      const th = fh * 1.9;
+
       nCtx.translate(tx, ty);
-      nCtx.shadowColor = '#fbbf24'; nCtx.shadowBlur = 30 + Math.sin(T * 0.01) * 10;
+      nCtx.globalAlpha = 1.0;
+      nCtx.shadowColor = '#fbbf24'; nCtx.shadowBlur = 40 + Math.sin(T * 0.01) * 15;
       nCtx.fillStyle = '#fbbf24';
       nCtx.beginPath();
-      // Vẽ mớ tóc SSJ cong mượt hơn
       nCtx.moveTo(-tw * 0.5, 0);
-      nCtx.quadraticCurveTo(-tw * 0.6, -th * 0.3, -tw * 0.4, -th * 0.4);
-      nCtx.lineTo(-tw * 0.25, -th * 0.3);
-      nCtx.lineTo(-tw * 0.1, -th * 0.85); 
-      nCtx.lineTo(0, -th * 0.45);
-      nCtx.lineTo(tw * 0.15, -th * 1.0);  // Central spike
-      nCtx.lineTo(tw * 0.25, -th * 0.4);
+      nCtx.quadraticCurveTo(-tw * 0.6, -th * 0.3, -tw * 0.4, -th * 0.45);
+      nCtx.lineTo(-tw * 0.25, -th * 0.35);
+      nCtx.lineTo(-tw * 0.15, -th * 0.9); 
+      nCtx.lineTo(0, -th * 0.5);
+      nCtx.lineTo(tw * 0.18, -th * 1.1);  
+      nCtx.lineTo(tw * 0.3, -th * 0.5);
+      nCtx.lineTo(tw * 0.5, -th * 0.85);
+      nCtx.lineTo(tw * 0.6, -th * 0.4);
+      nCtx.lineTo(tw * 0.75, 0);
+      nCtx.lineTo(tw * 0.4, th * 0.35);
+      nCtx.lineTo(-tw * 0.3, th * 0.35);
+      nCtx.closePath(); nCtx.fill();
+
+      // SSJ2 Electricity
+      if (Math.random() < 0.3) {
+        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 3;
+        const ex = (Math.random() - 0.5) * tw; const ey = (Math.random() - 0.5) * th;
+        nCtx.beginPath(); nCtx.moveTo(ex, ey);
+        nCtx.lineTo(ex + (Math.random()-0.5)*60, ey + (Math.random()-0.5)*60);
+        nCtx.stroke();
+      }
+      nCtx.strokeStyle = '#fffbeb'; nCtx.lineWidth = 4; nCtx.stroke();
+      nCtx.restore();
+    }
       nCtx.lineTo(tw * 0.45, -th * 0.8);
       nCtx.lineTo(tw * 0.55, -th * 0.35);
       nCtx.lineTo(tw * 0.7, 0);
