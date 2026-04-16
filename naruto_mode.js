@@ -52,6 +52,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Face state
     let facePos = null; // { x, y, w, h, roll }
+    let faceRenderPos = null; // Smoothed
+    let faceLastDetected = 0;
     let lastFaceDetectT = 0;
     let lastSeen        = { Left: 0, Right: 0 };
     const TRACKING_TIMEOUT = 250; // ms
@@ -209,8 +211,6 @@ document.addEventListener('DOMContentLoaded', function () {
       const W = window.innerWidth;
       const H = window.innerHeight;
 
-      nCtx.clearRect(0, 0, W, H);
-
       // ── Face detection (150ms interval) ──
       const narutoCam = document.getElementById('naruto-camera');
       if (narutoCam && T - lastFaceDetectT > FACE_DETECT_INTERVAL) {
@@ -218,7 +218,26 @@ document.addEventListener('DOMContentLoaded', function () {
         detectFace(narutoCam);
       }
 
-      if (facePos) drawSSJHair(facePos, W, H);
+      nCtx.clearRect(0, 0, W, H);
+
+      // ── Face Smoothing & Hair Rendering ──
+      if (facePos) {
+        faceLastDetected = T;
+        if (!faceRenderPos) {
+          faceRenderPos = { ...facePos };
+        } else {
+          const k = 0.24; // LERP factor
+          faceRenderPos.x = lerp(faceRenderPos.x, facePos.x, k);
+          faceRenderPos.y = lerp(faceRenderPos.y, facePos.y, k);
+          faceRenderPos.w = lerp(faceRenderPos.w, facePos.w, k);
+          faceRenderPos.h = lerp(faceRenderPos.h, facePos.h, k);
+          faceRenderPos.vW = facePos.vW; faceRenderPos.vH = facePos.vH;
+        }
+      }
+      
+      const isFaceRecent = (T - faceLastDetected < 650); // Giữ tóc 650ms nếu mất dấu
+      if (faceRenderPos && isFaceRecent) drawSSJHair(faceRenderPos, W, H);
+      else if (!isFaceRecent) faceRenderPos = null;
 
       const sL = window.handEngine?.handStates?.['Left'];
       const sR = window.handEngine?.handStates?.['Right'];
