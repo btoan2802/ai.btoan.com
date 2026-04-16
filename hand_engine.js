@@ -22,8 +22,8 @@ class HandEngine {
         this.smoothFactor = 0.35;       // Tăng để chuột theo tay nhanh hơn (bỏ cảm giác bị trễ/lag)
         this.deadZone = 2;              // Giảm một chút để nhạy hơn
         this.historySize = 3;           // Chỉ lấy trung bình 3 frame để giảm độ trễ (latency)
-        this.pinchEnter = 0.35;         // Threshold to START pinch (normalized by hand size)
-        this.pinchExit  = 0.50;         // Threshold to END pinch (hysteresis)
+        this.pinchEnter = 0.70;         // Threshold START pinch (normalized by hand size, norm~1.2 khi mở)
+        this.pinchExit  = 0.90;         // Threshold END pinch (hysteresis)
         this.tapWindow  = 300;          // ms: pinch shorter than this = click
 
         // --- DUAL HAND STATE ---

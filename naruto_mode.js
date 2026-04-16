@@ -121,9 +121,9 @@ document.addEventListener('DOMContentLoaded', function () {
         nCanvas.height = window.innerHeight;
       });
 
-      // Webcam visibility
+      // Camera feed luôn hiện — effect overlay lên trên
       const narutoCam = document.getElementById('naruto-camera');
-      if (narutoCam) narutoCam.style.opacity = DEBUG_SHOW_WEBCAM ? '0.55' : '0';
+      if (narutoCam) narutoCam.style.opacity = '0.88';
 
       // Start handEngine
       if (window.handEngine && !window.handEngine.isActive) {
@@ -260,83 +260,124 @@ document.addEventListener('DOMContentLoaded', function () {
 
     /* ── Organic (non-perfect) palm glow ────────────────── */
     function drawOrganicCore(palm, sz, isLeft) {
-      const t     = T;
-      const pulse = 1 + Math.sin(t * 0.004) * 0.2 + Math.sin(t * 0.0071) * 0.08;
-      const r     = sz * 0.72 * pulse;
+      // Smooth multi-frequency flicker (không random mỗi frame → không nhấp nháy gắt)
+      const flicker = 0.88
+        + Math.sin(T * 0.0031) * 0.07
+        + Math.sin(T * 0.0053) * 0.04
+        + Math.sin(T * 0.0127) * 0.02;
+      const pulse   = 1 + Math.sin(T * 0.003) * 0.15 + Math.sin(T * 0.0071) * 0.06;
+      const r       = sz * 0.7 * pulse;
 
-      // Multiple offset glow blobs → organic feel
+      // Outer soft glow (rất to, alpha thấp)
+      const [outerC, c0, c1, c2, edge] = isLeft
+        ? ['rgba(255,80,0,0.06)', 'rgba(255,200,80,0.92)', 'rgba(255,120,15,0.55)', 'rgba(253,60,0,0.20)', 'rgba(255,20,0,0)']
+        : ['rgba(40,80,255,0.06)', 'rgba(200,235,255,0.92)', 'rgba(80,160,255,0.55)', 'rgba(40,100,255,0.20)', 'rgba(20,50,255,0)'];
+
+      // Outer soft glow (3× radius)
+      const go = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, r * 3);
+      go.addColorStop(0, isLeft ? 'rgba(255,100,20,0.18)' : 'rgba(80,150,255,0.18)');
+      go.addColorStop(1, 'rgba(0,0,0,0)');
+      nCtx.fillStyle = go;
+      nCtx.beginPath(); nCtx.arc(palm.x, palm.y, r * 3, 0, Math.PI * 2); nCtx.fill();
+
+      // Multiple offset blobs → organic feel
       const offsets = [
-        { dx:  0.08 * sz, dy: -0.06 * sz, r: 0.85 },
-        { dx: -0.06 * sz, dy:  0.09 * sz, r: 0.75 },
-        { dx:  0,          dy:  0,          r: 1.0  },
+        { dx:  sz * 0.07, dy: -sz * 0.05, scale: 0.80 },
+        { dx: -sz * 0.05, dy:  sz * 0.08, scale: 0.70 },
+        { dx:  sz * 0.02, dy:  sz * 0.01, scale: 1.00 }, // dominant center
       ];
 
-      const [c0, c1, edge] = isLeft
-        ? ['rgba(255,130,15,0.85)', 'rgba(253,80,0,0.40)', 'rgba(255,50,0,0)']
-        : ['rgba(160,215,255,0.88)', 'rgba(50,120,255,0.45)', 'rgba(20,50,255,0)'];
-
-      for (const { dx, dy, r: scl } of offsets) {
+      for (const { dx, dy, scale } of offsets) {
         const cx = palm.x + dx; const cy = palm.y + dy;
-        const radius = r * scl;
-        const g = nCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
-        g.addColorStop(0,   c0);
-        g.addColorStop(0.5, c1);
-        g.addColorStop(1,   edge);
+        const cr = r * scale;
+        const g  = nCtx.createRadialGradient(cx, cy, 0, cx, cy, cr);
+        g.addColorStop(0,    c0);
+        g.addColorStop(0.25, c1);
+        g.addColorStop(0.60, c2);
+        g.addColorStop(1,    edge);
         nCtx.fillStyle = g;
-        nCtx.beginPath(); nCtx.arc(cx, cy, radius, 0, Math.PI * 2); nCtx.fill();
+        nCtx.beginPath(); nCtx.arc(cx, cy, cr, 0, Math.PI * 2); nCtx.fill();
       }
 
-      // Flame tendrils from core (small upward wisps)
-      const numWisps = 5;
+      // Flame wisps — organic tendrils từ core, dùng flicker đã tính sẵn
+      const numWisps = 6;
       for (let i = 0; i < numWisps; i++) {
-        const angle  = (i / numWisps) * Math.PI * 2 + T * 0.001 + Math.random() * 0.3;
-        const wLen   = sz * rand(0.4, 0.9);
+        // Phase offset per wisp nên không nhấp nháy đồng bộ
+        const wFlick = 0.85 + Math.sin(T * 0.004 + i * 1.3) * 0.15;
+        const angle  = (i / numWisps) * Math.PI * 2 + T * 0.0008 + i * 0.22;
+        const wLen   = sz * (0.45 + Math.sin(T * 0.003 + i) * 0.2);
         const ex     = palm.x + Math.cos(angle) * wLen;
-        const ey     = palm.y + Math.sin(angle) * wLen - wLen * 0.3; // bias upward
+        const ey     = palm.y + Math.sin(angle) * wLen;
+        const cpx    = palm.x + (ex - palm.x) * 0.5 + Math.sin(T * 0.007 + i) * sz * 0.12;
+        const cpy    = palm.y + (ey - palm.y) * 0.5 + Math.cos(T * 0.007 + i) * sz * 0.12;
         nCtx.beginPath(); nCtx.moveTo(palm.x, palm.y);
-        // Quadratic curve for organic wisp
-        const cpx = palm.x + (ex - palm.x) * 0.5 + rand(-sz * 0.15, sz * 0.15);
-        const cpy = palm.y + (ey - palm.y) * 0.5 + rand(-sz * 0.15, sz * 0.15);
         nCtx.quadraticCurveTo(cpx, cpy, ex, ey);
-        const flick = rand(0.2, 0.55);
-        nCtx.strokeStyle = isLeft ? `rgba(255,200,80,${flick})` : `rgba(100,180,255,${flick})`;
-        nCtx.lineWidth   = rand(1, 2.2);
-        nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
-        nCtx.shadowBlur  = 8;
+        const a = 0.25 * wFlick * flicker;
+        nCtx.strokeStyle = isLeft ? `rgba(255,210,90,${a})` : `rgba(120,190,255,${a})`;
+        nCtx.lineWidth   = 1.5 + Math.sin(T * 0.005 + i) * 0.5;
+        nCtx.shadowColor = isLeft ? '#ff8800' : '#4488ff';
+        nCtx.shadowBlur  = 6;
         nCtx.stroke();
       }
     }
 
-    /* ── Lightning tendril: palm → knuckle → fingertip ──── */
+    /* ── Lightning tendril với nhánh phụ ────────────────── */
     function drawTendril(from, knuckle, tip, isLeft) {
-      const flick = rand(0.45, 0.9);
-      const color = isLeft ? `rgba(255,170,40,${flick})` : `rgba(80,170,255,${flick})`;
-      const bright = isLeft ? `rgba(255,240,180,${flick * 0.8})` : `rgba(200,235,255,${flick * 0.8})`;
+      // Time-based flicker (mỗi ngón phase khác nhau)
+      const phaseKey = from.x + from.y; // pseudo-unique per finger
+      const flick = 0.82 + Math.sin(T * 0.0045 + phaseKey * 0.001) * 0.18;
 
-      // Segment: palm → knuckle → tip, with jitter
-      const drawBolt = (a, b, alpha, width) => {
-        const dx = b.x - a.x; const dy = b.y - a.y;
+      const [glow, bright, sh] = isLeft
+        ? [`rgba(255,170,40,${flick * 0.7})`, `rgba(255,245,190,${flick * 0.85})`, '#ff8800']
+        : [`rgba(80,170,255,${flick * 0.7})`, `rgba(210,238,255,${flick * 0.85})`, '#3399ff'];
+
+      // Draw one jittered bolt segment a→b
+      const bolt = (a, b, colorStr, width, blur) => {
+        const dx  = b.x - a.x; const dy = b.y - a.y;
         const len = Math.hypot(dx, dy) || 1;
-        const nx = -dy / len; const ny = dx / len;
-        const segs = 5;
+        const nx  = -dy / len; const ny = dx / len;
+        const segs = 6;
         nCtx.beginPath(); nCtx.moveTo(a.x, a.y);
+        const pts = [[a.x, a.y]];
         for (let i = 1; i <= segs; i++) {
-          const p  = i / segs;
-          const jx = nx * rand(-len * 0.07, len * 0.07);
-          const jy = ny * rand(-len * 0.07, len * 0.07);
-          nCtx.lineTo(a.x + dx * p + jx, a.y + dy * p + jy);
+          const p   = i / segs;
+          const jx  = nx * rand(-len * 0.06, len * 0.06);
+          const jy  = ny * rand(-len * 0.06, len * 0.06);
+          const px_ = a.x + dx * p + jx;
+          const py_ = a.y + dy * p + jy;
+          pts.push([px_, py_]);
+          nCtx.lineTo(px_, py_);
         }
-        nCtx.strokeStyle = alpha;
-        nCtx.lineWidth   = width;
-        nCtx.shadowBlur  = 10;
+        nCtx.shadowColor = sh; nCtx.shadowBlur = blur;
+        nCtx.strokeStyle = colorStr; nCtx.lineWidth = width;
         nCtx.stroke();
+        return pts;
       };
 
-      nCtx.shadowColor = isLeft ? '#ff8800' : '#3399ff';
-      drawBolt(from, knuckle, color,  3.5);
-      drawBolt(from, knuckle, bright, 1.2);
-      drawBolt(knuckle, tip,  color,  2.5);
-      drawBolt(knuckle, tip,  bright, 1.0);
+      // Branch phụ ngắn (xác suất 35%)
+      const addBranch = (a, b) => {
+        if (Math.random() > 0.35) return;
+        const dx = b.x - a.x; const dy = b.y - a.y;
+        const bT  = rand(0.3, 0.65);
+        const bx  = a.x + dx * bT; const by = a.y + dy * bT;
+        const bLen = rand(0.2, 0.38);
+        const bAng = Math.atan2(dy, dx) + (Math.random() > 0.5 ? 0.6 : -0.6);
+        const ex   = bx + Math.cos(bAng) * Math.hypot(dx, dy) * bLen;
+        const ey   = by + Math.sin(bAng) * Math.hypot(dx, dy) * bLen;
+        nCtx.beginPath(); nCtx.moveTo(bx, by); nCtx.lineTo(ex, ey);
+        nCtx.strokeStyle = isLeft ? `rgba(255,220,120,${flick * 0.45})` : `rgba(180,220,255,${flick * 0.45})`;
+        nCtx.lineWidth   = 0.8; nCtx.shadowBlur = 4; nCtx.stroke();
+      };
+
+      nCtx.shadowColor = sh;
+      // palm → knuckle
+      bolt(from, knuckle, glow,  3.0, 12);
+      bolt(from, knuckle, bright, 1.0, 3);
+      addBranch(from, knuckle);
+      // knuckle → tip
+      bolt(knuckle, tip, glow,  2.0, 10);
+      bolt(knuckle, tip, bright, 0.8, 3);
+      addBranch(knuckle, tip);
     }
 
     /* ── Imperfect segmented ring ─────────────────────────── */
@@ -582,27 +623,32 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!pool) return;
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
-      const decay = key === 'Bridge' ? 0.03 : 0.022;
+      const decay = key === 'Bridge' ? 0.025 : 0.018;
 
       particles[key] = pool.filter(p => {
-        p.x += p.vx; p.y += p.vy;
-        p.vy -= key === 'Bridge' ? 0 : 0.04;
+        p.x  += p.vx; p.y += p.vy;
+        p.vy -= key === 'Bridge' ? 0 : 0.035; // rise slowly
+        p.vx *= 0.97; // air friction
         p.life -= decay;
         if (p.life <= 0) return false;
-        const a = p.life;
+
+        // Quadratic fade — mềm hơn linear
+        const a    = p.life * p.life;
+        const size = p.size * p.life; // thu dần
         const fire = key === 'Bridge' ? false : p.fire;
+
         nCtx.beginPath();
-        nCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        nCtx.arc(p.x, p.y, Math.max(0.5, size), 0, Math.PI * 2);
         nCtx.fillStyle = fire
-          ? `rgba(255,200,60,${a})`
-          : `rgba(140,200,255,${a})`;
-        nCtx.shadowColor = fire ? '#ff8800' : '#4499ff';
-        nCtx.shadowBlur  = 6;
+          ? `rgba(255,210,70,${a * 0.85})`
+          : `rgba(160,215,255,${a * 0.85})`;
+        nCtx.shadowColor = fire ? '#ff9900' : '#4488ff';
+        nCtx.shadowBlur  = 5;
         nCtx.fill();
         return true;
       });
 
-      if (particles[key].length > 150) particles[key].splice(0, particles[key].length - 150);
+      if (particles[key].length > 120) particles[key].splice(0, particles[key].length - 120);
       nCtx.restore();
     }
 
