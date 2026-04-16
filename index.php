@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="vi">
 <head>
   <!-- 1. Meta -->
@@ -104,12 +104,11 @@
     }
     
     .sidebar-title {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1.5px;
-      font-weight: 800;
-      color: #94a3b8;
-      padding: 25px 20px 10px;
+      font-size: 14px;
+      text-transform: none;
+      font-weight: 750;
+      color: #334155;
+      padding: 20px 20px 8px;
     }
 
     .chat-history-item {
@@ -189,11 +188,17 @@
     .topbar {
       display: flex;
       align-items: center;
-      padding: 10px 24px;
+      padding: 12px 24px;
       background: rgba(255, 255, 255, 0.85);
       backdrop-filter: blur(12px);
       border-bottom: 1px solid #f1f5f9;
       position: sticky; top: 0; z-index: 10;
+    }
+    .brand-text {
+      font-size: 19px;
+      font-weight: 850;
+      color: #1e293b;
+      letter-spacing: -0.5px;
     }
     #chat { overflow: auto; }
 
@@ -329,7 +334,7 @@
       <div class="flex-grow-1 d-flex flex-column">
         <div class="topbar">
           <button class="menu-btn" onclick="toggleSidebar()">☰</button>
-          <div class="d-flex align-items-center gap-2"><div class="fw-bold">Btoan AI</div></div>
+          <div class="d-flex align-items-center gap-2"><div class="brand-text">Btoan AI</div></div>
           <div class="ms-auto d-flex align-items-center">
             <div id="userBox" class="user-box">
               <div class="user-info" onclick="toggleUserMenu()">
@@ -459,7 +464,7 @@
   <script src="hand_scene.js?v=9"></script>
   <script src="hand_shapes.js?v=4"></script>
   <script src="hand_engine.js?v=10"></script>
-  <script src="naruto_mode.js?v=33"></script>
+  <script src="naruto_mode.js?v=34"></script>
 
 </body>
 </html>
