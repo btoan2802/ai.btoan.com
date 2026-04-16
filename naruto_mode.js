@@ -243,12 +243,14 @@ document.addEventListener('DOMContentLoaded', function () {
         // Auto-fire khi chạm mức
         if (kameha.progress >= 1) {
           const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
-          const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
-          const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
-          const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
           kameha.origin = { x: (palmL.x + palmR.x) * 0.5, y: (palmL.y + palmR.y) * 0.5 };
-          // Fire hướng về bên nhiều khoảng trống hơn
-          kameha.angle  = kameha.origin.x > W * 0.5 ? Math.PI : 0;
+          
+          // Determine Fire Direction: hướng về phía tay đang nỗ lực đẩy ra
+          // Hoặc đơn giản: nếu origin ở trái thì bắn sang phải
+          if (kameha.origin.x < W * 0.45) kameha.angle = 0;
+          else if (kameha.origin.x > W * 0.55) kameha.angle = Math.PI;
+          else kameha.angle = -Math.PI / 2; // Bắn lên nếu ở giữa
+
           kameha.state  = 'firing';
           kameha.firedAt = T;
           kameha.progress = 0;
@@ -312,8 +314,10 @@ document.addEventListener('DOMContentLoaded', function () {
       let avgTipDist = 0;
       tipIdxs.forEach(t => avgTipDist += dist2(pts[t], palm));
       avgTipDist /= tipIdxs.length;
-      // Normalization: raw open amount 0 (closed) to ~1.3 (fully open)
-      const openAmount = clamp(avgTipDist / (handSz * 1.5), 0.3, 1.4);
+      // Normalization: raw open amount 0 (closed) đến ~1.5 (fully open)
+      // Dùng hàm mũ để độ bung rõ rệt hơn ở cuối
+      const rawOpen = clamp(avgTipDist / (handSz * 1.6), 0.35, 1.5);
+      const openAmount = Math.pow(rawOpen, 1.8); 
 
       // Fingertip + MCP pairs for energy lines
       const fingerPairs = [
@@ -328,19 +332,19 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.globalCompositeOperation = 'screen';
 
       if (!s.isPinching) {
-        // scale visual base on openness
+        // scale visual mạnh hơn theo độ mở
         const scl = openAmount;
 
         // ── Palm organic glow ──
-        drawOrganicCore(palm, handSz * (0.8 + scl * 0.4), isLeft);
+        drawOrganicCore(palm, handSz * (0.6 + scl * 0.9), isLeft);
 
         // ── Energy tendrils palm → mỗi đầu ngón ──
         for (const { tip, mcp } of fingerPairs) {
           drawTendril(palm, pts[mcp], pts[tip], isLeft);
         }
 
-        // ── Chakra ring (segmented, imperfect) ──
-        drawImperfectRing(palm, handSz * 0.95 * scl, isLeft);
+        // ── Chakra ring ──
+        drawImperfectRing(palm, handSz * 1.1 * scl, isLeft);
 
         // ── Emit sparks from extended fingertips ──
         for (const { tip } of fingerPairs) {
@@ -952,28 +956,35 @@ document.addEventListener('DOMContentLoaded', function () {
 
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
-      const g = nCtx.createLinearGradient(origin.x, origin.y, endX, endY);
-      g.addColorStop(0, 'rgba(255, 255, 255, 1)');
-      g.addColorStop(0.1, 'rgba(100, 200, 255, 0.9)');
-      g.addColorStop(1, 'rgba(50, 100, 255, 0)');
-      nCtx.shadowColor = '#44aaff'; nCtx.shadowBlur = 40;
-      nCtx.strokeStyle = g; nCtx.lineWidth = width; nCtx.lineCap = 'round';
-      nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
-
-      nCtx.lineWidth = width * 0.4; nCtx.strokeStyle = '#fff';
-      nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
-
-      for (let i = 0; i < 4; i++) {
-        nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y);
-        const jX = (Math.random() - 0.5) * 40; const jY = (Math.random() - 0.5) * 40;
-        nCtx.lineTo(endX + jX, endY + jY);
-        nCtx.lineWidth = width * 0.1; nCtx.strokeStyle = `rgba(200, 240, 255, ${0.5 * (1 - p)})`;
-        nCtx.stroke();
-      }
+      // Origin shock ring
       if (p < 0.3) {
         nCtx.beginPath(); nCtx.arc(origin.x, origin.y, 80 * (p / 0.3), 0, Math.PI * 2);
         nCtx.strokeStyle = `rgba(255, 255, 255, ${0.8 * (1 - p / 0.3)})`;
         nCtx.lineWidth = 5; nCtx.stroke();
+      }
+
+      // Vibrate beam body
+      const g = nCtx.createLinearGradient(origin.x, origin.y, endX, endY);
+      g.addColorStop(0, '#fff');
+      g.addColorStop(0.2, '#60a5fa');
+      g.addColorStop(1, 'rgba(30, 64, 175, 0)');
+      nCtx.shadowColor = '#3b82f6'; nCtx.shadowBlur = 45;
+      nCtx.strokeStyle = g;
+      nCtx.lineWidth = width * (1.1 + Math.sin(T * 0.05) * 0.15);
+      nCtx.lineCap = 'round';
+      nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
+      
+      // Core white line
+      nCtx.lineWidth = width * 0.4; nCtx.strokeStyle = '#fff'; nCtx.shadowBlur = 0;
+      nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
+
+      // Energy noise rays
+      for (let i = 0; i < 4; i++) {
+        nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y);
+        const jX = (Math.random() - 0.5) * 60; const jY = (Math.random() - 0.5) * 60;
+        nCtx.lineTo(endX + jX, endY + jY);
+        nCtx.lineWidth = width * 0.1; nCtx.strokeStyle = `rgba(180, 230, 255, ${0.4 * (1 - p)})`;
+        nCtx.stroke();
       }
       nCtx.restore();
     }
@@ -1013,11 +1024,29 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.shadowColor = '#fbbf24'; nCtx.shadowBlur = 30 + Math.sin(T * 0.01) * 10;
       nCtx.fillStyle = '#fbbf24';
       nCtx.beginPath();
-      nCtx.moveTo(-tw * 0.5, 0); nCtx.lineTo(-tw * 0.4, -th * 0.4); nCtx.lineTo(-tw * 0.2, -th * 0.3);
-      nCtx.lineTo(-tw * 0.1, -th * 0.8); nCtx.lineTo(0, -th * 0.5); nCtx.lineTo(tw * 0.1, -th * 1.0);
-      nCtx.lineTo(tw * 0.2, -th * 0.5); nCtx.lineTo(tw * 0.4, -th * 0.8); nCtx.lineTo(tw * 0.5, -th * 0.3);
-      nCtx.lineTo(tw * 0.6, 0); nCtx.lineTo(tw * 0.3, th * 0.2); nCtx.lineTo(-tw * 0.3, th * 0.2);
+      // Vẽ mớ tóc SSJ cong mượt hơn
+      nCtx.moveTo(-tw * 0.5, 0);
+      nCtx.quadraticCurveTo(-tw * 0.6, -th * 0.3, -tw * 0.4, -th * 0.4);
+      nCtx.lineTo(-tw * 0.25, -th * 0.3);
+      nCtx.lineTo(-tw * 0.1, -th * 0.85); 
+      nCtx.lineTo(0, -th * 0.45);
+      nCtx.lineTo(tw * 0.15, -th * 1.0);  // Central spike
+      nCtx.lineTo(tw * 0.25, -th * 0.4);
+      nCtx.lineTo(tw * 0.45, -th * 0.8);
+      nCtx.lineTo(tw * 0.55, -th * 0.35);
+      nCtx.lineTo(tw * 0.7, 0);
+      nCtx.lineTo(tw * 0.3, th * 0.25);
+      nCtx.lineTo(-tw * 0.3, th * 0.25);
       nCtx.closePath(); nCtx.fill();
+
+      // SSJ2 Sparks
+      if (Math.random() < 0.2) {
+        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 2;
+        const rx = (Math.random() - 0.5) * tw; const ry = (Math.random() - 0.5) * th;
+        nCtx.beginPath(); nCtx.moveTo(rx, ry);
+        nCtx.lineTo(rx + (Math.random()-0.5)*30, ry + (Math.random()-0.5)*30);
+        nCtx.stroke();
+      }
       nCtx.strokeStyle = '#fffbeb'; nCtx.lineWidth = 3; nCtx.stroke();
       nCtx.restore();
     }
