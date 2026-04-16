@@ -189,12 +189,22 @@ document.addEventListener('DOMContentLoaded', function () {
         if (ho) ho.style.display = 'none';
       }
 
-      // Share stream: hand-video → naruto-camera
+      // Share stream: hand-video → naruto-camera (Dùng chung stream để không lỗi trên Mobile)
       const handVideo = document.getElementById('hand-video');
-      if (handVideo?.srcObject && narutoCam) {
-        narutoCam.srcObject = handVideo.srcObject;
-        narutoCam.play().catch(() => {});
+      const shareStream = () => {
+        if (handVideo?.srcObject && narutoCam) {
+          narutoCam.srcObject = handVideo.srcObject;
+          narutoCam.play().catch(() => {});
+          console.log('[Naruto] Camera stream shared from HandEngine');
+        }
+      };
+      
+      if (handVideo?.srcObject) shareStream();
+      else {
+        // Dự phòng: Đợi 1 chút cho stream sẵn sàng
+        setTimeout(shareStream, 1000);
       }
+
       const ho = document.getElementById('hand-overlay');
       if (ho) ho.style.display = 'none';
 
@@ -364,22 +374,34 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function drawHUDDebug(W, H, L, R, bridge, face, km) {
+      const hEngine = window.handEngine;
+      const hDbg = hEngine?.debug || {};
+
       nCtx.save();
-      nCtx.fillStyle = 'rgba(0,40,0,0.7)';
-      nCtx.fillRect(10, H - 160, 240, 150);
-      nCtx.fillStyle = '#0f0';
-      nCtx.font = '12px monospace';
-      const kmLine = `KAMEHA: ${km.state.toUpperCase()} (${(km.progress*100).toFixed(0)}%)`;
-      const faceLine = face ? `FACE: ${Math.round(face.x)},${Math.round(face.y)} (VISIBLE)` : `FACE: SEARCHING...`;
+      // HUD Box (tăng chiều cao để chứa thêm info)
+      nCtx.fillStyle = 'rgba(0,30,0,0.75)';
+      nCtx.fillRect(10, H - 210, 260, 200);
       
+      nCtx.fillStyle = '#0f0';
+      nCtx.font = '11px monospace';
+      
+      const vW = narutoCam?.videoWidth || 0;
+      const vH = narutoCam?.videoHeight || 0;
+
       const lines = [
-        `DETECT-H: L=${L?'OK':'--'} R=${R?'OK':'--'}`,
-        `GESTURE: Bridge=${bridge?'YES':'NO'}`,
-        faceLine,
-        kmLine,
-        `T: ${Math.floor(T)}`
+        `--- SYSTEM HEALTH ---`,
+        `MOBILE: ${hDbg.isMobile ? 'YES' : 'NO'}`,
+        `CAMERA: ${hDbg.cameraStarted ? 'STARTED' : 'WAITING...'}`,
+        `MODEL:  ${hDbg.modelLoaded ? 'LOADED' : 'LOADING...'}`,
+        `RESOL:  ${vW}x${vH}`,
+        `FPS:    ${hDbg.fps || 0}`,
+        `--- ENGINE STATE ---`,
+        `HANDS:  L=${L?'OK':'--'} R=${R?'OK':'--'}`,
+        `FACE:   ${face ? 'FOUND' : 'SEARCHING...'}`,
+        `KAMEHA: ${km.state.toUpperCase()} (${(km.progress*100).toFixed(0)}%)`,
+        `T:      ${Math.floor(T)}`
       ];
-      lines.forEach((l, i) => nCtx.fillText(l, 20, H - 140 + i * 18));
+      lines.forEach((l, i) => nCtx.fillText(l, 20, H - 190 + i * 17));
       nCtx.restore();
     }
 

@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="vi">
 <head>
   <!-- 1. Meta -->
@@ -377,75 +377,7 @@
   <script src="hand_scene.js?v=9"></script>
   <script src="hand_shapes.js?v=4"></script>
   <script src="hand_engine.js?v=10"></script>
-  <script src="naruto_mode.js?v=31"></script>
+  <script src="naruto_mode.js?v=32"></script>
 
-  <!-- Naruto logic script -->
-  <script>
-  (function() {
-    let narutoActive = false, narutoScore = 0, narutoStream = null;
-    let lastPinchL = false, lastPinchR = false, animFrame = null;
-    const btn = document.getElementById('toggleNarutoMode');
-    btn.addEventListener('click', () => narutoActive ? closeNaruto() : openNaruto());
-    window.closeNaruto = function() {
-      narutoActive = false;
-      document.getElementById('naruto-overlay').style.display = 'none';
-      btn.classList.remove('naruto-active');
-      if (narutoStream) { narutoStream.getTracks().forEach(t => t.stop()); narutoStream = null; }
-      if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
-    };
-    async function openNaruto() {
-      narutoActive = true; narutoScore = 0;
-      lastPinchL = false; lastPinchR = false;
-      document.getElementById('naruto-score').textContent = '💠 0';
-      document.getElementById('naruto-overlay').style.display = 'block';
-      document.getElementById('naruto-fx-layer').innerHTML = '';
-      btn.classList.add('naruto-active');
-      try {
-        narutoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode:'user', width:1280, height:720 } });
-        document.getElementById('naruto-camera').srcObject = narutoStream;
-      } catch(e) { console.warn('Naruto cam:', e); }
-      if (window.handEngine && !window.handEngine.isActive) window.handEngine.start();
-      function narutoLoop() {
-        if (!narutoActive) return;
-        ['Left', 'Right'].forEach(side => {
-          const s = window.handEngine?.handStates?.[side];
-          if (!s) return;
-          if (s.isPinching && !((side === 'Left') ? lastPinchL : lastPinchR)) {
-            const angle = (-Math.PI / 2) + (Math.random() - 0.5) * Math.PI * 0.85;
-            launchShuriken(s.x, s.y, Math.cos(angle) * (480 + Math.random() * 320), Math.sin(angle) * (480 + Math.random() * 320));
-          }
-          if (side === 'Left') lastPinchL = s.isPinching; else lastPinchR = s.isPinching;
-        });
-        animFrame = requestAnimationFrame(narutoLoop);
-      }
-      narutoLoop();
-    }
-    function launchShuriken(sx, sy, dx, dy) {
-      const layer = document.getElementById('naruto-fx-layer');
-      const el = document.createElement('div');
-      el.textContent = '🌀'; el.style.cssText = `position:absolute; pointer-events:none; z-index:10; font-size:42px; left:${sx}px; top:${sy}px; transform-origin:center; will-change:transform,opacity;`;
-      layer.appendChild(el);
-      const t0 = performance.now();
-      (function frame(now) {
-        const p = Math.min((now - t0) / 750, 1);
-        el.style.left = (sx + dx * p) + 'px'; el.style.top = (sy + dy * p) + 'px';
-        el.style.transform = `translate(-50%,-50%) rotate(${p * 900}deg) scale(${1 - p * 0.65})`;
-        el.style.opacity = p < 0.75 ? 1 : 1 - (p - 0.75) / 0.25;
-        if (p < 1) requestAnimationFrame(frame); else { el.remove(); narutoScore++; document.getElementById('naruto-score').textContent = '💠 ' + narutoScore; spawnBoom(sx + dx, sy + dy); }
-      })(t0);
-    }
-    function spawnBoom(x, y) {
-      const boom = document.createElement('div');
-      boom.textContent = '💥'; boom.style.cssText = `position:absolute; pointer-events:none; font-size:64px; left:${x}px; top:${y}px; z-index:11; transform:translate(-50%,-50%) scale(0.5); will-change:transform,opacity;`;
-      document.getElementById('naruto-fx-layer').appendChild(boom);
-      const t0 = performance.now();
-      (function frame(now) {
-        const p = Math.min((now - t0) / 450, 1);
-        boom.style.transform = `translate(-50%,-50%) scale(${0.5 + p * 2})`; boom.style.opacity = 1 - p;
-        if (p < 1) requestAnimationFrame(frame); else boom.remove();
-      })(t0);
-    }
-  })();
-  </script>
 </body>
 </html>

@@ -36,6 +36,16 @@ class HandEngine {
             initialRotZ: 0
         };
 
+        // --- DEBUG STATS FOR MOBILE ---
+        this.debug = {
+            modelLoaded: false,
+            cameraStarted: false,
+            frameCounter: 0,
+            lastFrameT: 0,
+            fps: 0,
+            isMobile: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+        };
+
         this.init();
     }
 
@@ -56,7 +66,7 @@ class HandEngine {
 
     async init() {
         this.hands = new Hands({
-            locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}`
+            locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
         });
         this.hands.setOptions({
             maxNumHands: 2,
@@ -64,7 +74,13 @@ class HandEngine {
             minDetectionConfidence: 0.6,
             minTrackingConfidence: 0.6
         });
-        this.hands.onResults(this.onResults.bind(this));
+        this.hands.onResults((results) => {
+            if (!this.debug.modelLoaded) {
+                this.debug.modelLoaded = true;
+                console.log('[HandEngine] First results received - Model is Loaded');
+            }
+            this.onResults(results);
+        });
 
         const toggle = document.getElementById('toggleHandMode');
         if (toggle) toggle.onclick = () => this.toggle();
@@ -74,21 +90,38 @@ class HandEngine {
     toggle() { this.isActive ? this.stop() : this.start(); }
 
     async start(showOverlay = true) {
-        // showOverlay=false khi được gọi từ Naruto Mode (tự quản lý overlay)
         if (showOverlay) this.overlay.style.display = 'block';
         try {
             if (!this.camera) {
+                // Mobile optimized camera check
+                const constraints = this.debug.isMobile 
+                    ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+                    : { width: 640, height: 480 };
+
                 this.camera = new Camera(this.video, {
                     onFrame: async () => {
-                        if (this.isActive) await this.hands.send({ image: this.video });
+                        this.debug.frameCounter++;
+                        const now = performance.now();
+                        if (now - this.debug.lastFrameT > 1000) {
+                            this.debug.fps = this.debug.frameCounter;
+                            this.debug.frameCounter = 0;
+                            this.debug.lastFrameT = now;
+                        }
+                        if (this.isActive) {
+                            await this.hands.send({ image: this.video });
+                        }
                     },
-                    width: 640, height: 480
+                    ...constraints
                 });
             }
             await this.camera.start();
             this.isActive = true;
-            console.log('[HandEngine] Camera started, isActive=true');
-        } catch (e) { console.error('[HandEngine] start() error:', e); }
+            this.debug.cameraStarted = true;
+            console.log('[HandEngine] Camera started, isActive=true, isMobile=' + this.debug.isMobile);
+        } catch (e) { 
+            console.error('[HandEngine] start() error:', e); 
+            this.debug.cameraStarted = false;
+        }
     }
 
     stop() {
