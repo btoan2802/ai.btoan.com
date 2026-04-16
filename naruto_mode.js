@@ -241,8 +241,14 @@ document.addEventListener('DOMContentLoaded', function () {
       if (kameha.state === 'charging') {
         kameha.progress = Math.min((T - kameha.chargeStart) / KAMEHA_CHARGE_MS, 1);
         // Auto-fire khi chạm mức
-          kameha.origin = { x: (palmL.x + palmR.x) * 0.5, y: (palmL.y + palmR.y) * 0.5 };
-          kameha.angle  = 0; // Hướng "về phía camera" không cần góc 2D
+        if (kameha.progress >= 1) {
+          const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
+          const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
+          const pL = avgPts(ptsL, [0, 5, 9, 13, 17]);
+          const pR = avgPts(ptsR, [0, 5, 9, 13, 17]);
+          
+          kameha.origin = { x: (pL.x + pR.x) * 0.5, y: (pL.y + pR.y) * 0.5 };
+          kameha.angle  = 0; 
           kameha.state  = 'firing';
           kameha.firedAt = T;
           kameha.progress = 0;
