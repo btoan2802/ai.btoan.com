@@ -53,6 +53,8 @@ document.addEventListener('DOMContentLoaded', function () {
     // Face state
     let facePos = null; // { x, y, w, h, roll }
     let lastFaceDetectT = 0;
+    let lastSeen        = { Left: 0, Right: 0 };
+    const TRACKING_TIMEOUT = 250; // ms
     const FACE_DETECT_INTERVAL = 150; // ms
 
     // SSJ Hair Image Local Asset (Sửa lỗi CORS)
@@ -221,14 +223,18 @@ document.addEventListener('DOMContentLoaded', function () {
       const sL = window.handEngine?.handStates?.['Left'];
       const sR = window.handEngine?.handStates?.['Right'];
       
-      const isValidHand = (s) => {
-        if (!s || !s.landmarks) return false;
-        // Sử dụng score vừa được hand_engine.js truyền sang
-        return s.score > 0.65; 
-      };
+      const isValidHand = (s) => (s?.landmarks && s.score > 0.6);
 
       const Lactive = isValidHand(sL);
       const Ractive = isValidHand(sR);
+
+      // Cập nhật thời gian thấy tay lần cuối
+      if (Lactive) lastSeen.Left = T;
+      if (Ractive) lastSeen.Right = T;
+
+      // Trạng thái tracking (có độ trễ 250ms để tránh nháy)
+      const LisTracked = (T - lastSeen.Left < TRACKING_TIMEOUT);
+      const RisTracked = (T - lastSeen.Right < TRACKING_TIMEOUT);
 
       // ── Gesture hold debounce ──
       hold.Lpoint = Lactive && isPointingIndex(sL.landmarks) ? hold.Lpoint + 1 : 0;
@@ -263,14 +269,16 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       // ── KAMEHA STATE MACHINE ──
+      // 1. Bắt đầu sạc
       if (kamehamehaClose && kameha.state === 'idle') {
         kameha.state = 'charging';
         kameha.chargeStart = T;
         kameha.progress = 0;
       }
-      if (!kamehamehaClose && kameha.state === 'charging') {
-        // Hủy nếu bỏ tay
-        kameha.state = 'idle'; kameha.progress = 0;
+      // 2. Hủy sạc nếu mất tay (quá timeout) hoặc buông tay
+      if (kameha.state === 'charging' && (!kamehamehaClose || !LisTracked || !RisTracked)) {
+        kameha.state = 'idle'; 
+        kameha.progress = 0;
       }
       if (kameha.state === 'charging') {
         kameha.progress = Math.min((T - kameha.chargeStart) / KAMEHA_CHARGE_MS, 1);
@@ -295,6 +303,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
       if (kameha.state === 'firing') {
+        // Nếu đang bắn mà rút tay ra -> Fade out nhanh (progress nhảy lên 0.9 để tắt sớm)
+        const handsGone = !LisTracked || !RisTracked;
+        if (handsGone && kameha.progress < 0.8) {
+           kameha.firedAt = T - (KAMEHA_FIRE_MS * 0.85); // Ép progress về cuối
+        }
         kameha.progress = Math.min((T - kameha.firedAt) / KAMEHA_FIRE_MS, 1);
         if (kameha.progress >= 1) kameha.state = 'idle';
       }

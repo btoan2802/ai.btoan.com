@@ -212,6 +212,15 @@ class HandEngine {
 
         this.evaluateMultiHandState();
         this.syncUI(detectedSet);
+
+        // Reset landmarks nếu không còn detect được ở frame này
+        ['Left', 'Right'].forEach(side => {
+            if (!detectedSet.has(side)) {
+                this.handStates[side].landmarks = null;
+                this.handStates[side].score = 0;
+            }
+        });
+
         this.ctx.restore();
     }
 
