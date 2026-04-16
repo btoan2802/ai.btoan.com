@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shuriken + Chidori + Mangekyou Sharingan</title>
+
+  <!-- ════════════════════════════ STYLES ════════════════════════════ -->
+  <style>
+    :root {
+      --ui-bg:     rgba(0,0,0,0.52);
+      --ui-border: rgba(255,255,255,0.16);
+      --ui-text:   #f0f4fa;
+      --ui-muted:  rgba(255,255,255,0.65);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      background: #000; color: var(--ui-text);
+      font-family: 'Segoe UI', Arial, sans-serif;
+    }
+
+    /* Camera */
+    #camera {
+      position: fixed; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);   /* mirror = feels like looking in a mirror */
+      background: #000; z-index: 0;
+    }
+
+    /* FX layer */
+    #fxLayer {
+      position: fixed; inset: 0;
+      pointer-events: none; z-index: 1; overflow: hidden;
+    }
+
+    /* Shuriken video element */
+    #shurikenFx {
+      position: absolute;
+      width: 700px; height: 700px;
+      left: 50%; top: 50%;
+      transform: translate(-50%,-50%) scale(1);
+      transform-origin: center;
+      mix-blend-mode: screen;
+      filter: contrast(1.35) saturate(1.4) brightness(1.12);
+      opacity: 0;
+      pointer-events: none;
+      will-change: transform, opacity, left, top;
+      clip-path: circle(50% at 50% 50%);
+      /* No CSS transition — we lerp manually for instant responsiveness */
+    }
+
+    /* Canvas that covers the full window for Chidori + Mangekyou */
+    #fxCanvas {
+      position: absolute; left: 0; top: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      mix-blend-mode: normal; /* Mangekyou needs normal; Chidori uses screen-like glow via globalCompositeOperation */
+    }
+
+    /* HUD left */
+    #hud {
+      position: fixed; left: 14px; top: 14px; z-index: 10;
+      padding: 10px 14px; border-radius: 14px;
+      background: var(--ui-bg); border: 1px solid var(--ui-border);
+      backdrop-filter: blur(12px);
+      line-height: 1.75; font-size: 12px; min-width: 230px;
+    }
+    #hud .title { font-size: 13px; font-weight: 700; margin-bottom: 3px; color: #fff; }
+    #hud .desc  { font-size: 10px; color: var(--ui-muted); margin-bottom: 6px; line-height: 1.5; }
+    #hud .state { font-family: monospace; font-size: 11px; color: var(--ui-text); }
+    #hud .state span { color: #7cf; }
+
+    /* HUD right */
+    #guide {
+      position: fixed; right: 14px; top: 14px; z-index: 10;
+      padding: 10px 14px; border-radius: 14px;
+      background: var(--ui-bg); border: 1px solid var(--ui-border);
+      backdrop-filter: blur(12px);
+      font-size: 10px; color: var(--ui-muted); line-height: 1.7;
+      max-width: 280px; text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+<video id="camera" autoplay playsinline muted></video>
+
+<div id="fxLayer">
+  <!-- Shuriken: base64 video injected below -->
+  <video id="shurikenFx" muted loop playsinline preload="auto"></video>
+  <!-- Single canvas for Chidori + Mangekyou -->
+  <canvas id="fxCanvas"></canvas>
+</div>
+
+<div id="hud">
+  <div class="title">Hands effects</div>
+  <div class="desc">Left open hand = Shuriken. Right open hand = Chidori. Both hands pointing up = Mangekyou Sharingan between the hands.</div>
+  <div class="state" id="hudState">left <span id="hudL">missing</span> | right <span id="hudR">missing</span> | mangekyou <span id="hudM">off</span></div>
+</div>
+
+<div id="guide">
+  Keep both hands visible with decent lighting.<br>
+  The center Mangekyou effect tilts depending<br>
+  on which hand is higher.
+</div>
+
+<!-- ════════════════════════════ MEDIAPIPE ════════════════════════════ -->
+<script type="module">
+import { GestureRecognizer, FilesetResolver }
+  from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs';
+
+/* ────────────────────────────────────────────────────────────
+   DOM
+──────────────────────────────────────────────────────────── */
+const camEl      = document.getElementById('camera');
+const shuEl      = document.getElementById('shurikenFx');
+const canvas     = document.getElementById('fxCanvas');
+const ctx        = canvas.getContext('2d');
+const hudL       = document.getElementById('hudL');
+const hudR       = document.getElementById('hudR');
+const hudM       = document.getElementById('hudM');
+
+/* ────────────────────────────────────────────────────────────
+   CONFIG
+──────────────────────────────────────────────────────────── */
+const CFG = {
+  HOLD_FRAMES: 3,          // frames gesture must hold before activating
+
+  // Shuriken
+  SHU_SCALE_MULT : 0.92,
+  SHU_LERP_XY    : 0.32,
+  SHU_LERP_SCALE : 0.26,
+  SHU_SCALE_K    : 14.0,
+  SHU_SCALE_MIN  : 1.8,
+  SHU_SCALE_MAX  : 7.5,
+
+  // Chidori
+  CHI_BOLT_CNT   : 22,     // number of lightning bolts
+  CHI_LERP_XY    : 0.32,
+  CHI_LERP_SCALE : 0.26,
+  CHI_REBUILD_MS : 35,     // ms between bolt regeneration
+
+  // Mangekyou
+  MGK_SIZE       : 300,    // canvas size px
+  MGK_LERP_XY    : 0.22,
+  MGK_LERP_SCALE : 0.20,
+  MGK_ROT_SPEED  : 0.55,  // deg/frame for outer elements; inner tomoe faster
+  MGK_TILT_K     : 0.18,  // how much tilt based on hand y-diff
+};
+
+/* ────────────────────────────────────────────────────────────
+   STATE
+──────────────────────────────────────────────────────────── */
+let gr = null, running = false, lastVT = -1;
+
+const hold = { lo:0, ro:0, lp:0, rp:0 }; // open/pointing hold counters
+const HOLD = CFG.HOLD_FRAMES;
+
+// Effect smooth positions
+const shu = makeState();   // shuriken
+const chi = makeState();   // chidori
+const mgk = {              // mangekyou
+  visible:false, x:0,y:0, scale:1, rotation:0, tilt:0,
+  sx:0,sy:0,ss:1,sr:0,st:0   // smooth values
+};
+
+let mgkRotAngle   = 0;
+let chiBolts      = [];
+let chiLastBuild  = 0;
+let chiVisible    = false;
+
+function makeState() {
+  return { visible:false, x:innerWidth/2, y:innerHeight/2, scale:1,
+           sx:innerWidth/2, sy:innerHeight/2, ss:1 };
+}
+
+/* ────────────────────────────────────────────────────────────
+   MATH HELPERS
+──────────────────────────────────────────────────────────── */
+const lerp  = (a,b,t) => a + (b-a)*t;
+const clamp = (v,lo,hi) => Math.max(lo,Math.min(hi,v));
+const dist  = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+function palmCenter(lm) {
+  const pts = [lm[0],lm[5],lm[9],lm[13],lm[17]];
+  const s = pts.reduce((a,p)=>({x:a.x+p.x,y:a.y+p.y}),{x:0,y:0});
+  return { x:s.x/5, y:s.y/5 };
+}
+
+function palmScale(lm) {
+  const pw  = dist(lm[5], lm[17]);
+  const wm  = dist(lm[0], lm[9]);
+  const raw = (pw*1.45 + wm*1.10)*0.5;
+  return clamp(raw * CFG.SHU_SCALE_K, CFG.SHU_SCALE_MIN, CFG.SHU_SCALE_MAX);
+}
+
+/* ────────────────────────────────────────────────────────────
+   GESTURE CLASSIFICATION
+──────────────────────────────────────────────────────────── */
+function fingerUp(tip,pip,mcp,wr) { return tip.y<pip.y && pip.y<mcp.y && tip.y<wr.y; }
+
+function isOpen(lm) {
+  const w = lm[0];
+  const t = Math.abs(lm[4].x - lm[2].x) > 0.052;
+  const n = [fingerUp(lm[8],lm[6],lm[5],w),
+             fingerUp(lm[12],lm[10],lm[9],w),
+             fingerUp(lm[16],lm[14],lm[13],w),
+             fingerUp(lm[20],lm[18],lm[17],w)].filter(Boolean).length;
+  return n >= 3 && t;
+}
+
+function isPointing(lm) {
+  const w = lm[0];
+  return fingerUp(lm[8],lm[6],lm[5],w) &&
+         lm[12].y > lm[10].y &&
+         lm[16].y > lm[14].y &&
+         lm[20].y > lm[18].y;
+}
+
+function classify(result, idx) {
+  const label = result.gestures?.[idx]?.[0]?.categoryName ?? '';
+  const lm    = result.landmarks?.[idx];
+  if (!lm) return 'missing';
+  if (label==='Open_Palm'   || isOpen(lm))     return 'open';
+  if (label==='Pointing_Up' || isPointing(lm)) return 'pointing';
+  if (label==='Closed_Fist') return 'closed';
+  return 'other';
+}
+
+function parseHands(result) {
+  const lms   = result.landmarks   ?? [];
+  const hand  = result.handedness  ?? [];
+  let L='missing',R='missing',Llm=null,Rlm=null;
+  for (let i=0; i<lms.length; i++) {
+    const label = hand[i]?.[0]?.categoryName ?? '';
+    const g     = classify(result, i);
+    // MediaPipe "Left" in image = person's left (camera is already mirrored via CSS)
+    if (label==='Left')  { L=g; Llm=lms[i]; }
+    else                  { R=g; Rlm=lms[i]; }
+  }
+  return {L,R,Llm,Rlm};
+}
+
+/* ────────────────────────────────────────────────────────────
+   SHURIKEN (video element)
+──────────────────────────────────────────────────────────── */
+function showShuriken(lm, W, H) {
+  const c = palmCenter(lm);
+  const s = palmScale(lm) * CFG.SHU_SCALE_MULT;
+  shu.x = (1-c.x)*W; shu.y = c.y*H; shu.scale = s;
+  shu.sx = lerp(shu.sx, shu.x, CFG.SHU_LERP_XY);
+  shu.sy = lerp(shu.sy, shu.y, CFG.SHU_LERP_XY);
+  shu.ss = lerp(shu.ss, shu.scale, CFG.SHU_LERP_SCALE);
+
+  shuEl.style.opacity   = '1';
+  shuEl.style.left      = shu.sx + 'px';
+  shuEl.style.top       = shu.sy + 'px';
+  shuEl.style.transform = `translate(-50%,-50%) scale(${shu.ss})`;
+
+  if (!shu.visible) {
+    shu.visible = true;
+    shuEl.currentTime = 0;
+    shuEl.play().catch(()=>{});
+  }
+}
+function hideShuriken() {
+  shu.visible = false;
+  shuEl.style.opacity = '0';
+}
+
+/* ────────────────────────────────────────────────────────────
+   CHIDORI (canvas lightning)
+   In the video, bolts emerge from fingertips outward/downward
+──────────────────────────────────────────────────────────── */
+function boltPath(ox,oy,ang,len,segs) {
+  const pts = [[ox,oy]];
+  let cx=ox, cy=oy;
+  for (let i=0; i<segs; i++) {
+    const spread = len * 0.32 * (1 - i/segs*0.5);
+    cx += Math.cos(ang)*(len/segs) + (Math.random()-0.5)*spread;
+    cy += Math.sin(ang)*(len/segs) + (Math.random()-0.5)*spread;
+    pts.push([cx,cy]);
+  }
+  return pts;
+}
+
+function drawChidori(lm, W, H) {
+  // Center on palm
+  const c = palmCenter(lm);
+  const s = palmScale(lm) * CFG.SHU_SCALE_MULT;
+  chi.x=(1-c.x)*W; chi.y=c.y*H; chi.scale=s;
+  chi.sx=lerp(chi.sx,chi.x,CFG.CHI_LERP_XY);
+  chi.sy=lerp(chi.sy,chi.y,CFG.CHI_LERP_XY);
+  chi.ss=lerp(chi.ss,chi.scale,CFG.CHI_LERP_SCALE);
+
+  const mx = chi.sx, my = chi.sy;
+  const r  = clamp(chi.ss * 28, 60, 220); // bolt radius in px
+
+  // Rebuild bolts periodically
+  const now = performance.now();
+  if (now - chiLastBuild > CFG.CHI_REBUILD_MS) {
+    chiBolts = [];
+    chiLastBuild = now;
+    for (let i=0; i<CFG.CHI_BOLT_CNT; i++) {
+      // bias downward (π/2) to match video visual
+      const ang = (i/CFG.CHI_BOLT_CNT)*Math.PI*2 + (Math.random()-0.5)*0.5;
+      const len = r * (0.7 + Math.random()*0.9);
+      chiBolts.push(boltPath(mx,my,ang,len,5+Math.floor(Math.random()*5)));
+    }
+    chiVisible = true;
+  }
+
+  // Draw glow halo
+  const g = ctx.createRadialGradient(mx,my,0, mx,my,r*1.35);
+  g.addColorStop(0,  'rgba(90,170,255,0.60)');
+  g.addColorStop(0.4,'rgba(60,130,255,0.35)');
+  g.addColorStop(1,  'rgba(20, 60,255,0.00)');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(mx,my,r*1.35,0,Math.PI*2); ctx.fill();
+
+  // White core
+  const core = ctx.createRadialGradient(mx,my,0, mx,my,r*0.40);
+  core.addColorStop(0,  'rgba(240,248,255,1.0)');
+  core.addColorStop(0.4,'rgba(140,200,255,0.80)');
+  core.addColorStop(1,  'rgba(60,120,255,0.00)');
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(mx,my,r*0.40,0,Math.PI*2); ctx.fill();
+
+  // Lightning bolts — two passes (glow + bright)
+  for (const bolt of chiBolts) {
+    ctx.beginPath();
+    ctx.moveTo(bolt[0][0],bolt[0][1]);
+    for (let i=1;i<bolt.length;i++) ctx.lineTo(bolt[i][0],bolt[i][1]);
+
+    ctx.shadowColor='#55aaff'; ctx.shadowBlur=20;
+    ctx.strokeStyle='rgba(100,190,255,0.60)'; ctx.lineWidth=4;
+    ctx.stroke();
+
+    ctx.shadowBlur=5;
+    ctx.strokeStyle='rgba(235,248,255,0.92)'; ctx.lineWidth=1.4;
+    ctx.stroke();
+  }
+  ctx.shadowBlur=0;
+}
+
+function clearChidori() {
+  chiVisible = false;
+  chiBolts   = [];
+}
+
+/* ────────────────────────────────────────────────────────────
+   MANGEKYOU SHARINGAN (canvas)
+   Based on video: Sharingan with 3 tomoe, dark red/black, slow spin
+   Tilt = rotate based on which hand is higher
+──────────────────────────────────────────────────────────── */
+const MGK = CFG.MGK_SIZE;
+
+function drawMangekyou(cx, cy, scale, tiltRad) {
+  const hw = MGK/2;
+  const r  = MGK * 0.43;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(tiltRad);        // tilt based on hand height difference
+  ctx.scale(scale, scale);
+  ctx.translate(-hw, -hw);    // draw from 0,0
+
+  // ── Background disc (dark red/black like video) ──
+  const bg = ctx.createRadialGradient(hw,hw,0, hw,hw,r);
+  bg.addColorStop(0,  '#3a0000');
+  bg.addColorStop(0.7,'#200000');
+  bg.addColorStop(1,  'rgba(8,0,0,0.0)');
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.arc(hw,hw,r,0,Math.PI*2); ctx.fill();
+
+  // ── Outer ring ──
+  ctx.beginPath(); ctx.arc(hw,hw,r,0,Math.PI*2);
+  ctx.strokeStyle = '#c80000'; ctx.lineWidth = MGK*0.045;
+  ctx.shadowColor = '#aa0000'; ctx.shadowBlur = 12;
+  ctx.stroke();
+
+  // ── Inner ring ──
+  ctx.beginPath(); ctx.arc(hw,hw,r*0.38,0,Math.PI*2);
+  ctx.strokeStyle = '#bb0000'; ctx.lineWidth = MGK*0.032;
+  ctx.shadowBlur  = 8;
+  ctx.stroke();
+  ctx.shadowBlur  = 0;
+
+  // ── 3 Tomoe (spinning) ──
+  mgkRotAngle += CFG.MGK_ROT_SPEED;
+  for (let i=0; i<3; i++) {
+    const ang = (i/3)*Math.PI*2 + mgkRotAngle * Math.PI/180;
+    drawTomoe(ctx, hw, hw, r, ang);
+  }
+
+  // ── Central pupil ──
+  const pupil = ctx.createRadialGradient(hw,hw,0, hw,hw,r*0.20);
+  pupil.addColorStop(0,  '#ee0000');
+  pupil.addColorStop(0.5,'#880000');
+  pupil.addColorStop(1,  'rgba(30,0,0,0)');
+  ctx.fillStyle = pupil;
+  ctx.shadowColor='#cc0000'; ctx.shadowBlur=10;
+  ctx.beginPath(); ctx.arc(hw,hw,r*0.20,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+
+  ctx.restore();
+  mgk.visible = true;
+}
+
+function drawTomoe(ctx, cx, cy, r, ang) {
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(ang);
+
+  // Teardrop body
+  ctx.beginPath();
+  ctx.ellipse(0,-r*0.60, r*0.115, r*0.27, 0, 0, Math.PI*2);
+  ctx.fillStyle = '#cc0000';
+  ctx.shadowColor='#ff1100'; ctx.shadowBlur=8;
+  ctx.fill();
+
+  // Small circle base
+  ctx.beginPath();
+  ctx.arc(0,-r*0.36, r*0.085, 0, Math.PI*2);
+  ctx.fillStyle = '#dd0000';
+  ctx.fill();
+  ctx.shadowBlur=0;
+
+  ctx.restore();
+}
+
+function hideMangekyou() {
+  mgk.visible = false;
+}
+
+/* ────────────────────────────────────────────────────────────
+   MAIN RENDER LOOP
+──────────────────────────────────────────────────────────── */
+function renderLoop() {
+  if (!running) return;
+  requestAnimationFrame(renderLoop);
+
+  if (!gr || camEl.readyState < 2) return;
+  if (camEl.currentTime === lastVT) return;
+  lastVT = camEl.currentTime;
+
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+
+  // Keep canvas sized to window
+  if (canvas.width!==W || canvas.height!==H) { canvas.width=W; canvas.height=H; }
+  ctx.clearRect(0,0,W,H);
+
+  // Run MediaPipe
+  const result = gr.recognizeForVideo(camEl, performance.now());
+  const {L,R,Llm,Rlm} = parseHands(result);
+
+  // Debounce hold counters
+  hold.lo = L==='open'     ? hold.lo+1 : 0;
+  hold.ro = R==='open'     ? hold.ro+1 : 0;
+  hold.lp = L==='pointing' ? hold.lp+1 : 0;
+  hold.rp = R==='pointing' ? hold.rp+1 : 0;
+
+  const Lopen = hold.lo >= HOLD;
+  const Ropen = hold.ro >= HOLD;
+  const Lpt   = hold.lp >= HOLD;
+  const Rpt   = hold.rp >= HOLD;
+  const mgkOn = Lpt && Rpt && Llm && Rlm;
+
+  // Update HUD
+  hudL.textContent = L;
+  hudR.textContent = R;
+  hudM.textContent = mgkOn ? 'on' : 'off';
+
+  /* ══ MANGEKYOU — priority: overrides all ══ */
+  if (mgkOn) {
+    // Index fingertips screen coords (mirrored)
+    const li = Llm[8]; const ri = Rlm[8];
+    const lx=(1-li.x)*W; const ly=li.y*H;
+    const rx=(1-ri.x)*W; const ry=ri.y*H;
+    const mx=(lx+rx)*0.5; const my=(ly+ry)*0.5;
+    const fd=Math.hypot(lx-rx,ly-ry);
+    const s=clamp(fd/(MGK*0.62), 0.35, 2.2);
+
+    // Tilt: positive when left hand is higher
+    const dyDiff = ly - ry;  // + = left higher, - = right higher
+    const tilt   = clamp(dyDiff * CFG.MGK_TILT_K / H, -0.6, 0.6);
+
+    mgk.x=mx; mgk.y=my; mgk.scale=s; mgk.tilt=tilt;
+    mgk.sx = lerp(mgk.sx, mgk.x, CFG.MGK_LERP_XY);
+    mgk.sy = lerp(mgk.sy, mgk.y, CFG.MGK_LERP_XY);
+    mgk.ss = lerp(mgk.ss, mgk.scale, CFG.MGK_LERP_SCALE);
+    mgk.st = lerp(mgk.st||0, mgk.tilt, 0.12);
+
+    drawMangekyou(mgk.sx, mgk.sy, mgk.ss, mgk.st||0);
+    hideShuriken();
+    clearChidori();
+    return;
+  }
+
+  hideMangekyou();
+
+  /* ══ SHURIKEN (left open palm) ══ */
+  if (Lopen && Llm) showShuriken(Llm, W, H);
+  else              hideShuriken();
+
+  /* ══ CHIDORI (right open palm) ══ */
+  if (Ropen && Rlm) drawChidori(Rlm, W, H);
+  else              clearChidori();
+}
+
+/* ────────────────────────────────────────────────────────────
+   INIT
+──────────────────────────────────────────────────────────── */
+async function init() {
+  hudL.textContent = hudR.textContent = hudM.textContent = '…';
+  document.querySelector('#hud .desc').textContent = 'Loading MediaPipe…';
+
+  const vision = await FilesetResolver.forVisionTasks(
+    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+  );
+  gr = await GestureRecognizer.createFromOptions(vision, {
+    baseOptions: {
+      modelAssetPath:
+        'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task',
+      delegate: 'GPU',
+    },
+    runningMode: 'VIDEO',
+    numHands: 2,
+    minHandDetectionConfidence: 0.55,
+    minHandPresenceConfidence:  0.55,
+    minTrackingConfidence:      0.50,
+  });
+
+  document.querySelector('#hud .desc').textContent =
+    'Left open hand = Shuriken. Right open hand = Chidori. Both hands pointing up = Mangekyou Sharingan between the hands.';
+  hudL.textContent = hudR.textContent = 'missing'; hudM.textContent = 'off';
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode:'user', width:{ideal:1280}, height:{ideal:720} },
+    audio: false,
+  });
+  camEl.srcObject = stream;
+  await new Promise(r => { camEl.onloadedmetadata = r; });
+  await camEl.play();
+
+  running = true;
+  requestAnimationFrame(renderLoop);
+}
+
+window.addEventListener('resize', () => {
+  shu.sx=shu.sy=chi.sx=chi.sy=mgk.sx=mgk.sy=0;
+});
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { hideShuriken(); clearChidori(); hideMangekyou(); }
+});
+
+init().catch(e => {
+  document.querySelector('#hud .desc').textContent = 'Error: ' + e.message;
+  console.error(e);
+});
+</script>
+
+<!-- ════════════════════════════ SHURIKEN BASE64 ASSET BLOCK ════════════════════════════
+     This constant is replaced by inject_shuriken.py.
+     Value "__SHURIKEN_B64__" = use CSS fallback (orange spinning disc).
+════════════════════════════════════════════════════════════════════════════════════════ -->
+<script id="shurikenAsset">
+const SHURIKEN_B64 = '__SHURIKEN_B64__';
+
+// Inject into <video> source — runs AFTER module script (module defers naturally)
+window.addEventListener('DOMContentLoaded', function() {
+  const vid = document.getElementById('shurikenFx');
+  if (SHURIKEN_B64 && SHURIKEN_B64.length > 200) {
+    const src = document.createElement('source');
+    src.type = 'video/mp4';
+    src.src  = SHURIKEN_B64;
+    vid.appendChild(src);
+    vid.load();
+  } else {
+    // CSS fallback: glowing cyan disc that spins
+    const style = document.createElement('style');
+    style.textContent = `
+      #shurikenFx { border-radius:50%; overflow:hidden;
+        background: conic-gradient(from 0deg, #00ffee 0%, #0088ff 30%, #00ffee 60%, #00ccff 90%, #00ffee 100%);
+        filter: drop-shadow(0 0 30px #00eeff) drop-shadow(0 0 10px #00bbff);
+        animation: shu-spin 0.55s linear infinite;
+        clip-path: polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);
+      }
+      @keyframes shu-spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+    `;
+    document.head.appendChild(style);
+    vid.style.animation = 'shu-spin 0.55s linear infinite';
+  }
+}, {once:true});
+</script>
+
+</body>
+</html>
