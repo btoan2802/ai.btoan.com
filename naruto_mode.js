@@ -901,8 +901,7 @@ document.addEventListener('DOMContentLoaded', function () {
       })(t0);
     }
 
-  })();
-});
+    /* ── KAMEHAMEHA RENDERING ─────────────────────────────── */
     function drawKamehaCharge(sL, sR, W, H, p) {
       const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
       const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
@@ -916,8 +915,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
-
-      // 1. Orb
       const g = nCtx.createRadialGradient(mid.x, mid.y, 0, mid.x, mid.y, r);
       g.addColorStop(0, `rgba(240, 255, 255, ${0.9 * pulse})`);
       g.addColorStop(0.4, `rgba(100, 180, 255, ${0.7 * pulse})`);
@@ -925,7 +922,6 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.fillStyle = g;
       nCtx.beginPath(); nCtx.arc(mid.x, mid.y, r, 0, Math.PI * 2); nCtx.fill();
 
-      // 2. Swirling rings
       for (let i = 0; i < 3; i++) {
         const ang = T * 0.005 + i * 2.1;
         nCtx.strokeStyle = `rgba(150, 220, 255, ${0.4 * p})`;
@@ -935,81 +931,50 @@ document.addEventListener('DOMContentLoaded', function () {
         nCtx.stroke();
       }
 
-      // 3. Spikes/Lines intake
       for (let i = 0; i < 8; i++) {
         const ang = (i / 8) * Math.PI * 2 + T * 0.002;
         const dist = r * (1.5 + Math.sin(T * 0.01 + i) * 0.5);
         const x = mid.x + Math.cos(ang) * dist;
         const y = mid.y + Math.sin(ang) * dist;
-        nCtx.beginPath();
-        nCtx.moveTo(x, y);
-        nCtx.lineTo(mid.x, mid.y);
+        nCtx.beginPath(); nCtx.moveTo(x, y); nCtx.lineTo(mid.x, mid.y);
         nCtx.strokeStyle = `rgba(200, 240, 255, ${0.3 * p})`;
         nCtx.stroke();
       }
-
-      if (Math.random() < 0.3 + p * 0.4) {
-        spawnKamehaParticle(mid, r);
-      }
-
+      if (Math.random() < 0.3 + p * 0.4) spawnKamehaParticle(mid, r);
       nCtx.restore();
     }
 
     function drawKamehaBeam(origin, angle, p, W, H) {
       const len = W * 1.5;
-      const width = 120 * (1 - p); // beam nhỏ dần khi tan biến
+      const width = 120 * (1 - p);
       const endX = origin.x + Math.cos(angle) * len;
       const endY = origin.y + Math.sin(angle) * len;
 
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
-
-      // Beam body
       const g = nCtx.createLinearGradient(origin.x, origin.y, endX, endY);
       g.addColorStop(0, 'rgba(255, 255, 255, 1)');
       g.addColorStop(0.1, 'rgba(100, 200, 255, 0.9)');
       g.addColorStop(1, 'rgba(50, 100, 255, 0)');
+      nCtx.shadowColor = '#44aaff'; nCtx.shadowBlur = 40;
+      nCtx.strokeStyle = g; nCtx.lineWidth = width; nCtx.lineCap = 'round';
+      nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
 
-      nCtx.shadowColor = '#44aaff';
-      nCtx.shadowBlur = 40;
-      nCtx.strokeStyle = g;
-      nCtx.lineWidth = width;
-      nCtx.lineCap = 'round';
+      nCtx.lineWidth = width * 0.4; nCtx.strokeStyle = '#fff';
+      nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
 
-      nCtx.beginPath();
-      nCtx.moveTo(origin.x, origin.y);
-      nCtx.lineTo(endX, endY);
-      nCtx.stroke();
-
-      // Core white line
-      nCtx.lineWidth = width * 0.4;
-      nCtx.strokeStyle = '#fff';
-      nCtx.beginPath();
-      nCtx.moveTo(origin.x, origin.y);
-      nCtx.lineTo(endX, endY);
-      nCtx.stroke();
-
-      // Turbulence/Noise (simple jittered lines)
       for (let i = 0; i < 4; i++) {
-        nCtx.beginPath();
-        nCtx.moveTo(origin.x, origin.y);
-        const jitterX = (Math.random() - 0.5) * 40;
-        const jitterY = (Math.random() - 0.5) * 40;
-        nCtx.lineTo(endX + jitterX, endY + jitterY);
-        nCtx.lineWidth = width * 0.1;
-        nCtx.strokeStyle = `rgba(200, 240, 255, ${0.5 * (1 - p)})`;
+        nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y);
+        const jX = (Math.random() - 0.5) * 40; const jY = (Math.random() - 0.5) * 40;
+        nCtx.lineTo(endX + jX, endY + jY);
+        nCtx.lineWidth = width * 0.1; nCtx.strokeStyle = `rgba(200, 240, 255, ${0.5 * (1 - p)})`;
         nCtx.stroke();
       }
-
-      // Origin shock ring
       if (p < 0.3) {
-        nCtx.beginPath();
-        nCtx.arc(origin.x, origin.y, 80 * (p / 0.3), 0, Math.PI * 2);
+        nCtx.beginPath(); nCtx.arc(origin.x, origin.y, 80 * (p / 0.3), 0, Math.PI * 2);
         nCtx.strokeStyle = `rgba(255, 255, 255, ${0.8 * (1 - p / 0.3)})`;
-        nCtx.lineWidth = 5;
-        nCtx.stroke();
+        nCtx.lineWidth = 5; nCtx.stroke();
       }
-
       nCtx.restore();
     }
 
@@ -1017,75 +982,46 @@ document.addEventListener('DOMContentLoaded', function () {
       const ang = Math.random() * Math.PI * 2;
       const dist = r * (1 + Math.random() * 0.5);
       particles.Kameha.push({
-        x: center.x + Math.cos(ang) * dist,
-        y: center.y + Math.sin(ang) * dist,
+        x: center.x + Math.cos(ang) * dist, y: center.y + Math.sin(ang) * dist,
         vx: (center.x - (center.x + Math.cos(ang) * dist)) * 0.1,
         vy: (center.y - (center.y + Math.sin(ang) * dist)) * 0.1,
-        life: 1.0,
-        size: 2 + Math.random() * 3,
-        fire: false
+        life: 1.0, size: 2 + Math.random() * 3, fire: false
       });
     }
-    /* ── FACE DETECTION ─────────────────────────────────────── */
+
+    /* ── FACE DETECTION & SSJ HAIR ────────────────────────── */
     async function detectFace(video) {
       if (!window.faceapi || !window.faceapi.nets.tinyFaceDetector.params) return;
       const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }));
       if (result) {
         const box = result.box;
-        // Mirror X because camera is mirrored
         facePos = {
           x: 1 - (box.x + box.width / 2) / video.videoWidth,
           y: (box.y + box.height / 2) / video.videoHeight,
-          w: box.width / video.videoWidth,
-          h: box.height / video.videoHeight
+          w: box.width / video.videoWidth, h: box.height / video.videoHeight
         };
-      } else {
-        facePos = null;
-      }
+      } else facePos = null;
     }
 
-    /* ── DRAW SSJ HAIR (Procedural) ───────────────────────── */
     function drawSSJHair(face, W, H) {
-      const cx = face.x * W;
-      const cy = face.y * H;
-      const fw = face.w * W;
-      const fh = face.h * H;
-
+      const cx = face.x * W; const cy = face.y * H;
+      const fw = face.w * W; const fh = face.h * H;
       nCtx.save();
-      // Tóc nằm trên trán
-      const tx = cx;
-      const ty = cy - fh * 0.45;
-      const tw = fw * 1.5;
-      const th = fh * 1.2;
-
+      const tx = cx; const ty = cy - fh * 0.45;
+      const tw = fw * 1.5; const th = fh * 1.2;
       nCtx.translate(tx, ty);
-      
-      // Glow vàng quanh tóc
-      nCtx.shadowColor = '#fbbf24';
-      nCtx.shadowBlur = 30 + Math.sin(T * 0.01) * 10;
-
-      nCtx.fillStyle = '#fbbf24'; // Goku Gold
+      nCtx.shadowColor = '#fbbf24'; nCtx.shadowBlur = 30 + Math.sin(T * 0.01) * 10;
+      nCtx.fillStyle = '#fbbf24';
       nCtx.beginPath();
-      // Vẽ mớ tóc SSJ cơ bản bằng path
-      nCtx.moveTo(-tw * 0.5, 0);
-      nCtx.lineTo(-tw * 0.4, -th * 0.4);
-      nCtx.lineTo(-tw * 0.2, -th * 0.3);
-      nCtx.lineTo(-tw * 0.1, -th * 0.8); // Top spike 1
-      nCtx.lineTo(0, -th * 0.5);
-      nCtx.lineTo(tw * 0.1, -th * 1.0);  // Central spike
-      nCtx.lineTo(tw * 0.2, -th * 0.5);
-      nCtx.lineTo(tw * 0.4, -th * 0.8);  // Top spike 2
-      nCtx.lineTo(tw * 0.5, -th * 0.3);
-      nCtx.lineTo(tw * 0.6, 0);
-      nCtx.lineTo(tw * 0.3, th * 0.2);
-      nCtx.lineTo(-tw * 0.3, th * 0.2);
-      nCtx.closePath();
-      nCtx.fill();
-
-      // Highlight sáng trên tóc
-      nCtx.strokeStyle = '#fffbeb';
-      nCtx.lineWidth = 3;
-      nCtx.stroke();
-
+      nCtx.moveTo(-tw * 0.5, 0); nCtx.lineTo(-tw * 0.4, -th * 0.4); nCtx.lineTo(-tw * 0.2, -th * 0.3);
+      nCtx.lineTo(-tw * 0.1, -th * 0.8); nCtx.lineTo(0, -th * 0.5); nCtx.lineTo(tw * 0.1, -th * 1.0);
+      nCtx.lineTo(tw * 0.2, -th * 0.5); nCtx.lineTo(tw * 0.4, -th * 0.8); nCtx.lineTo(tw * 0.5, -th * 0.3);
+      nCtx.lineTo(tw * 0.6, 0); nCtx.lineTo(tw * 0.3, th * 0.2); nCtx.lineTo(-tw * 0.3, th * 0.2);
+      nCtx.closePath(); nCtx.fill();
+      nCtx.strokeStyle = '#fffbeb'; nCtx.lineWidth = 3; nCtx.stroke();
       nCtx.restore();
     }
+
+
+  })();
+});
