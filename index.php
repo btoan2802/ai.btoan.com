@@ -377,7 +377,7 @@
   <script src="hand_scene.js?v=9"></script>
   <script src="hand_shapes.js?v=4"></script>
   <script src="hand_engine.js?v=10"></script>
-  <script src="naruto_mode.js?v=32"></script>
+  <script src="naruto_mode.js?v=33"></script>
 
 </body>
 </html>

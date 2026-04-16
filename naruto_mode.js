@@ -385,6 +385,7 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.fillStyle = '#0f0';
       nCtx.font = '11px monospace';
       
+      const narutoCam = document.getElementById('naruto-camera');
       const vW = narutoCam?.videoWidth || 0;
       const vH = narutoCam?.videoHeight || 0;
 
