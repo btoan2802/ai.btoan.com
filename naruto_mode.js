@@ -243,13 +243,15 @@ document.addEventListener('DOMContentLoaded', function () {
         // Auto-fire khi chạm mức
         if (kameha.progress >= 1) {
           const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
+          const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
+          const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
+          const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
+
           kameha.origin = { x: (palmL.x + palmR.x) * 0.5, y: (palmL.y + palmR.y) * 0.5 };
           
-          // Determine Fire Direction: hướng về phía tay đang nỗ lực đẩy ra
-          // Hoặc đơn giản: nếu origin ở trái thì bắn sang phải
           if (kameha.origin.x < W * 0.45) kameha.angle = 0;
           else if (kameha.origin.x > W * 0.55) kameha.angle = Math.PI;
-          else kameha.angle = -Math.PI / 2; // Bắn lên nếu ở giữa
+          else kameha.angle = -Math.PI / 2;
 
           kameha.state  = 'firing';
           kameha.firedAt = T;
@@ -294,13 +296,14 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.fillRect(10, H - 160, 240, 150);
       nCtx.fillStyle = '#0f0';
       nCtx.font = '12px monospace';
+      const kmLine = `KAMEHA: ${km.state.toUpperCase()} (${(km.progress*100).toFixed(0)}%)`;
+      const faceLine = face ? `FACE: ${Math.round(face.x)},${Math.round(face.y)} (VISIBLE)` : `FACE: SEARCHING...`;
+      
       const lines = [
-        `DETECT: L=${L?'OK':'--'} R=${R?'OK':'--'}`,
+        `DETECT-H: L=${L?'OK':'--'} R=${R?'OK':'--'}`,
         `GESTURE: Bridge=${bridge?'YES':'NO'}`,
-        `FACE: ${face?'DETECTED':'SEARCHING...'}`,
-        `KAMEHA: ${km.state.toUpperCase()}`,
-        `KAME_PROG: ${(km.progress*100).toFixed(0)}%`,
-        `SP_PROG: ${(summon.progress*100).toFixed(0)}%`,
+        faceLine,
+        kmLine,
         `T: ${Math.floor(T)}`
       ];
       lines.forEach((l, i) => nCtx.fillText(l, 20, H - 140 + i * 18));
@@ -1019,17 +1022,18 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── FACE DETECTION & SSJ HAIR ────────────────────────── */
     async function detectFace(video) {
       if (!window.faceapi || !window.faceapi.nets.tinyFaceDetector.params) return;
-      const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }));
+      // Giảm size xuống 128 để detect nhanh hơn
+      const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.3 }));
       if (result) {
         const box = result.box;
-        // Btoan: Lưu tọa độ pixel gốc của video để map chính xác lên Canvas
+        // FaceAPI box coordinates are relative to video element actual size
         facePos = {
           x: box.x + box.width / 2,
           y: box.y + box.height / 2,
           w: box.width,
           h: box.height,
-          vW: video.videoWidth,
-          vH: video.videoHeight
+          vW: video.videoWidth || video.width,
+          vH: video.videoHeight || video.height
         };
       } else facePos = null;
     }
