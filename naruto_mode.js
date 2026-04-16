@@ -1,289 +1,95 @@
 /**
- * Btoan AI — Naruto Mode v4.0
+ * Btoan AI — Naruto Mode v5.0  (Procedural — Generated from hand landmarks)
  *
- * Effect giống demo naruto_ar.html:
- *   - Tay trái mở  → Shuriken (spinning disc) bám lòng bàn tay
- *   - Tay phải mở  → Chidori (canvas lightning) bám lòng bàn tay
- *   - Pinch bất kỳ → Ném shuriken thật + boom
+ * Mọi hiệu ứng được sinh từ vị trí THỰC của từng landmark:
+ *   - Palm center  (avg wrist + 4 knuckle) = tâm phát năng lượng
+ *   - Fingertips   (4,8,12,16,20)          = nguồn emitter / tia sét
+ *   - Hand scale   (wrist→midMCP)           = scale effect
+ *   - Pinch point  (thumb ↔ index)          = điểm nén → phóng
  *
- * Không còn debug circle. Toàn bộ effect bằng CSS + Canvas.
+ * Tay TRÁI  → Fire/Chakra (cam/vàng)
+ * Tay PHẢI  → Chidori/Lightning (xanh lam)
+ * Hai tay   → Arc điện nối giữa 2 lòng bàn tay
+ * Pinch     → Năng lượng nén → Ném shuriken + shockwave
  */
 
-const DEBUG_HAND_MARKER = false; // bật = hiện vòng tròn debug
+const DEBUG_HAND_MARKER = false;
 
 document.addEventListener('DOMContentLoaded', function () {
   (function () {
-    /* ══════════════════════════════════════════════
-       STATE
-    ══════════════════════════════════════════════ */
+
+    /* ══ STATE ══════════════════════════════════════════════ */
     let narutoActive = false;
     let narutoScore  = 0;
     let lastPinchL   = false, lastPinchR = false;
     let animFrame    = null;
+    let nCanvas, nCtx;
+    let frameTime = 0;
 
-    // Smooth lerp state cho mỗi effect
-    const shuState = { sx: 0, sy: 0, ss: 1, visible: false };
-    const chiState = { sx: 0, sy: 0, ss: 1, visible: false };
-    let chiBolts     = [];
-    let chiLastBuild = 0;
-    let mgkRotAngle  = 0;
-
-    // Debug cursors (chỉ dùng khi DEBUG_HAND_MARKER = true)
-    const debugCursors = { Left: null, Right: null };
+    // Particle pool per hand
+    const particles = { Left: [], Right: [] };
 
     const btn = document.getElementById('toggleNarutoMode');
     if (!btn) return;
-
     btn.addEventListener('click', () => narutoActive ? closeNaruto() : openNaruto());
 
-    /* ══════════════════════════════════════════════
-       HELPERS
-    ══════════════════════════════════════════════ */
+    /* ══ MATH UTILS ═════════════════════════════════════════ */
     const lerp  = (a, b, t) => a + (b - a) * t;
     const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const rand  = (lo, hi) => lo + Math.random() * (hi - lo);
+    const dist  = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 
-    // Tâm lòng bàn tay: trung bình wrist + 4 MCP knuckle
-    // landmarks ở đây là handStates[side] — KHÔNG phải MediaPipe raw
-    // Ta dùng s.x, s.y (đã là screen px, từ index finger tip) làm proxy
-    // vì HandEngine chỉ expose index tip position qua handStates.x/y
-
-    // Ước lượng hand size từ handEngine để scale effect
-    // HandEngine không expose hand size, ta dùng fixed base * zoom proxy
-    function estimateHandRadius(s) {
-      // Dùng smoothFactor-based heuristic: tay gần camera = marker to hơn
-      // Không có dữ liệu thực → dùng fixed size đủ lớn
-      return 90; // px, điều chỉnh theo cảm quan
+    /**
+     * Convert MediaPipe normalized landmark → screen pixel (mirrored X)
+     */
+    function lm2px(lm, W, H) {
+      return { x: (1 - lm.x) * W, y: lm.y * H };
     }
 
-    /* ══════════════════════════════════════════════
-       SHURIKEN CSS (element bám tay)
-    ══════════════════════════════════════════════ */
-    let shuEl = null;
-
-    function buildShurikenEl() {
-      if (document.getElementById('naruto-shuriken-el')) return;
-      const el = document.createElement('div');
-      el.id = 'naruto-shuriken-el';
-      Object.assign(el.style, {
-        position:        'absolute',
-        width:           '160px',
-        height:          '160px',
-        left:            '0',
-        top:             '0',
-        transform:       'translate(-50%,-50%)',
-        transformOrigin: 'center',
-        pointerEvents:   'none',
-        zIndex:          '50',
-        display:         'none',
-        // Shuriken 8-spoke star shape
-        clipPath: 'polygon(50% 0%,55% 40%,80% 10%,60% 50%,100% 45%,65% 60%,90% 90%,50% 68%,10% 90%,35% 60%,0% 45%,40% 50%,20% 10%,45% 40%)',
-        background:      'conic-gradient(from 0deg,#f97316 0%,#fbbf24 25%,#f97316 50%,#ea580c 75%,#f97316 100%)',
-        filter:          'drop-shadow(0 0 18px #f97316) drop-shadow(0 0 40px rgba(249,115,22,0.6)) brightness(1.2)',
-        animation:       'naruto-shu-spin 0.5s linear infinite',
-        opacity:         '0',
-        transition:      'opacity 0.15s',
-        willChange:      'left, top, transform, opacity',
-      });
-      document.getElementById('naruto-fx-layer').appendChild(el);
-      shuEl = el;
-
-      // Inject keyframe nếu chưa có
-      if (!document.getElementById('naruto-shu-kf')) {
-        const s = document.createElement('style');
-        s.id = 'naruto-shu-kf';
-        s.textContent = `
-          @keyframes naruto-shu-spin {
-            0%   { transform: translate(-50%,-50%) rotate(0deg) scale(var(--shu-scale,1)); }
-            100% { transform: translate(-50%,-50%) rotate(360deg) scale(var(--shu-scale,1)); }
-          }
-          @keyframes naruto-chakra-pulse {
-            0%,100% { opacity:0.5; transform:translate(-50%,-50%) scale(1); }
-            50%     { opacity:0.9; transform:translate(-50%,-50%) scale(1.08); }
-          }
-        `;
-        document.head.appendChild(s);
-      }
+    /**
+     * Average of landmark array (by index list)
+     */
+    function avgPts(pts, indices) {
+      const sel = indices.map(i => pts[i]);
+      return {
+        x: sel.reduce((s, p) => s + p.x, 0) / sel.length,
+        y: sel.reduce((s, p) => s + p.y, 0) / sel.length,
+      };
     }
 
-    function showShurikenAt(x, y, scale) {
-      if (!shuEl) return;
-      shuState.sx = lerp(shuState.sx || x, x, 0.30);
-      shuState.sy = lerp(shuState.sy || y, y, 0.30);
-      shuState.ss = lerp(shuState.ss || scale, scale, 0.22);
-
-      const sc = clamp(shuState.ss, 0.4, 2.5);
-      shuEl.style.left    = shuState.sx + 'px';
-      shuEl.style.top     = shuState.sy + 'px';
-      shuEl.style.setProperty('--shu-scale', sc);
-      shuEl.style.display = 'block';
-      shuEl.style.opacity = '1';
-      shuState.visible    = true;
-    }
-
-    function hideShuriken() {
-      if (shuEl) { shuEl.style.opacity = '0'; }
-      shuState.visible = false;
-    }
-
-    /* ══════════════════════════════════════════════
-       CHIDORI — Canvas lightning bám tay phải
-    ══════════════════════════════════════════════ */
-    let narutoCanvas = null;
-    let nCtx         = null;
-
-    function getCanvas() {
-      if (narutoCanvas) return narutoCanvas;
-      narutoCanvas = document.getElementById('naruto-canvas');
-      if (!narutoCanvas) return null;
-      narutoCanvas.width  = window.innerWidth;
-      narutoCanvas.height = window.innerHeight;
-      nCtx = narutoCanvas.getContext('2d');
-      return narutoCanvas;
-    }
-
-    function resizeCanvas() {
-      if (!narutoCanvas) return;
-      narutoCanvas.width  = window.innerWidth;
-      narutoCanvas.height = window.innerHeight;
-    }
-
-    function boltPath(ox, oy, ang, len, segs) {
-      const pts = [[ox, oy]];
-      let cx = ox, cy = oy;
-      for (let i = 0; i < segs; i++) {
-        const spread = len * 0.32 * (1 - i / segs * 0.5);
-        cx += Math.cos(ang) * (len / segs) + (Math.random() - 0.5) * spread;
-        cy += Math.sin(ang) * (len / segs) + (Math.random() - 0.5) * spread;
-        pts.push([cx, cy]);
-      }
-      return pts;
-    }
-
-    function drawChidori(x, y, radius) {
-      if (!nCtx) return;
-
-      chiState.sx = lerp(chiState.sx || x, x, 0.30);
-      chiState.sy = lerp(chiState.sy || y, y, 0.30);
-
-      const mx = chiState.sx;
-      const my = chiState.sy;
-      const r  = clamp(radius, 60, 200);
-
-      // Rebuild bolts mỗi 35ms
-      const now = performance.now();
-      if (now - chiLastBuild > 35) {
-        chiLastBuild = now;
-        chiBolts = [];
-        for (let i = 0; i < 22; i++) {
-          const ang = (i / 22) * Math.PI * 2 + (Math.random() - 0.5) * 0.5;
-          const len = r * (0.7 + Math.random() * 0.9);
-          chiBolts.push(boltPath(mx, my, ang, len, 5 + Math.floor(Math.random() * 5)));
-        }
-      }
-
-      // Glow halo
-      const g = nCtx.createRadialGradient(mx, my, 0, mx, my, r * 1.35);
-      g.addColorStop(0,   'rgba(90,170,255,0.60)');
-      g.addColorStop(0.4, 'rgba(60,130,255,0.35)');
-      g.addColorStop(1,   'rgba(20,60,255,0.00)');
-      nCtx.fillStyle = g;
-      nCtx.beginPath(); nCtx.arc(mx, my, r * 1.35, 0, Math.PI * 2); nCtx.fill();
-
-      // White core
-      const core = nCtx.createRadialGradient(mx, my, 0, mx, my, r * 0.40);
-      core.addColorStop(0,   'rgba(240,248,255,1.0)');
-      core.addColorStop(0.4, 'rgba(140,200,255,0.80)');
-      core.addColorStop(1,   'rgba(60,120,255,0.00)');
-      nCtx.fillStyle = core;
-      nCtx.beginPath(); nCtx.arc(mx, my, r * 0.40, 0, Math.PI * 2); nCtx.fill();
-
-      // Lightning bolts — glow pass + bright pass
-      nCtx.shadowColor = '#55aaff';
-      for (const bolt of chiBolts) {
-        nCtx.beginPath();
-        nCtx.moveTo(bolt[0][0], bolt[0][1]);
-        for (let i = 1; i < bolt.length; i++) nCtx.lineTo(bolt[i][0], bolt[i][1]);
-        nCtx.shadowBlur  = 20;
-        nCtx.strokeStyle = 'rgba(100,190,255,0.60)';
-        nCtx.lineWidth   = 4;
-        nCtx.stroke();
-        nCtx.shadowBlur  = 5;
-        nCtx.strokeStyle = 'rgba(235,248,255,0.92)';
-        nCtx.lineWidth   = 1.4;
-        nCtx.stroke();
-      }
-      nCtx.shadowBlur = 0;
-      chiState.visible = true;
-    }
-
-    /* ══════════════════════════════════════════════
-       DEBUG MARKER (chỉ bật khi DEBUG_HAND_MARKER = true)
-    ══════════════════════════════════════════════ */
-    function createDebugCursor(side) {
-      const el = document.createElement('div');
-      Object.assign(el.style, {
-        position:      'absolute',
-        width:         '40px',
-        height:        '40px',
-        borderRadius:  '50%',
-        border:        '2px dashed rgba(255,255,255,0.4)',
-        transform:     'translate(-50%,-50%)',
-        pointerEvents: 'none',
-        zIndex:        '999',
-        display:       'none',
-        fontSize:      '9px',
-        color:         'rgba(255,255,255,0.5)',
-        textAlign:     'center',
-        lineHeight:    '40px',
-        fontFamily:    'monospace',
-      });
-      el.textContent = side[0];
-      document.getElementById('naruto-fx-layer').appendChild(el);
-      return el;
-    }
-
-    /* ══════════════════════════════════════════════
-       CLOSE
-    ══════════════════════════════════════════════ */
+    /* ══ CLOSE ══════════════════════════════════════════════ */
     window.closeNaruto = function () {
       narutoActive = false;
       document.getElementById('naruto-overlay').style.display = 'none';
       btn.classList.remove('naruto-active');
-
-      hideShuriken();
-      chiBolts = [];
-      Object.values(debugCursors).forEach(c => { if (c) c.style.display = 'none'; });
+      particles.Left = []; particles.Right = [];
       if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
-
       const ho = document.getElementById('hand-overlay');
       if (ho && window.handEngine?.isActive) ho.style.display = 'block';
     };
 
-    /* ══════════════════════════════════════════════
-       OPEN
-    ══════════════════════════════════════════════ */
+    /* ══ OPEN ═══════════════════════════════════════════════ */
     async function openNaruto() {
       narutoActive = true;
       narutoScore  = 0;
-      lastPinchL   = false;
-      lastPinchR   = false;
+      lastPinchL   = false; lastPinchR = false;
+      particles.Left = []; particles.Right = [];
 
       document.getElementById('naruto-overlay').style.display = 'block';
-      document.getElementById('naruto-fx-layer').innerHTML = '';
-      document.getElementById('naruto-score').textContent = '\uD83D\uDCA0 0';
+      document.getElementById('naruto-fx-layer').innerHTML  = '';
+      document.getElementById('naruto-score').textContent   = '\uD83D\uDCA0 0';
       btn.classList.add('naruto-active');
 
-      // Khởi tạo elements
-      buildShurikenEl();
-      getCanvas();
-      window.addEventListener('resize', resizeCanvas);
+      // Canvas setup
+      nCanvas = document.getElementById('naruto-canvas');
+      nCanvas.width  = window.innerWidth;
+      nCanvas.height = window.innerHeight;
+      nCtx    = nCanvas.getContext('2d');
+      window.addEventListener('resize', () => {
+        if (nCanvas) { nCanvas.width = window.innerWidth; nCanvas.height = window.innerHeight; }
+      });
 
-      if (DEBUG_HAND_MARKER) {
-        debugCursors.Left  = createDebugCursor('Left');
-        debugCursors.Right = createDebugCursor('Right');
-      }
-
-      // Start handEngine
+      // Start handEngine (không show hand-overlay)
       if (window.handEngine && !window.handEngine.isActive) {
         await window.handEngine.start(false);
         await new Promise(r => setTimeout(r, 400));
@@ -292,82 +98,58 @@ document.addEventListener('DOMContentLoaded', function () {
         if (ho) ho.style.display = 'none';
       }
 
-      // Share camera stream hand-video → naruto-camera
+      // Share handEngine camera → naruto background
       const handVideo = document.getElementById('hand-video');
       const narutoCam = document.getElementById('naruto-camera');
       if (handVideo?.srcObject && narutoCam) {
         narutoCam.srcObject = handVideo.srcObject;
         narutoCam.play().catch(() => {});
       }
-
       const ho = document.getElementById('hand-overlay');
       if (ho) ho.style.display = 'none';
 
       narutoLoop();
     }
 
-    /* ══════════════════════════════════════════════
-       MAIN LOOP
-    ══════════════════════════════════════════════ */
+    /* ══ MAIN LOOP ══════════════════════════════════════════ */
     function narutoLoop() {
       if (!narutoActive) return;
+      frameTime = performance.now();
 
-      // Clear canvas mỗi frame
-      if (nCtx && narutoCanvas) {
-        nCtx.clearRect(0, 0, narutoCanvas.width, narutoCanvas.height);
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+
+      if (nCtx) {
+        // Fade trail — không xóa hoàn toàn để tạo afterglow
+        nCtx.fillStyle = 'rgba(0,0,0,0.18)';
+        nCtx.fillRect(0, 0, W, H);
       }
 
-      const L = window.handEngine?.handStates?.['Left'];
-      const R = window.handEngine?.handStates?.['Right'];
+      const sL = window.handEngine?.handStates?.['Left'];
+      const sR = window.handEngine?.handStates?.['Right'];
+      const Lactive = sL?.history?.length > 0 && sL.landmarks;
+      const Ractive = sR?.history?.length > 0 && sR.landmarks;
 
-      const Lactive = L && L.history && L.history.length > 0;
-      const Ractive = R && R.history && R.history.length > 0;
+      if (Lactive) drawHandEffect(sL, 'Left',  W, H);
+      if (Ractive) drawHandEffect(sR, 'Right', W, H);
 
-      /* ── Tay TRÁI = Shuriken ── */
-      if (Lactive) {
-        const radius = estimateHandRadius(L);
-        const scale  = radius / 80; // normalize to ~1.0
-        showShurikenAt(L.x, L.y, scale);
+      // Arc giữa 2 lòng bàn tay khi cả 2 tay đều detect
+      if (Lactive && Ractive) drawDualArc(sL, sR, W, H);
 
-        if (DEBUG_HAND_MARKER && debugCursors.Left) {
-          debugCursors.Left.style.display = 'block';
-          debugCursors.Left.style.left    = L.x + 'px';
-          debugCursors.Left.style.top     = L.y + 'px';
-        }
-      } else {
-        hideShuriken();
-        if (DEBUG_HAND_MARKER && debugCursors.Left) debugCursors.Left.style.display = 'none';
-      }
-
-      /* ── Tay PHẢI = Chidori ── */
-      if (Ractive) {
-        drawChidori(R.x, R.y, estimateHandRadius(R));
-
-        if (DEBUG_HAND_MARKER && debugCursors.Right) {
-          debugCursors.Right.style.display = 'block';
-          debugCursors.Right.style.left    = R.x + 'px';
-          debugCursors.Right.style.top     = R.y + 'px';
-        }
-      } else {
-        chiState.visible = false;
-        if (DEBUG_HAND_MARKER && debugCursors.Right) debugCursors.Right.style.display = 'none';
-      }
-
-      /* ── Pinch → ném shuriken thật ── */
+      // Pinch
       ['Left', 'Right'].forEach(side => {
-        const s       = window.handEngine?.handStates?.[side];
-        const active  = s && s.history && s.history.length > 0;
+        const s      = window.handEngine?.handStates?.[side];
+        const active = s?.history?.length > 0;
         if (!active) return;
-
         const isPinch = s.isPinching;
         const wasLast = (side === 'Left') ? lastPinchL : lastPinchR;
-
-        if (isPinch && !wasLast) {
-          launchShuriken(s.x, s.y,
-            ((-Math.PI / 2) + (Math.random() - 0.5) * Math.PI * 0.85),
-            480 + Math.random() * 320);
+        if (isPinch && !wasLast && s.landmarks) {
+          const lms = s.landmarks;
+          // Điểm giữa thumb tip và index tip
+          const px = ((1 - lms[4].x) + (1 - lms[8].x)) * 0.5 * W;
+          const py = (lms[4].y + lms[8].y) * 0.5 * H;
+          onPinchFire(px, py, side === 'Left');
         }
-
         if (side === 'Left') lastPinchL = isPinch;
         else                 lastPinchR = isPinch;
       });
@@ -375,33 +157,377 @@ document.addEventListener('DOMContentLoaded', function () {
       animFrame = requestAnimationFrame(narutoLoop);
     }
 
-    /* ══════════════════════════════════════════════
-       LAUNCH SHURIKEN (pinch attack)
-    ══════════════════════════════════════════════ */
-    function launchShuriken(sx, sy, angle, power) {
+    /* ══ PER-HAND PROCEDURAL EFFECT ════════════════════════ */
+    function drawHandEffect(s, side, W, H) {
+      const lms   = s.landmarks;
+      const t     = frameTime;
+      const isLeft = (side === 'Left');
+
+      // Convert all 21 landmarks to screen pixels
+      const pts = lms.map(lm => lm2px(lm, W, H));
+
+      // Palm center = avg wrist(0) + 4 MCP knuckles(5,9,13,17)
+      const palm = avgPts(pts, [0, 5, 9, 13, 17]);
+
+      // Hand scale = wrist(0) → middle MCP(9)
+      const handSz = dist(pts[0], pts[9]);
+
+      // Fingertip indices: thumb=4, index=8, middle=12, ring=16, pinky=20
+      const tipIdx = [4, 8, 12, 16, 20];
+      const tips   = tipIdx.map(i => pts[i]);
+
+      // MCP base indices (knuckles): 2,5,9,13,17
+      const mcpIdx = [2, 5, 9, 13, 17];
+      const mcps   = mcpIdx.map(i => pts[i]);
+
+      const isPinching = s.isPinching;
+
+      if (!isPinching) {
+        // ── 1. Palm glow core ──
+        drawPalmCore(palm, handSz, t, isLeft);
+
+        // ── 2. Energy lines palm → each fingertip ──
+        for (let i = 0; i < tips.length; i++) {
+          drawEnergyLine(palm, tips[i], mcps[i], t + i * 37, isLeft);
+        }
+
+        // ── 3. Fingertip spark emitters ──
+        for (let i = 0; i < tips.length; i++) {
+          emitTipParticle(tips[i], side, t + i * 11, isLeft);
+        }
+
+        // ── 4. Rotating chakra ring at palm ──
+        drawChakraRing(palm, handSz * 0.9, t, isLeft);
+
+        // ── 5. Draw + update particles ──
+        updateParticles(side, isLeft);
+
+      } else {
+        // ── Pinch state: energy concentrates to pinch point ──
+        const pinchPt = {
+          x: (pts[4].x + pts[8].x) * 0.5,
+          y: (pts[4].y + pts[8].y) * 0.5,
+        };
+        drawPinchCharge(pinchPt, palm, handSz, t, isLeft);
+      }
+    }
+
+    /* ── Palm Core Glow ─────────────────────────────────── */
+    function drawPalmCore(palm, sz, t, isLeft) {
+      const pulse = 1 + Math.sin(t * 0.005) * 0.18;
+      const r     = sz * 0.75 * pulse;
+
+      const [c0, c1, c2] = isLeft
+        ? ['rgba(255,140,20,0.85)', 'rgba(249,90,0,0.45)', 'rgba(249,50,0,0.00)']
+        : ['rgba(180,220,255,0.85)', 'rgba(60,130,255,0.50)', 'rgba(20,60,255,0.00)'];
+
+      const g = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, r);
+      g.addColorStop(0,   c0);
+      g.addColorStop(0.45, c1);
+      g.addColorStop(1,   c2);
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+      nCtx.fillStyle = g;
+      nCtx.beginPath();
+      nCtx.arc(palm.x, palm.y, r, 0, Math.PI * 2);
+      nCtx.fill();
+      nCtx.restore();
+    }
+
+    /* ── Energy Line: Palm → Fingertip  (lightning-like) ── */
+    function drawEnergyLine(from, to, knuckle, t, isLeft) {
+      // 2 passes: glow + bright core
+      const flicker = 0.5 + 0.5 * Math.sin(t * 0.009 + Math.random() * 2);
+      const color   = isLeft
+        ? `rgba(255,160,30,${0.55 * flicker})`
+        : `rgba(80,170,255,${0.60 * flicker})`;
+      const bright  = isLeft ? '#fff0aa' : '#d0eeff';
+
+      const segs = 6;
+      const dx   = to.x - knuckle.x;
+      const dy   = to.y - knuckle.y;
+      const len  = Math.hypot(dx, dy) || 1;
+      const nx   = -dy / len;  // normal vector for jitter
+      const ny   =  dx / len;
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+
+      // Glow pass
+      nCtx.beginPath();
+      nCtx.moveTo(from.x, from.y);
+      for (let i = 1; i <= segs; i++) {
+        const p  = i / segs;
+        const jx = nx * rand(-len * 0.06, len * 0.06);
+        const jy = ny * rand(-len * 0.06, len * 0.06);
+        nCtx.lineTo(knuckle.x + dx * p + jx, knuckle.y + dy * p + jy);
+      }
+      nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
+      nCtx.shadowBlur  = 12;
+      nCtx.strokeStyle = color;
+      nCtx.lineWidth   = 3.5;
+      nCtx.stroke();
+
+      // Bright core pass
+      nCtx.beginPath();
+      nCtx.moveTo(from.x, from.y);
+      for (let i = 1; i <= segs; i++) {
+        const p  = i / segs;
+        const jx = nx * rand(-len * 0.03, len * 0.03);
+        const jy = ny * rand(-len * 0.03, len * 0.03);
+        nCtx.lineTo(knuckle.x + dx * p + jx, knuckle.y + dy * p + jy);
+      }
+      nCtx.shadowBlur  = 4;
+      nCtx.strokeStyle = isLeft ? `rgba(255,230,180,${0.8 * flicker})` : `rgba(200,235,255,${0.9 * flicker})`;
+      nCtx.lineWidth   = 1.2;
+      nCtx.stroke();
+
+      nCtx.restore();
+    }
+
+    /* ── Fingertip Particle Emitter ─────────────────────── */
+    function emitTipParticle(tip, side, t, isLeft) {
+      // Emit particles occasionally
+      if (Math.random() > 0.35) return;
+      particles[side].push({
+        x:    tip.x + rand(-4, 4),
+        y:    tip.y + rand(-4, 4),
+        vx:   rand(-1.2, 1.2),
+        vy:   rand(-2.5, -0.5),
+        life: 1.0,
+        size: rand(2, 5),
+        left: isLeft,
+      });
+    }
+
+    function updateParticles(side, isLeft) {
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+
+      particles[side] = particles[side].filter(p => {
+        p.x    += p.vx;
+        p.y    += p.vy;
+        p.vy   -= 0.05; // rise
+        p.life -= 0.028;
+
+        if (p.life <= 0) return false;
+
+        const a = p.life;
+        nCtx.beginPath();
+        nCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        nCtx.fillStyle = isLeft
+          ? `rgba(255,200,60,${a})`
+          : `rgba(140,200,255,${a})`;
+        nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
+        nCtx.shadowBlur  = 6;
+        nCtx.fill();
+        return true;
+      });
+
+      // Cap at 120 particles per hand
+      if (particles[side].length > 120) particles[side].splice(0, particles[side].length - 120);
+
+      nCtx.restore();
+    }
+
+    /* ── Chakra Ring (rotating segmented) ───────────────── */
+    function drawChakraRing(palm, r, t, isLeft) {
+      const segs  = isLeft ? 8 : 12;
+      const rot   = (t * (isLeft ? 0.0012 : -0.0018)) % (Math.PI * 2);
+      const gap   = 0.18; // radians gap between segments
+      const segA  = (Math.PI * 2 / segs) - gap;
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+      nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
+      nCtx.shadowBlur  = 10;
+      nCtx.strokeStyle = isLeft ? 'rgba(255,160,40,0.65)' : 'rgba(80,160,255,0.65)';
+      nCtx.lineWidth   = 2.5;
+
+      for (let i = 0; i < segs; i++) {
+        const startA = rot + (Math.PI * 2 / segs) * i;
+        nCtx.beginPath();
+        nCtx.arc(palm.x, palm.y, r, startA, startA + segA);
+        nCtx.stroke();
+      }
+
+      // Inner ring (counter-rotate)
+      nCtx.shadowBlur  = 6;
+      nCtx.strokeStyle = isLeft ? 'rgba(255,220,100,0.5)' : 'rgba(160,210,255,0.5)';
+      nCtx.lineWidth   = 1.5;
+      const rot2 = (-t * 0.0008) % (Math.PI * 2);
+      for (let i = 0; i < segs - 2; i++) {
+        const startA = rot2 + (Math.PI * 2 / (segs - 2)) * i;
+        nCtx.beginPath();
+        nCtx.arc(palm.x, palm.y, r * 0.55, startA, startA + segA * 0.9);
+        nCtx.stroke();
+      }
+
+      nCtx.restore();
+    }
+
+    /* ── Pinch Charge State ──────────────────────────────── */
+    function drawPinchCharge(pinch, palm, handSz, t, isLeft) {
+      // Lines from all fingers converge to pinch point
+      const pulse = 0.6 + 0.4 * Math.abs(Math.sin(t * 0.015));
+      const r     = handSz * 0.3 * pulse;
+
+      // Bright core at pinch
+      const g = nCtx.createRadialGradient(pinch.x, pinch.y, 0, pinch.x, pinch.y, r * 1.5);
+      g.addColorStop(0,   isLeft ? 'rgba(255,255,200,0.95)' : 'rgba(200,230,255,0.95)');
+      g.addColorStop(0.3, isLeft ? 'rgba(255,140,20,0.70)'  : 'rgba(80,160,255,0.70)');
+      g.addColorStop(1,   'rgba(0,0,0,0)');
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+      nCtx.fillStyle = g;
+      nCtx.beginPath();
+      nCtx.arc(pinch.x, pinch.y, r * 1.5, 0, Math.PI * 2);
+      nCtx.fill();
+
+      // Energy compression ring
+      nCtx.strokeStyle = isLeft ? `rgba(255,200,60,${pulse})` : `rgba(140,200,255,${pulse})`;
+      nCtx.lineWidth   = 3;
+      nCtx.shadowColor = isLeft ? '#ff8800' : '#4499ff';
+      nCtx.shadowBlur  = 20;
+      nCtx.beginPath();
+      nCtx.arc(pinch.x, pinch.y, r, 0, Math.PI * 2);
+      nCtx.stroke();
+
+      // Line from palm to pinch point
+      nCtx.beginPath();
+      nCtx.moveTo(palm.x, palm.y);
+      nCtx.lineTo(pinch.x, pinch.y);
+      nCtx.strokeStyle = isLeft ? 'rgba(255,160,40,0.6)' : 'rgba(80,160,255,0.6)';
+      nCtx.lineWidth   = 2;
+      nCtx.shadowBlur  = 8;
+      nCtx.stroke();
+
+      nCtx.restore();
+    }
+
+    /* ── Dual Hand Arc (nối 2 lòng bàn tay) ────────────── */
+    function drawDualArc(sL, sR, W, H) {
+      if (!sL.landmarks || !sR.landmarks) return;
+
+      const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
+      const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
+      const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
+      const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
+      const d = dist(palmL, palmR);
+
+      if (d > W * 0.85) return; // tay quá xa nhau → không vẽ
+
+      // Electric arc giữa 2 lòng bàn tay
+      const segs  = 12;
+      const t     = frameTime;
+      const mx    = (palmL.x + palmR.x) * 0.5;
+      const my    = (palmL.y + palmR.y) * 0.5;
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+
+      // 3 bolt paths
+      for (let b = 0; b < 3; b++) {
+        nCtx.beginPath();
+        nCtx.moveTo(palmL.x, palmL.y);
+        const dx = palmR.x - palmL.x;
+        const dy = palmR.y - palmL.y;
+        const len = Math.hypot(dx, dy) || 1;
+        const nx = -dy / len; const ny = dx / len;
+
+        for (let i = 1; i < segs; i++) {
+          const p   = i / segs;
+          const jitter = d * 0.07 * (Math.random() - 0.5);
+          nCtx.lineTo(palmL.x + dx * p + nx * jitter, palmL.y + dy * p + ny * jitter);
+        }
+        nCtx.lineTo(palmR.x, palmR.y);
+
+        nCtx.strokeStyle = b === 1 ? 'rgba(255,255,255,0.8)' : 'rgba(150,200,255,0.5)';
+        nCtx.lineWidth   = b === 1 ? 1.5 : 4;
+        nCtx.shadowColor = '#aaddff';
+        nCtx.shadowBlur  = b === 1 ? 5 : 20;
+        nCtx.stroke();
+      }
+
+      // Glow at midpoint
+      const g = nCtx.createRadialGradient(mx, my, 0, mx, my, d * 0.15);
+      g.addColorStop(0,   'rgba(180,220,255,0.6)');
+      g.addColorStop(1,   'rgba(80,140,255,0.0)');
+      nCtx.fillStyle = g;
+      nCtx.beginPath();
+      nCtx.arc(mx, my, d * 0.15, 0, Math.PI * 2);
+      nCtx.fill();
+
+      nCtx.restore();
+    }
+
+    /* ══ PINCH → LAUNCH ════════════════════════════════════ */
+    function onPinchFire(px, py, isLeft) {
+      const angle = (-Math.PI / 2) + (Math.random() - 0.5) * Math.PI * 0.85;
+      const power = 500 + Math.random() * 350;
+      launchShuriken(px, py, angle, power, isLeft);
+      // Particle burst at pinch point
+      for (let i = 0; i < 20; i++) {
+        const side = isLeft ? 'Left' : 'Right';
+        particles[side].push({
+          x: px, y: py,
+          vx: rand(-4, 4), vy: rand(-5, 1),
+          life: 1.0, size: rand(3, 7), left: isLeft,
+        });
+      }
+    }
+
+    /* ══ LAUNCH SHURIKEN ═══════════════════════════════════ */
+    function launchShuriken(sx, sy, angle, power, isLeft) {
       const dx = Math.cos(angle) * power;
       const dy = Math.sin(angle) * power;
-
       const layer = document.getElementById('naruto-fx-layer');
       if (!layer) return;
 
-      // Shuriken bay — dùng cùng polygon shape nhưng to hơn + brighter
+      // Shuriken = rotating 8-spoke star
       const el = document.createElement('div');
+      const size = 70;
       Object.assign(el.style, {
         position:        'absolute',
-        width:           '80px',
-        height:          '80px',
-        left:            sx + 'px',
-        top:             sy + 'px',
-        clipPath:        'polygon(50% 0%,55% 40%,80% 10%,60% 50%,100% 45%,65% 60%,90% 90%,50% 68%,10% 90%,35% 60%,0% 45%,40% 50%,20% 10%,45% 40%)',
-        background:      'conic-gradient(from 0deg,#fff 0%,#fbbf24 20%,#f97316 45%,#fff 50%,#fbbf24 70%,#f97316 95%,#fff 100%)',
-        filter:          'drop-shadow(0 0 20px #fff) drop-shadow(0 0 40px #f97316) brightness(1.4)',
-        transformOrigin: 'center',
+        width:           size + 'px',
+        height:          size + 'px',
+        left:            sx  + 'px',
+        top:             sy  + 'px',
         pointerEvents:   'none',
         zIndex:          '60',
-        willChange:      'left, top, transform, opacity',
+        transformOrigin: 'center',
+        // 8-point star
+        clipPath:        'polygon(50% 0%,54% 38%,76% 9%,62% 46%,100% 44%,66% 58%,88% 90%,50% 67%,12% 90%,34% 58%,0% 44%,38% 46%,24% 9%,46% 38%)',
+        background:      isLeft
+          ? 'conic-gradient(from 0deg,#fff 0%,#fde68a 20%,#f97316 50%,#fff 55%,#fbbf24 80%,#f97316 100%)'
+          : 'conic-gradient(from 0deg,#fff 0%,#bae6fd 20%,#3b82f6 50%,#fff 55%,#93c5fd 80%,#3b82f6 100%)',
+        filter:          'drop-shadow(0 0 12px #fff) drop-shadow(0 0 30px ' + (isLeft ? '#f97316' : '#3b82f6') + ') brightness(1.5)',
+        willChange:      'left,top,transform,opacity',
       });
       layer.appendChild(el);
+
+      // Trail elements
+      const trails = [];
+      for (let i = 0; i < 4; i++) {
+        const tr = document.createElement('div');
+        Object.assign(tr.style, {
+          position:      'absolute',
+          width:         (size * 0.6 - i * 8) + 'px',
+          height:        (size * 0.6 - i * 8) + 'px',
+          borderRadius:  '50%',
+          background:    isLeft ? 'rgba(249,115,22,0.3)' : 'rgba(59,130,246,0.3)',
+          pointerEvents: 'none',
+          zIndex:        '59',
+          filter:        'blur(4px)',
+          left:          sx + 'px',
+          top:           sy + 'px',
+          transform:     'translate(-50%,-50%)',
+        });
+        layer.appendChild(tr);
+        trails.push({ el: tr, delay: i * 0.06 });
+      }
 
       const dur = 700;
       const t0  = performance.now();
@@ -410,31 +536,40 @@ document.addEventListener('DOMContentLoaded', function () {
         const p  = Math.min((now - t0) / dur, 1);
         const x  = sx + dx * p;
         const y  = sy + dy * p;
-        const r  = p * 1080; // xoay 3 vòng
-        const sc = 1 + p * 0.5;
-        const o  = p < 0.7 ? 1 : 1 - (p - 0.7) / 0.3;
+        const r  = p * 1260;
+        const sc = 0.8 + p * 0.6;
+        const o  = p < 0.65 ? 1 : 1 - (p - 0.65) / 0.35;
 
         el.style.left      = x + 'px';
         el.style.top       = y + 'px';
         el.style.transform = `translate(-50%,-50%) rotate(${r}deg) scale(${sc})`;
         el.style.opacity   = String(o);
 
+        // Trail follows with delay
+        trails.forEach(({ el: tr, delay }) => {
+          const pt = Math.max(0, p - delay);
+          const tx = sx + dx * pt;
+          const ty = sy + dy * pt;
+          tr.style.left    = tx + 'px';
+          tr.style.top     = ty + 'px';
+          tr.style.opacity = String(o * 0.6);
+        });
+
         if (p < 1) {
           requestAnimationFrame(frame);
         } else {
           el.remove();
+          trails.forEach(t => t.el.remove());
           narutoScore++;
           const scoreEl = document.getElementById('naruto-score');
           if (scoreEl) scoreEl.textContent = '\uD83D\uDCA0 ' + narutoScore;
-          spawnBoom(x, y);
+          spawnImpact(x, y, isLeft);
         }
       })(t0);
     }
 
-    /* ══════════════════════════════════════════════
-       BOOM
-    ══════════════════════════════════════════════ */
-    function spawnBoom(x, y) {
+    /* ══ IMPACT ════════════════════════════════════════════ */
+    function spawnImpact(x, y, isLeft) {
       const layer = document.getElementById('naruto-fx-layer');
       if (!layer) return;
 
@@ -442,48 +577,36 @@ document.addEventListener('DOMContentLoaded', function () {
       const ring = document.createElement('div');
       Object.assign(ring.style, {
         position:      'absolute',
-        width:         '20px',
-        height:        '20px',
-        left:          x + 'px',
-        top:           y + 'px',
+        width:         '10px', height: '10px',
+        left:          x + 'px', top: y + 'px',
         borderRadius:  '50%',
-        border:        '4px solid rgba(249,115,22,0.9)',
-        boxShadow:     '0 0 20px rgba(249,115,22,0.7)',
-        transform:     'translate(-50%,-50%) scale(1)',
+        border:        '4px solid ' + (isLeft ? 'rgba(249,115,22,0.9)' : 'rgba(59,130,246,0.9)'),
+        boxShadow:     '0 0 20px ' + (isLeft ? '#f97316' : '#3b82f6'),
+        transform:     'translate(-50%,-50%)',
         pointerEvents: 'none',
         zIndex:        '65',
       });
       layer.appendChild(ring);
 
-      // Emoji boom
+      // Boom emoji
       const boom = document.createElement('div');
       boom.textContent = '\uD83D\uDCA5';
       Object.assign(boom.style, {
-        position:      'absolute',
-        fontSize:      '72px',
-        lineHeight:    '1',
-        left:          x + 'px',
-        top:           y + 'px',
-        transform:     'translate(-50%,-50%) scale(0.4)',
-        pointerEvents: 'none',
-        zIndex:        '66',
+        position: 'absolute', fontSize: '64px', lineHeight: '1',
+        left: x + 'px', top: y + 'px',
+        transform: 'translate(-50%,-50%) scale(0.3)',
+        pointerEvents: 'none', zIndex: '66',
       });
       layer.appendChild(boom);
 
       const t0 = performance.now();
       (function frame(now) {
-        const p  = Math.min((now - t0) / 500, 1);
-        const sc = 0.4 + p * 2.5;
+        const p  = Math.min((now - t0) / 550, 1);
         const o  = 1 - p;
-
-        // Ring expand
-        ring.style.transform = `translate(-50%,-50%) scale(${1 + p * 8})`;
-        ring.style.opacity   = String(1 - p);
-
-        // Boom emoji
-        boom.style.transform = `translate(-50%,-50%) scale(${sc})`;
+        ring.style.transform = `translate(-50%,-50%) scale(${1 + p * 10})`;
+        ring.style.opacity   = String(o);
+        boom.style.transform = `translate(-50%,-50%) scale(${0.3 + p * 2})`;
         boom.style.opacity   = String(o);
-
         if (p < 1) requestAnimationFrame(frame);
         else { ring.remove(); boom.remove(); }
       })(t0);

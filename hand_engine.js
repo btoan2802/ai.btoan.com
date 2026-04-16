@@ -49,7 +49,8 @@ class HandEngine {
             lockTarget: null,
             pinchStartTime: 0,
             pinchEmpty: false,
-            history: []    // [{x,y}, ...] for averaging
+            history: [],    // [{x,y}, ...] for averaging
+            landmarks: null // raw MediaPipe normalized landmarks (21 points)
         };
     }
 
@@ -213,9 +214,12 @@ class HandEngine {
     // ========== PER-HAND PROCESSING ==========
 
     processHand(side, landmarks) {
-        const s = this.handStates[side];
+        const s     = this.handStates[side];
         const thumb = landmarks[4];
         const index = landmarks[8];
+
+        // Expose raw landmarks so external systems (e.g. naruto_mode) can draw per-finger effects
+        s.landmarks = landmarks;
 
         // Raw position (mirror X for natural feel)
         const rawX = (1 - index.x) * window.innerWidth;
