@@ -220,9 +220,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const sL = window.handEngine?.handStates?.['Left'];
       const sR = window.handEngine?.handStates?.['Right'];
-      // Kiểm tra tay "thật": phải có landmarks và score cao hoặc lịch sử ổn định
-      const Lactive = sL?.landmarks && (sL.score > 0.6 || sL.history?.length > 2);
-      const Ractive = sR?.landmarks && (sR.score > 0.6 || sR.history?.length > 2);
+      
+      const isValidHand = (s) => {
+        if (!s || !s.landmarks) return false;
+        const pts = s.landmarks.map(lm => lm2px(lm, W, H));
+        const sz = dist2(pts[0], pts[9]);
+        return s.score > 0.75 && sz > 25; // Ngưỡng tin cậy cao + kích thước tối thiểu
+      };
+
+      const Lactive = isValidHand(sL);
+      const Ractive = isValidHand(sR);
 
       // ── Gesture hold debounce ──
       hold.Lpoint = Lactive && isPointingIndex(sL.landmarks) ? hold.Lpoint + 1 : 0;
@@ -1126,30 +1133,26 @@ document.addEventListener('DOMContentLoaded', function () {
       const fw = (face.w / face.vW) * W;
       const fh = (face.h / face.vH) * H;
 
-      // 1. Kích thước tóc: Giữ mức x2.8 (Cân đối và uy lực)
-      const tw = fw * 2.8; 
+      const tw = fw * 3.0; 
       const th = tw * (hairCanvas.height / hairCanvas.width);
 
-      // 2. Tọa độ: Neo chân tóc vào trán (vùng cạnh trên của face box)
+      // Neo chân tóc: Đưa xuống thấp hơn để bám sát vùng trán
       const tx = rx;
-      const ty = (ry - fh * 0.5) - (th * 0.38); // Đỉnh đầu - offset chân tóc
+      const ty = ry - fh * 0.45 - th * 0.15; // Hạ thấp hẳn so với bản cũ
 
       nCtx.save();
-      // Debug Face (Ẩn dần)
-      nCtx.strokeStyle = 'rgba(255,255,0,0.05)';
-      nCtx.strokeRect(rx - fw/2, ry - fh/2, fw, fh);
-      
+      // Debug Face (Ẩn hẳn)
       nCtx.translate(tx, ty);
-      nCtx.shadowColor = 'rgba(251, 191, 36, 0.5)';
-      nCtx.shadowBlur = 30;
+      nCtx.shadowColor = 'rgba(251, 191, 36, 0.4)';
+      nCtx.shadowBlur = 25;
       nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
       
       // Electricity effect
-      if (Math.random() < 0.2) {
-        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 2;
-        const ex = (Math.random() - 0.5) * tw * 0.6; const ey = (Math.random() - 0.5) * th * 0.6;
+      if (Math.random() < 0.15) {
+        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 1.5;
+        const ex = (Math.random() - 0.5) * tw * 0.5; const ey = (Math.random() - 0.5) * th * 0.5;
         nCtx.beginPath(); nCtx.moveTo(ex, ey);
-        nCtx.lineTo(ex + (Math.random()-0.5)*40, ey + (Math.random()-0.5)*30);
+        nCtx.lineTo(ex + (Math.random()-0.5)*30, ey + (Math.random()-0.5)*20);
         nCtx.stroke();
       }
       nCtx.restore();
