@@ -222,9 +222,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const sR = window.handEngine?.handStates?.['Right'];
       
       const isValidHand = (s) => {
-        if (!s || !s.landmarks) return false;
-        // Giảm ngưỡng xuống 0.4 để bắt tay nhạy hơn
-        return s.score > 0.4; 
+        // Chỉ cần landmarks tồn tại là OK (vì hand_engine.js không truyền field .score)
+        return !!(s && s.landmarks);
       };
 
       const Lactive = isValidHand(sL);
@@ -1135,20 +1134,18 @@ document.addEventListener('DOMContentLoaded', function () {
       const tw = fw * 3.0; 
       const th = tw * (hairCanvas.height / hairCanvas.width);
 
-      // Neo chân tóc: Nhấc cao lên trán (vùng 0.5 face + offset th 0.25)
+      // Neo chân tóc: Đặt chân tóc bám sát trán, không phụ thuộc quá nhiều vào th
       const tx = rx;
-      const ty = (ry - fh * 0.5) - (th * 0.26); 
+      const ty = ry - fh * 0.48 - th * 0.15; 
 
       nCtx.save();
       nCtx.translate(tx, ty);
-      nCtx.shadowColor = 'rgba(251, 191, 36, 0.45)';
-      nCtx.shadowBlur = 25;
+      nCtx.shadowColor = 'rgba(251, 191, 36, 0.48)'; nCtx.shadowBlur = 30;
       nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
       
-      // Tia chớp
-      if (Math.random() < 0.15) {
+      if (Math.random() < 0.12) {
         nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 1.5;
-        const ex = (Math.random() - 0.5) * tw * 0.5; const ey = (Math.random() - 0.5) * th * 0.5;
+        const ex = (Math.random() - 0.5) * tw * 0.4; const ey = (Math.random() - 0.5) * th * 0.4;
         nCtx.beginPath(); nCtx.moveTo(ex, ey);
         nCtx.lineTo(ex + (Math.random()-0.5)*30, ey + (Math.random()-0.5)*20);
         nCtx.stroke();
