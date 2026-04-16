@@ -31,6 +31,16 @@ document.addEventListener('DOMContentLoaded', function () {
     const hold = { Lpoint: 0, Rpoint: 0 };
     const HOLD_FRAMES = 3; // số frame phải giữ gesture
 
+    // Summon progress: kiểm soát 3 pha hiệu ứng 2 tay
+    const summon = {
+      progress: 0,       // 0 → 1
+      startedAt: 0,      // timestamp khi bridge bắt đầu
+      decayStart: 0,     // timestamp khi bắt đầu fade
+      state: 'idle',     // 'idle' | 'rising' | 'stable' | 'decaying'
+    };
+    const SUMMON_RISE_MS  = 750;  // 0→1 mất 750ms
+    const SUMMON_DECAY_MS = 400;  // 1→0 mất 400ms
+
     const btn = document.getElementById('toggleNarutoMode');
     if (!btn) return;
     btn.addEventListener('click', () => narutoActive ? closeNaruto() : openNaruto());
@@ -171,9 +181,33 @@ document.addEventListener('DOMContentLoaded', function () {
       const Rpointing = hold.Rpoint >= HOLD_FRAMES;
       const dualBridge = Lpointing && Rpointing;
 
-      // ── PRIORITY: Dual Bridge overrides single-hand effects ──
+      // ── Summon progress management ──
       if (dualBridge) {
-        drawDualIndexBridge(sL, sR, W, H);
+        if (summon.state === 'idle' || summon.state === 'decaying') {
+          summon.state     = 'rising';
+          // Tính startedAt dựa trên progress hiện tại (để tiếp nối mượt khi re-enter)
+          summon.startedAt = T - summon.progress * SUMMON_RISE_MS;
+        }
+        summon.progress = Math.min((T - summon.startedAt) / SUMMON_RISE_MS, 1);
+        if (summon.progress >= 1) summon.state = 'stable';
+      } else {
+        if (summon.state === 'rising' || summon.state === 'stable') {
+          summon.state      = 'decaying';
+          summon.decayStart = T - (1 - summon.progress) * SUMMON_DECAY_MS;
+        }
+        if (summon.state === 'decaying') {
+          summon.progress = Math.max(1 - (T - summon.decayStart) / SUMMON_DECAY_MS, 0);
+          if (summon.progress <= 0) { summon.state = 'idle'; summon.startedAt = 0; }
+        }
+      }
+
+      // ── PRIORITY: Dual Bridge (render even while decaying if progress > 0) ──
+      const bridgeVisible = summon.progress > 0 || dualBridge;
+      if (bridgeVisible && (sL?.landmarks || sR?.landmarks)) {
+        // Fallback: dùng tay nào còn trông thấy
+        const _sL = Lactive ? sL : sR;
+        const _sR = Ractive ? sR : sL;
+        if (_sL && _sR) drawDualIndexBridge(_sL, _sR, W, H, summon.progress);
       } else {
         if (Lactive) drawHandEffect(sL, 'Left',  W, H);
         if (Ractive) drawHandEffect(sR, 'Right', W, H);
@@ -450,73 +484,150 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* ═══════════════════════════════════════════════════════
-       DUAL INDEX BRIDGE  ←  NEW EFFECT
-       Kích hoạt khi cả 2 tay đều "pointing index" (ngón trỏ lên)
-       Anchor: index_tip[8] của mỗi tay
-       Core:   midpoint giữa 2 ngón
-       Arc điện nối 2 ngón trỏ, intensity tăng khi 2 tay gần nhau
+       DUAL INDEX BRIDGE  (3 GIAI ĐOẠN SUMMON)
+
+       sp = easeOutCubic(rawProgress)  [0 → 1]
+
+       Giai đoạn 1  sp < 0.30  (0–225ms)
+         → chỉ seed spark nhỏ tại palm + nguyên tử rất nhỏ
+
+       Giai đoạn 2  sp < 0.65  (225–490ms)
+         → core phình lên, tia sáng từ ngón đổ vào core
+         → bridge mờ, orb chưa hiện
+
+       Giai đoạn 3  sp ≥ 0.65  (490ms+)
+         → full bridge arc sáng, orb lớn, seal ring, resonance
     ═══════════════════════════════════════════════════════ */
-    function drawDualIndexBridge(sL, sR, W, H) {
+    function drawDualIndexBridge(sL, sR, W, H, rawProgress) {
+      // easeOutCubic: nhanh lúc đầu, chậm dần khi gần đến 1
+      const sp = 1 - Math.pow(1 - clamp(rawProgress, 0, 1), 3);
+      const pulse = 0.78 + 0.22 * Math.sin(T * 0.011);
+
       const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
       const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
 
-      // Anchor = index tips
-      const tipL = ptsL[8];
-      const tipR = ptsR[8];
+      const tipL  = ptsL[8];   const tipR  = ptsR[8];
+      const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
+      const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
+      const szL   = dist2(ptsL[0], ptsL[9]);
+      const szR   = dist2(ptsR[0], ptsR[9]);
 
-      // Mid = center between tips
-      const mid = { x: (tipL.x + tipR.x) * 0.5, y: (tipL.y + tipR.y) * 0.5 };
-      const d   = dist2(tipL, tipR);
-      const maxD = W * 0.75;
-
-      // Intensity: closer = stronger (max ~1.0 when d < 100px, 0 when d > maxD)
+      const mid  = { x: (tipL.x + tipR.x) * 0.5, y: (tipL.y + tipR.y) * 0.5 };
+      const d    = dist2(tipL, tipR);
+      const maxD = W * 0.80;
       const intensity = clamp(1 - d / maxD, 0, 1);
-      const pulse = 0.75 + 0.25 * Math.sin(T * 0.012);
 
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
 
-      // ── 1. Electric arcs between tips (3 paths, different jitter) ──
-      const arcPasses = [
-        { w: d * 0.012 + 5, alpha: 0.3 + intensity * 0.2, blur: 22, color: '80,160,255' },
-        { w: 2,              alpha: 0.6 + intensity * 0.3, blur: 8,  color: '180,230,255' },
-        { w: 0.8,            alpha: 0.9,                    blur: 3,  color: '240,255,255' },
-      ];
+      /* ── GIAI ĐOẠN 1: Seed sparks tại palm ──────────────────── */
+      for (const [palm, sz] of [[palmL, szL], [palmR, szR]]) {
+        const coreR = sz * 0.25 * sp * pulse;
+        if (coreR < 1) continue;
+        const gc = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, coreR * 2.5);
+        gc.addColorStop(0,   `rgba(220,245,255,${sp * 0.95})`);
+        gc.addColorStop(0.4, `rgba(90,170,255,${sp * 0.55})`);
+        gc.addColorStop(1,   'rgba(0,0,0,0)');
+        nCtx.fillStyle = gc;
+        nCtx.beginPath(); nCtx.arc(palm.x, palm.y, coreR * 2.5, 0, Math.PI * 2); nCtx.fill();
+      }
 
-      for (const pass of arcPasses) {
-        for (let b = 0; b < (b => Math.ceil(intensity * 3 + 1))(0); b++) {
-          drawBridgeArc(tipL, tipR, d, pass, b);
+      /* ── GIAI ĐOẠN 2: Core phình lên (sp > 0.10) ──────────── */
+      if (sp > 0.10) {
+        const ph2 = clamp((sp - 0.10) / 0.55, 0, 1);
+
+        for (const [pts, palm] of [[ptsL, palmL], [ptsR, palmR]]) {
+          // Tia năng lượng từ các ngón chảy vào palm
+          for (const ti of [4, 8, 12, 16, 20]) {
+            const tip = pts[ti];
+            const a   = ph2 * (0.30 + intensity * 0.25);
+            nCtx.beginPath(); nCtx.moveTo(tip.x, tip.y); nCtx.lineTo(palm.x, palm.y);
+            nCtx.shadowColor = '#66aaff'; nCtx.shadowBlur = 8;
+            nCtx.strokeStyle = `rgba(130,200,255,${a})`;
+            nCtx.lineWidth   = 1.4 * ph2; nCtx.stroke();
+          }
+          // Palm core grow
+          const coreR = dist2(pts[0], pts[9]) * (0.55 + ph2 * 1.0) * pulse;
+          const gl = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, coreR);
+          gl.addColorStop(0,   `rgba(220,245,255,${0.75 * ph2})`);
+          gl.addColorStop(0.3, `rgba(110,185,255,${0.45 * ph2})`);
+          gl.addColorStop(0.7, `rgba(50,110,255,${0.18 * ph2})`);
+          gl.addColorStop(1,    'rgba(0,0,0,0)');
+          nCtx.fillStyle = gl;
+          nCtx.beginPath(); nCtx.arc(palm.x, palm.y, coreR, 0, Math.PI * 2); nCtx.fill();
+        }
+
+        // Bridge arc mờ (bắt đầu từ ph2 > 0.35)
+        if (ph2 > 0.35) {
+          const bAlpha = (ph2 - 0.35) / 0.65 * (0.4 + intensity * 0.2);
+          drawBridgeArc(tipL, tipR, d, { w: 2.0, alpha: bAlpha, blur: 14, color: '120,200,255' }, 0);
+        }
+
+        // Particles từ fingertips
+        if (ph2 > 0.4 && Math.random() < 0.38) spawnBridgeParticle(tipL, mid);
+        if (ph2 > 0.4 && Math.random() < 0.38) spawnBridgeParticle(tipR, mid);
+      }
+
+      /* ── GIAI ĐOẠN 3: Full form (sp > 0.65) ─────────────────── */
+      if (sp > 0.65) {
+        const ph3 = clamp((sp - 0.65) / 0.35, 0, 1);
+
+        // Electric arcs (to hơn rất nhiều)
+        const numBolts = Math.ceil(intensity * 4 + 2);
+        const arcPasses = [
+          { w: d * 0.022 + 9, alpha: (0.25 + intensity * 0.25) * ph3, blur: 32, color: '55,125,255' },
+          { w: 3.5,            alpha: (0.55 + intensity * 0.32) * ph3, blur: 10, color: '155,220,255' },
+          { w: 1.2,            alpha: 0.90 * ph3,                      blur: 3,  color: '230,250,255' },
+        ];
+        for (const pass of arcPasses)
+          for (let b = 0; b < numBolts; b++) drawBridgeArc(tipL, tipR, d, pass, b);
+
+        // Glow lớn tại 2 ngón trỏ
+        for (const tip of [tipL, tipR]) {
+          const r  = (32 + intensity * 60) * ph3;
+          const g0 = nCtx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, r);
+          g0.addColorStop(0,   `rgba(220,248,255,${0.85 * ph3})`);
+          g0.addColorStop(0.5, `rgba(80,165,255,${0.48 * ph3 * pulse})`);
+          g0.addColorStop(1,   'rgba(0,0,0,0)');
+          nCtx.fillStyle = g0;
+          nCtx.beginPath(); nCtx.arc(tip.x, tip.y, r, 0, Math.PI * 2); nCtx.fill();
+        }
+
+        // Orb tại midpoint (lớn hơn trước)
+        const orbR = clamp((1 / (d + 30)) * 14000 * pulse, 18, 150) * ph3;
+        if (orbR > 2) drawBridgeOrb(mid, orbR, intensity * ph3, pulse);
+
+        // Seal rings
+        if (ph3 > 0.45 && intensity > 0.08)
+          drawSealRing(mid, orbR * 3.0 * ph3, intensity * ph3, pulse);
+
+        // Palm outer glow lớn
+        for (const [palm, sz] of [[palmL, szL], [palmR, szR]]) {
+          const outerR = sz * 2.2 * ph3 * pulse;
+          const go = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, outerR);
+          go.addColorStop(0,   `rgba(140,215,255,${0.38 * ph3})`);
+          go.addColorStop(0.5, `rgba(60,135,255,${0.16 * ph3})`);
+          go.addColorStop(1,   'rgba(0,0,0,0)');
+          nCtx.fillStyle = go;
+          nCtx.beginPath(); nCtx.arc(palm.x, palm.y, outerR, 0, Math.PI * 2); nCtx.fill();
+        }
+
+        // Resonance particles
+        const emitChance = 0.3 + intensity * 0.5 + ph3 * 0.2;
+        if (Math.random() < emitChance) spawnBridgeParticle(tipL, mid);
+        if (Math.random() < emitChance) spawnBridgeParticle(tipR, mid);
+        if (Math.random() < 0.25 * ph3) {
+          spawnBridgeParticle(
+            { x: tipL.x + (tipR.x - tipL.x) * rand(0.2, 0.8),
+              y: tipL.y + (tipR.y - tipL.y) * rand(0.2, 0.8) },
+            mid
+          );
         }
       }
 
-      // ── 2. Energy orb at midpoint ──
-      const orbR = clamp((1 / (d + 50)) * 8000 * pulse, 10, 90);
-      drawBridgeOrb(mid, orbR, intensity, pulse);
-
-      // ── 3. Particles traveling along arc toward midpoint ──
-      if (Math.random() < 0.35 + intensity * 0.4) {
-        spawnBridgeParticle(tipL, mid);
-      }
-      if (Math.random() < 0.35 + intensity * 0.4) {
-        spawnBridgeParticle(tipR, mid);
-      }
-
-      // ── 4. Glow at both fingertips (more intense when close) ──
-      for (const tip of [tipL, tipR]) {
-        const r  = 18 + intensity * 30;
-        const g0 = nCtx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, r);
-        g0.addColorStop(0,   `rgba(200,240,255,${0.7 + intensity * 0.2})`);
-        g0.addColorStop(0.5, `rgba(80,160,255,${0.4 * pulse})`);
-        g0.addColorStop(1,   'rgba(0,0,0,0)');
-        nCtx.fillStyle = g0;
-        nCtx.beginPath(); nCtx.arc(tip.x, tip.y, r, 0, Math.PI * 2); nCtx.fill();
-      }
-
-      // ── 5. Rotating chakra seals around midpoint ──
-      if (intensity > 0.15) drawSealRing(mid, orbR * 2.2, intensity, pulse);
-
       nCtx.restore();
     }
+
 
     function drawBridgeArc(tipL, tipR, d, pass, boltIdx) {
       const segs = 10 + Math.floor(d / 30);
