@@ -1119,48 +1119,37 @@ document.addEventListener('DOMContentLoaded', function () {
     function drawSSJHair(face, W, H) {
       if (!hairCanvas) return;
 
-      // 1. Phóng pixel tọa độ face sang pixel canvas
       const rx = (face.x / face.vW) * W;
       const ry = (face.y / face.vH) * H;
       const fw = (face.w / face.vW) * W;
       const fh = (face.h / face.vH) * H;
 
-      // 2. Vẽ DEBUG BOX (Xóa sau khi OK)
-      nCtx.save();
-      nCtx.lineWidth = 1;
-      // Khung mặt: Vàng
-      nCtx.strokeStyle = 'rgba(255,255,0,0.6)';
-      nCtx.strokeRect(rx - fw / 2, ry - fh / 2, fw, fh);
-      nCtx.restore();
-
-      // 3. Tính toán kích thước tóc
-      // Rộng bằng 1.25 lần mặt (Gohan style), không quá bè ra
-      const tw = fw * 1.25; 
+      // 1. Kích thước tóc: Tăng mạnh scale để bao phủ toàn bộ vùng đầu
+      const tw = fw * 2.15; // Tăng từ 1.25 lên 2.15
       const th = tw * (hairCanvas.height / hairCanvas.width);
 
-      // Neo tóc: Đáy tóc nằm ở khoảng trán (vùng -0.45 của face box)
+      // 2. Tọa độ: Đưa lên cao hơn trán để hở toàn bộ khuôn mặt
       const tx = rx;
-      const ty = ry - fh * 0.45 - th * 0.35;
+      const ty = ry - fh * 0.55 - th * 0.45; // Đẩy lên cao hẳn
 
-      // Khung tóc: Xanh (Check xa gần)
+      // 3. Render
       nCtx.save();
-      nCtx.strokeStyle = 'rgba(0,255,255,0.4)';
-      nCtx.strokeRect(tx - tw / 2, ty - th / 2, tw, th);
-      nCtx.restore();
-
-      // 4. Vẽ tóc thực tế
-      nCtx.save();
+      // Khung debug Face (Vàng mờ)
+      nCtx.strokeStyle = 'rgba(255,255,0,0.2)';
+      nCtx.strokeRect(rx - fw/2, ry - fh/2, fw, fh);
+      
+      // Vẽ tóc
       nCtx.translate(tx, ty);
       nCtx.shadowColor = 'rgba(251, 191, 36, 0.4)';
-      nCtx.shadowBlur = 15;
-      nCtx.drawImage(hairCanvas, -tw / 2, -th / 2, tw, th);
+      nCtx.shadowBlur = 20;
+      nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
       
-      // Electricity effect (vàng/xanh nhẹ)
-      if (Math.random() < 0.15) {
-        nCtx.strokeStyle = '#60a5fa'; nCtx.lineWidth = 1;
+      // Hiệu ứng tia sét
+      if (Math.random() < 0.2) {
+        nCtx.strokeStyle = '#60a5fa'; nCtx.lineWidth = 2;
         const ex = (Math.random() - 0.5) * tw; const ey = (Math.random() - 0.5) * th;
         nCtx.beginPath(); nCtx.moveTo(ex, ey);
-        nCtx.lineTo(ex + (Math.random()-0.5)*20, ey + (Math.random()-0.5)*20);
+        nCtx.lineTo(ex + (Math.random()-0.5)*30, ey + (Math.random()-0.5)*20);
         nCtx.stroke();
       }
       nCtx.restore();
