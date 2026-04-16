@@ -966,21 +966,29 @@
         closeNaruto(); return;
       }
 
-      // MediaPipe Hands
+      // MediaPipe Hands — dùng cùng version với hand_engine.js (v0.4)
       if (typeof Hands === 'undefined') {
         alert('MediaPipe Hands chưa load. Hãy tải lại trang!');
         closeNaruto(); return;
       }
-      narutoHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-      narutoHands.setOptions({ maxNumHands:2, modelComplexity:0, minDetectionConfidence:0.7, minTrackingConfidence:0.5 });
+      narutoHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}` });
+      narutoHands.setOptions({ maxNumHands:2, modelComplexity:0, minDetectionConfidence:0.65, minTrackingConfidence:0.5 });
       narutoHands.onResults(onNarutoResults);
 
+      // Không dùng Camera class (conflict với getUserMedia stream đã mở)
+      // Dùng requestAnimationFrame loop để gửi frame trực tiếp
       const vid = document.getElementById('naruto-camera');
-      const camera = new Camera(vid, {
-        onFrame: async () => { if(narutoActive) await narutoHands.send({ image: vid }); },
-        width: 1280, height: 720
-      });
-      camera.start();
+      let sending = false;
+      async function narutoLoop() {
+        if (!narutoActive) return;
+        if (!sending && vid.readyState >= 2) {
+          sending = true;
+          try { await narutoHands.send({ image: vid }); } catch(e) {}
+          sending = false;
+        }
+        animFrame = requestAnimationFrame(narutoLoop);
+      }
+      narutoLoop();
     }
 
     function dist(a, b) {
