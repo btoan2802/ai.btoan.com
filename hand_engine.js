@@ -194,8 +194,12 @@ class HandEngine {
         if (results.multiHandLandmarks) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
                 const label = results.multiHandedness[i].label;
+                const score = results.multiHandedness[i].score;
                 detectedSet.add(label);
-
+                
+                // Store score for external confidence checks
+                this.handStates[label].score = score;
+                
                 // Draw skeleton (subtle)
                 window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS,
                     { color: 'rgba(255,255,255,0.08)', lineWidth: 1 });

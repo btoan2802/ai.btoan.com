@@ -222,8 +222,9 @@ document.addEventListener('DOMContentLoaded', function () {
       const sR = window.handEngine?.handStates?.['Right'];
       
       const isValidHand = (s) => {
-        // Chỉ cần landmarks tồn tại là OK (vì hand_engine.js không truyền field .score)
-        return !!(s && s.landmarks);
+        if (!s || !s.landmarks) return false;
+        // Sử dụng score vừa được hand_engine.js truyền sang
+        return s.score > 0.65; 
       };
 
       const Lactive = isValidHand(sL);
@@ -357,8 +358,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
       const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
       const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
-      // Tăng tầm kích hoạt lên 0.35W để dễ chụm tay hơn
-      return dist2(palmL, palmR) < W * 0.35; 
+      // Trả về 0.28W để yêu cầu chụm tay sát hơn, tránh ghost trigger
+      return dist2(palmL, palmR) < W * 0.28; 
     }
 
     /* ═══════════════════════════════════════════════════════
@@ -1126,7 +1127,8 @@ document.addEventListener('DOMContentLoaded', function () {
     function drawSSJHair(face, W, H) {
       if (!hairCanvas) return;
 
-      const rx = (face.x / face.vW) * W;
+      // Mirror X coordinates for face detector to match mirrored video CSS
+      const rx = (1 - face.x / face.vW) * W; 
       const ry = (face.y / face.vH) * H;
       const fw = (face.w / face.vW) * W;
       const fh = (face.h / face.vH) * H;
