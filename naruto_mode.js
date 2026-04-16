@@ -47,8 +47,8 @@ document.addEventListener('DOMContentLoaded', function () {
       angle: 0,
       firedAt: 0,
     };
-    const KAMEHA_CHARGE_MS = 1200; // tự động fire sau 1.2s charge
-    const KAMEHA_FIRE_MS   = 700;  // beam tồn tại 700ms
+    const KAMEHA_CHARGE_MS = 1200; 
+    const KAMEHA_FIRE_MS   = 3000; // Tăng lên 3 giây
 
     // Face state
     let facePos = null; // { x, y, w, h, roll }
@@ -248,7 +248,13 @@ document.addEventListener('DOMContentLoaded', function () {
           const pR = avgPts(ptsR, [0, 5, 9, 13, 17]);
           
           kameha.origin = { x: (pL.x + pR.x) * 0.5, y: (pL.y + pR.y) * 0.5 };
-          kameha.angle  = 0; 
+          
+          // Tính hướng dựa trên vector từ cổ tay đến ngón giữa của cả 2 tay
+          const getHandAngle = (pts) => Math.atan2(pts[9].y - pts[0].y, pts[9].x - pts[0].x);
+          const angL = getHandAngle(ptsL);
+          const angR = getHandAngle(ptsR);
+          kameha.angle = (angL + angR) * 0.5;
+
           kameha.state  = 'firing';
           kameha.firedAt = T;
           kameha.progress = 0;
@@ -266,7 +272,12 @@ document.addEventListener('DOMContentLoaded', function () {
         if (Ractive) drawHandEffect(sR, 'Right', W, H);
         drawKamehaCharge(sL, sR, W, H, kameha.progress);
       } else if (kameha.state === 'firing') {
-        drawKamehaFirePerspective(kameha.origin, kameha.progress, W, H);
+        const isForward = Math.abs(Math.cos(kameha.angle)) < 0.3 && Math.abs(Math.sin(kameha.angle)) < 0.3; 
+        if (isForward) {
+          drawKamehaFirePerspective(kameha.origin, kameha.progress, W, H);
+        } else {
+          drawKamehaBeam(kameha.origin, kameha.angle, kameha.progress, W, H);
+        }
         drawParticles('Kameha', null, true);
       } else {
         const bridgeVisible = summon.progress > 0 || dualBridge;
@@ -1005,45 +1016,29 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function drawKamehaBeam(origin, angle, p, W, H) {
-      // (Legacy - Giữ lại phòng hán)
       const len = W * 1.5;
-
-      const width = 120 * (1 - p);
+      const alpha = p < 0.8 ? 1 : 1 - (p - 0.8) / 0.2; // Fade out 20% cuối
+      const width = 140 * alpha;
       const endX = origin.x + Math.cos(angle) * len;
       const endY = origin.y + Math.sin(angle) * len;
 
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
-      // Origin shock ring
-      if (p < 0.3) {
-        nCtx.beginPath(); nCtx.arc(origin.x, origin.y, 80 * (p / 0.3), 0, Math.PI * 2);
-        nCtx.strokeStyle = `rgba(255, 255, 255, ${0.8 * (1 - p / 0.3)})`;
-        nCtx.lineWidth = 5; nCtx.stroke();
-      }
-
-      // Vibrate beam body
+      
       const g = nCtx.createLinearGradient(origin.x, origin.y, endX, endY);
       g.addColorStop(0, '#fff');
       g.addColorStop(0.2, '#60a5fa');
       g.addColorStop(1, 'rgba(30, 64, 175, 0)');
-      nCtx.shadowColor = '#3b82f6'; nCtx.shadowBlur = 45;
+      
+      nCtx.shadowColor = '#3b82f6'; nCtx.shadowBlur = 30;
       nCtx.strokeStyle = g;
-      nCtx.lineWidth = width * (1.1 + Math.sin(T * 0.05) * 0.15);
+      nCtx.lineWidth = width * (1.1 + Math.sin(T * 0.05 + p * 10) * 0.2);
       nCtx.lineCap = 'round';
       nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
       
-      // Core white line
       nCtx.lineWidth = width * 0.4; nCtx.strokeStyle = '#fff'; nCtx.shadowBlur = 0;
       nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y); nCtx.lineTo(endX, endY); nCtx.stroke();
-
-      // Energy noise rays
-      for (let i = 0; i < 4; i++) {
-        nCtx.beginPath(); nCtx.moveTo(origin.x, origin.y);
-        const jX = (Math.random() - 0.5) * 60; const jY = (Math.random() - 0.5) * 60;
-        nCtx.lineTo(endX + jX, endY + jY);
-        nCtx.lineWidth = width * 0.1; nCtx.strokeStyle = `rgba(180, 230, 255, ${0.4 * (1 - p)})`;
-        nCtx.stroke();
-      }
+      
       nCtx.restore();
     }
 
@@ -1112,11 +1107,11 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.restore();
 
       nCtx.save();
-      // Đẩy tóc lên cao hơn trán và scale to hơn
+      // Đẩy tóc lên cao hơn trán và giảm scale
       const tx = rx;
-      const ty = ry - fh * 0.70;
-      const tw = fw * 2.2; 
-      const th = fh * 1.9;
+      const ty = ry - fh * 0.72;
+      const tw = fw * 1.45; // Giảm từ 2.2 xuống 1.45
+      const th = fh * 1.35; // Giảm từ 1.9 xuống 1.35
 
       nCtx.translate(tx, ty);
       nCtx.globalAlpha = 1.0;
