@@ -1125,8 +1125,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!window.faceapi || !window.faceapi.nets.tinyFaceDetector.params) return;
       
       const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ 
-        inputSize: 160, 
-        scoreThreshold: 0.2 // Cực nhạy để bắt mặt trong tối
+        inputSize: 224, 
+        scoreThreshold: 0.1 // Giảm ngưỡng để bắt mặt nhỏ khi lùi xa
       }));
 
       if (result) {
@@ -1152,14 +1152,13 @@ document.addEventListener('DOMContentLoaded', function () {
       const fw = (face.w / face.vW) * W;
       const fh = (face.h / face.vH) * H;
 
-      // 2. Kích thước (vừa phải x2.4)
-      const tw = fw * 2.4; 
+      // 2. Kích thước (Nâng lên 3.1 để bao phủ đầu tốt hơn)
+      const tw = fw * 3.1; 
       const th = tw * (hairCanvas.height / hairCanvas.width);
 
       // 3. Vị trí tuyệt đối: Neo chân tóc vào trán
-      // Đỉnh mặt (ry - fh*0.5) chính là đường chân tóc/trán
       const tx = rx;
-      const ty = (ry - fh * 0.5) - (th * 0.22); 
+      const ty = (ry - fh * 0.5) - (th * 0.23); 
 
       nCtx.save();
       nCtx.translate(tx, ty);
