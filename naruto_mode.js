@@ -55,14 +55,12 @@ document.addEventListener('DOMContentLoaded', function () {
     let lastFaceDetectT = 0;
     const FACE_DETECT_INTERVAL = 150; // ms
 
-    // SSJ Hair Image Preload & BG Removal
+    // SSJ Hair Image Local Asset (Sửa lỗi CORS)
     const hairImg = new Image();
-    hairImg.crossOrigin = "anonymous";
-    hairImg.src = "https://w7.pngwing.com/pngs/351/314/png-transparent-goku-super-saiyan-hair-dragon-ball-goku-super-saiyan-hair-orange-human-hair-fictional-character.png"; 
+    hairImg.src = "ssj_hair.png?v=2"; // Force reload
     
     let hairCanvas = null;
     hairImg.onload = () => {
-      // Xử lý xóa nền trắng
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d');
       tempCanvas.width = hairImg.width;
@@ -71,13 +69,16 @@ document.addEventListener('DOMContentLoaded', function () {
       const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
       const pixels = imgData.data;
       for (let i = 0; i < pixels.length; i += 4) {
-        // Nếu pixel gần trắng (R,G,B > 240) thì cho opacity = 0
-        if (pixels[i] > 240 && pixels[i+1] > 240 && pixels[i+2] > 240) {
+        // Xóa màu trắng HOẶC màu đen tuyệt đối nếu có
+        const isWhite = pixels[i] > 240 && pixels[i+1] > 240 && pixels[i+2] > 240;
+        const isBlack = pixels[i] < 15 && pixels[i+1] < 15 && pixels[i+2] < 15;
+        if (isWhite || isBlack) {
           pixels[i+3] = 0;
         }
       }
       tempCtx.putImageData(imgData, 0, 0);
       hairCanvas = tempCanvas;
+      console.log("Hair Loaded Locally");
     };
 
 
