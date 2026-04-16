@@ -55,6 +55,32 @@ document.addEventListener('DOMContentLoaded', function () {
     let lastFaceDetectT = 0;
     const FACE_DETECT_INTERVAL = 150; // ms
 
+    // SSJ Hair Image Preload & BG Removal
+    const hairImg = new Image();
+    hairImg.crossOrigin = "anonymous";
+    hairImg.src = "https://w7.pngwing.com/pngs/351/314/png-transparent-goku-super-saiyan-hair-dragon-ball-goku-super-saiyan-hair-orange-human-hair-fictional-character.png"; 
+    
+    let hairCanvas = null;
+    hairImg.onload = () => {
+      // Xử lý xóa nền trắng
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCanvas.width = hairImg.width;
+      tempCanvas.height = hairImg.height;
+      tempCtx.drawImage(hairImg, 0, 0);
+      const imgData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+      const pixels = imgData.data;
+      for (let i = 0; i < pixels.length; i += 4) {
+        // Nếu pixel gần trắng (R,G,B > 240) thì cho opacity = 0
+        if (pixels[i] > 240 && pixels[i+1] > 240 && pixels[i+2] > 240) {
+          pixels[i+3] = 0;
+        }
+      }
+      tempCtx.putImageData(imgData, 0, 0);
+      hairCanvas = tempCanvas;
+    };
+
+
     const btn = document.getElementById('toggleNarutoMode');
     if (!btn) return;
     btn.addEventListener('click', () => narutoActive ? closeNaruto() : openNaruto());
@@ -1090,7 +1116,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function drawSSJHair(face, W, H) {
-      // Map coordinates
+      if (!hairCanvas) return;
       let rx, ry, fw, fh;
       if (face.method === 'hands') {
         rx = face.x / 640 * W; ry = face.y / 480 * H;
@@ -1099,51 +1125,22 @@ document.addEventListener('DOMContentLoaded', function () {
         rx = (face.x / face.vW) * W; ry = (face.y / face.vH) * H;
         fw = (face.w / face.vW) * W; fh = (face.h / face.vH) * H;
       }
-
-      // Debug face box (mờ) - Nếu thấy box này bám đúng mặt là OK
       nCtx.save();
-      nCtx.strokeStyle = 'rgba(255,255,0,0.3)';
-      nCtx.strokeRect(rx - fw/2, ry - fh/2, fw, fh);
-      nCtx.restore();
-
-      nCtx.save();
-      // Đẩy tóc lên cao hơn trán và giảm scale
+      const tw = fw * 1.55; 
+      const th = tw * (hairCanvas.height / hairCanvas.width);
       const tx = rx;
-      const ty = ry - fh * 0.72;
-      const tw = fw * 1.45; // Giảm từ 2.2 xuống 1.45
-      const th = fh * 1.35; // Giảm từ 1.9 xuống 1.35
-
+      const ty = ry - fh * 0.45 - th * 0.42; 
       nCtx.translate(tx, ty);
-      nCtx.globalAlpha = 1.0;
-      nCtx.shadowColor = '#fbbf24'; nCtx.shadowBlur = 40 + Math.sin(T * 0.01) * 15;
-      nCtx.fillStyle = '#fbbf24';
-      nCtx.beginPath();
-      nCtx.moveTo(-tw * 0.5, 0);
-      nCtx.quadraticCurveTo(-tw * 0.6, -th * 0.3, -tw * 0.4, -th * 0.45);
-      nCtx.lineTo(-tw * 0.25, -th * 0.35);
-      nCtx.lineTo(-tw * 0.15, -th * 0.9); 
-      nCtx.lineTo(0, -th * 0.5);
-      nCtx.lineTo(tw * 0.18, -th * 1.1);  
-      nCtx.lineTo(tw * 0.3, -th * 0.5);
-      nCtx.lineTo(tw * 0.5, -th * 0.85);
-      nCtx.lineTo(tw * 0.6, -th * 0.4);
-      nCtx.lineTo(tw * 0.75, 0);
-      nCtx.lineTo(tw * 0.4, th * 0.35);
-      nCtx.lineTo(-tw * 0.3, th * 0.35);
-      nCtx.closePath(); nCtx.fill();
-
-      // SSJ2 Electricity
-      if (Math.random() < 0.3) {
-        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 3;
+      nCtx.shadowColor = '#fbbf24'; nCtx.shadowBlur = 20;
+      nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
+      if (Math.random() < 0.2) {
+        nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 2;
         const ex = (Math.random() - 0.5) * tw; const ey = (Math.random() - 0.5) * th;
         nCtx.beginPath(); nCtx.moveTo(ex, ey);
-        nCtx.lineTo(ex + (Math.random()-0.5)*60, ey + (Math.random()-0.5)*60);
+        nCtx.lineTo(ex + (Math.random()-0.5)*40, ey + (Math.random()-0.5)*40);
         nCtx.stroke();
       }
-      nCtx.strokeStyle = '#fffbeb'; nCtx.lineWidth = 4; nCtx.stroke();
       nCtx.restore();
     }
-
-
   })();
 });
