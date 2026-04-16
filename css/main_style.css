@@ -1,0 +1,188 @@
+/* 
+   Btoan AI - Main Style v11.0 
+   Tách từ index.php để dễ quản lý
+*/
+
+/* GLOBAL */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto;
+  background: #f8fafc;
+  height: 100vh;
+}
+
+/* CUSTOM SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* LOGIN BOX */
+#loginBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+.auth-card {
+  width: 360px;
+  background: #fff;
+  border-radius: 14px;
+  padding: 30px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+.auth-title { font-size: 26px; font-weight: 700; text-align: center; margin-bottom: 20px; }
+#loginMsg, #registerMsg { font-size: 14px; min-height: 18px; }
+
+/* CHAT APP LAYOUT - PREMIUM REDESIGN */
+#chatApp {
+  display: none;
+  width: 100%;
+  height: 100vh;
+  background: #fdfdff;
+}
+.sidebar {
+  width: 290px;
+  background: #ffffff;
+  flex-shrink: 0;
+  border-right: 1px solid #f1f5f9;
+  height: 100vh;
+  overflow-y: auto;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+}
+@media (max-width: 768px) {
+  .sidebar { position: fixed; left: 0; top: 0; transform: translateX(-100%); width: 85%; }
+  .sidebar.open { transform: translateX(0); box-shadow: 20px 0 60px rgba(0,0,0,0.15); }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 999; backdrop-filter: blur(4px); }
+  .sidebar.open + .sidebar-overlay { display: block; }
+}
+
+.sidebar-title {
+  font-size: 14px;
+  text-transform: none;
+  font-weight: 750;
+  color: #334155;
+  padding: 20px 20px 8px;
+}
+
+.chat-history-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #334155;
+  transition: all 0.25s ease;
+  border-radius: 12px;
+  margin: 2px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chat-history-item:hover {
+  background: #f8fafc;
+  color: #2b7cff;
+  transform: translateX(3px);
+}
+.chat-history-item.active {
+  background: #eff6ff;
+  color: #2b7cff;
+}
+
+.new-chat-btn {
+  padding: 14px;
+  margin: 20px 15px;
+  background: linear-gradient(135deg, #2b7cff 0%, #7c3aed 100%);
+  color: white;
+  border-radius: 14px;
+  cursor: pointer;
+  text-align: center;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 8px 20px rgba(43, 124, 255, 0.25);
+  transition: all 0.3s;
+  border: none;
+}
+.new-chat-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(43, 124, 255, 0.35);
+  filter: brightness(1.1);
+}
+
+/* 🛡️ v11.0 Premium Utilities & Profile */
+.sidebar-utils {
+    padding: 0 12px 15px;
+}
+.util-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 15px;
+    border-radius: 12px;
+    color: #475569;
+    text-decoration: none !important;
+    font-weight: 600;
+    font-size: 13.5px;
+    transition: all 0.25s;
+    margin-bottom: 4px;
+    background: #fafafa;
+    border: 1px solid #f1f5f9;
+}
+.util-item:hover {
+    background: #ffffff;
+    color: #2b7cff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-color: #e2e8f0;
+}
+.util-item i { font-size: 16px; width: 20px; text-align: center; }
+
+.util-item[id="toggleHandMode"]:hover { border-color: #2b7cff; color: #2b7cff; }
+.util-item[id="toggleNarutoMode"]:hover { border-color: #f97316; color: #f97316; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  padding: 12px 24px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #f1f5f9;
+  position: sticky; top: 0; z-index: 10;
+}
+.brand-text {
+  font-size: 19px;
+  font-weight: 850;
+  color: #1e293b;
+  letter-spacing: -0.5px;
+}
+#chat { overflow: auto; }
+
+/* COMPONENTS & UI */
+.user-info { display: flex; align-items: center; gap: 10px; cursor: pointer; max-width: 220px; padding: 5px 10px; border-radius: 20px; transition: background 0.2s; }
+.avatar { width: 35px !important; height: 35px !important; border-radius: 50% !important; object-fit: cover !important; }
+#msg { border-radius: 24px; padding: 10px 20px; background: #f1f5f9; border: 1px solid transparent; transition: all 0.2s; }
+.send-btn { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-left: 8px; }
+
+/* MODALS */
+.profile-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.profile-card { background: #fff; width: 380px; padding: 30px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+.avatar-preview { width: 80px; height: 80px; background: #2b7cff; color: #fff; font-size: 32px; font-weight: bold; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin: 0 auto; object-fit: cover; }
+
+/* FACEID */
+@keyframes scanAnim { 0% { top: 0%; } 100% { top: 100%; } }
+.btn-danger { border-radius: 12px; color: #fff; border: none; font-weight: 600; cursor: pointer; transition: .3s; }
+
+/* HAND & NARUTO FX */
+#hand-cursor { box-shadow: 0 0 15px rgba(255, 0, 255, 0.5); background: rgba(255, 0, 255, 0.1); }
+#toggleHandMode.active { background: #2b7cff !important; color: #fff !important; }
+#toggleNarutoMode.naruto-active { background: #f97316 !important; color: #fff !important; }
+
+@keyframes shuriken-fly {
+  0%   { transform: translate(0,0) rotate(0deg) scale(1); opacity:1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(1440deg) scale(0.3); opacity:0; }
+}
+@keyframes boom-anim { 0% { transform: scale(0.5); opacity:1; } 100% { transform: scale(2.5); opacity:0; } }
+@keyframes genesis-pulse { 0% { opacity:0.4; transform: scale(1); } 50% { opacity:0.8; transform: scale(1.1); } 100% { opacity:0.4; transform: scale(1); } }
