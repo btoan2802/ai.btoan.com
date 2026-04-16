@@ -150,8 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
       particles.Left = []; particles.Right = []; particles.Bridge = [];
       hold.Lpoint = 0; hold.Rpoint = 0;
       if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
-      const ho = document.getElementById('hand-overlay');
-      if (ho && window.handEngine?.isActive) ho.style.display = 'block';
+      if (window.handEngine?.isActive) window.handEngine.stop();
     };
 
     async function openNaruto() {
