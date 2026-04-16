@@ -223,9 +223,8 @@ document.addEventListener('DOMContentLoaded', function () {
       
       const isValidHand = (s) => {
         if (!s || !s.landmarks) return false;
-        const pts = s.landmarks.map(lm => lm2px(lm, W, H));
-        const sz = dist2(pts[0], pts[9]);
-        return s.score > 0.75 && sz > 25; // Ngưỡng tin cậy cao + kích thước tối thiểu
+        // Giảm ngưỡng xuống 0.4 để bắt tay nhạy hơn
+        return s.score > 0.4; 
       };
 
       const Lactive = isValidHand(sL);
@@ -1136,18 +1135,17 @@ document.addEventListener('DOMContentLoaded', function () {
       const tw = fw * 3.0; 
       const th = tw * (hairCanvas.height / hairCanvas.width);
 
-      // Neo chân tóc: Đưa xuống thấp hơn để bám sát vùng trán
+      // Neo chân tóc: Nhấc cao lên trán (vùng 0.5 face + offset th 0.25)
       const tx = rx;
-      const ty = ry - fh * 0.45 - th * 0.15; // Hạ thấp hẳn so với bản cũ
+      const ty = (ry - fh * 0.5) - (th * 0.26); 
 
       nCtx.save();
-      // Debug Face (Ẩn hẳn)
       nCtx.translate(tx, ty);
-      nCtx.shadowColor = 'rgba(251, 191, 36, 0.4)';
+      nCtx.shadowColor = 'rgba(251, 191, 36, 0.45)';
       nCtx.shadowBlur = 25;
       nCtx.drawImage(hairCanvas, -tw/2, -th/2, tw, th);
       
-      // Electricity effect
+      // Tia chớp
       if (Math.random() < 0.15) {
         nCtx.strokeStyle = '#bae6fd'; nCtx.lineWidth = 1.5;
         const ex = (Math.random() - 0.5) * tw * 0.5; const ey = (Math.random() - 0.5) * th * 0.5;
