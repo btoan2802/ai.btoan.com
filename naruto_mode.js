@@ -25,21 +25,35 @@ document.addEventListener('DOMContentLoaded', function () {
     let T = 0; // frame timestamp
 
     // Particle pools
-    const particles = { Left: [], Right: [], Bridge: [] };
+    const particles = { Left: [], Right: [], Bridge: [], Kameha: [] };
 
-    // Hold counters cho gesture debounce (require N frame liên tục)
+    // Hold counters cho gesture debounce
     const hold = { Lpoint: 0, Rpoint: 0 };
     const HOLD_FRAMES = 3; // số frame phải giữ gesture
 
     // Summon progress: kiểm soát 3 pha hiệu ứng 2 tay
     const summon = {
-      progress: 0,       // 0 → 1
-      startedAt: 0,      // timestamp khi bridge bắt đầu
-      decayStart: 0,     // timestamp khi bắt đầu fade
-      state: 'idle',     // 'idle' | 'rising' | 'stable' | 'decaying'
+      progress: 0, startedAt: 0, decayStart: 0, state: 'idle',
     };
-    const SUMMON_RISE_MS  = 750;  // 0→1 mất 750ms
-    const SUMMON_DECAY_MS = 400;  // 1→0 mất 400ms
+    const SUMMON_RISE_MS  = 750;
+    const SUMMON_DECAY_MS = 400;
+
+    // Kamehameha state
+    const kameha = {
+      state: 'idle',  // 'idle'|'charging'|'firing'
+      chargeStart: 0,
+      progress: 0,    // 0→1 trong charge
+      origin: null,
+      angle: 0,
+      firedAt: 0,
+    };
+    const KAMEHA_CHARGE_MS = 1200; // tự động fire sau 1.2s charge
+    const KAMEHA_FIRE_MS   = 700;  // beam tồn tại 700ms
+
+    // Face state
+    let facePos = null; // { x, y, w, h, roll }
+    let lastFaceDetectT = 0;
+    const FACE_DETECT_INTERVAL = 150; // ms
 
     const btn = document.getElementById('toggleNarutoMode');
     if (!btn) return;
@@ -168,6 +182,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
       nCtx.clearRect(0, 0, W, H);
 
+      // ── Face detection (150ms interval) ──
+      const narutoCam = document.getElementById('naruto-camera');
+      if (narutoCam && T - lastFaceDetectT > FACE_DETECT_INTERVAL) {
+        lastFaceDetectT = T;
+        detectFace(narutoCam);
+      }
+
+      if (facePos) drawSSJHair(facePos, W, H);
+
       const sL = window.handEngine?.handStates?.['Left'];
       const sR = window.handEngine?.handStates?.['Right'];
       const Lactive = sL?.history?.length > 0 && sL.landmarks;
@@ -181,61 +204,93 @@ document.addEventListener('DOMContentLoaded', function () {
       const Rpointing = hold.Rpoint >= HOLD_FRAMES;
       const dualBridge = Lpointing && Rpointing;
 
-      // ── Summon progress management ──
-      if (dualBridge) {
-        if (summon.state === 'idle' || summon.state === 'decaying') {
-          summon.state     = 'rising';
-          // Tính startedAt dựa trên progress hiện tại (để tiếp nối mượt khi re-enter)
-          summon.startedAt = T - summon.progress * SUMMON_RISE_MS;
-        }
-        summon.progress = Math.min((T - summon.startedAt) / SUMMON_RISE_MS, 1);
-        if (summon.progress >= 1) summon.state = 'stable';
-      } else {
-        if (summon.state === 'rising' || summon.state === 'stable') {
-          summon.state      = 'decaying';
-          summon.decayStart = T - (1 - summon.progress) * SUMMON_DECAY_MS;
-        }
-        if (summon.state === 'decaying') {
-          summon.progress = Math.max(1 - (T - summon.decayStart) / SUMMON_DECAY_MS, 0);
-          if (summon.progress <= 0) { summon.state = 'idle'; summon.startedAt = 0; }
+      // ── Kamehameha detection (priority cao nhất trước bridge) ──
+      const kamehamehaClose = Lactive && Ractive && isKamehamehaClose(sL, sR, W, H);
+
+      // ── Summon progress management (chỉ khi không trong kameha) ──
+      if (!kamehamehaClose) {
+        if (dualBridge) {
+          if (summon.state === 'idle' || summon.state === 'decaying') {
+            summon.state = 'rising';
+            summon.startedAt = T - summon.progress * SUMMON_RISE_MS;
+          }
+          summon.progress = Math.min((T - summon.startedAt) / SUMMON_RISE_MS, 1);
+          if (summon.progress >= 1) summon.state = 'stable';
+        } else {
+          if (summon.state === 'rising' || summon.state === 'stable') {
+            summon.state      = 'decaying';
+            summon.decayStart = T - (1 - summon.progress) * SUMMON_DECAY_MS;
+          }
+          if (summon.state === 'decaying') {
+            summon.progress = Math.max(1 - (T - summon.decayStart) / SUMMON_DECAY_MS, 0);
+            if (summon.progress <= 0) { summon.state = 'idle'; summon.startedAt = 0; }
+          }
         }
       }
 
-      // ── PRIORITY: Dual Bridge (render even while decaying if progress > 0) ──
-      const bridgeVisible = summon.progress > 0 || dualBridge;
-      if (bridgeVisible && (sL?.landmarks || sR?.landmarks)) {
-        // Fallback: dùng tay nào còn trông thấy
-        const _sL = Lactive ? sL : sR;
-        const _sR = Ractive ? sR : sL;
-        if (_sL && _sR) drawDualIndexBridge(_sL, _sR, W, H, summon.progress);
-      } else {
+      // ── KAMEHA STATE MACHINE ──
+      if (kamehamehaClose && kameha.state === 'idle') {
+        kameha.state = 'charging';
+        kameha.chargeStart = T;
+        kameha.progress = 0;
+      }
+      if (!kamehamehaClose && kameha.state === 'charging') {
+        // Hủy nếu bỏ tay
+        kameha.state = 'idle'; kameha.progress = 0;
+      }
+      if (kameha.state === 'charging') {
+        kameha.progress = Math.min((T - kameha.chargeStart) / KAMEHA_CHARGE_MS, 1);
+        // Auto-fire khi chạm mức
+        if (kameha.progress >= 1) {
+          const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
+          const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
+          const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
+          const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
+          kameha.origin = { x: (palmL.x + palmR.x) * 0.5, y: (palmL.y + palmR.y) * 0.5 };
+          // Fire hướng về bên nhiều khoảng trống hơn
+          kameha.angle  = kameha.origin.x > W * 0.5 ? Math.PI : 0;
+          kameha.state  = 'firing';
+          kameha.firedAt = T;
+          kameha.progress = 0;
+        }
+      }
+      if (kameha.state === 'firing') {
+        kameha.progress = Math.min((T - kameha.firedAt) / KAMEHA_FIRE_MS, 1);
+        if (kameha.progress >= 1) kameha.state = 'idle';
+      }
+
+      // ── RENDER PRIORITY: kameha > bridge > single-hand ──
+      if (kameha.state === 'charging') {
+        // Vẫn hiện 2 tay nhưng với single effect nhẹ + kameha charge
         if (Lactive) drawHandEffect(sL, 'Left',  W, H);
         if (Ractive) drawHandEffect(sR, 'Right', W, H);
+        drawKamehaCharge(sL, sR, W, H, kameha.progress);
+      } else if (kameha.state === 'firing') {
+        drawKamehaBeam(kameha.origin, kameha.angle, kameha.progress, W, H);
+        drawParticles('Kameha', null, true);
+      } else {
+        const bridgeVisible = summon.progress > 0 || dualBridge;
+        if (bridgeVisible && (sL?.landmarks || sR?.landmarks)) {
+          const _sL = Lactive ? sL : sR;
+          const _sR = Ractive ? sR : sL;
+          if (_sL && _sR) drawDualIndexBridge(_sL, _sR, W, H, summon.progress);
+        } else {
+          if (Lactive) drawHandEffect(sL, 'Left',  W, H);
+          if (Ractive) drawHandEffect(sR, 'Right', W, H);
+        }
       }
 
-      // ── Pinch → launch (kể cả trong bridge mode) ──
-      ['Left', 'Right'].forEach(side => {
-        const s      = window.handEngine?.handStates?.[side];
-        const active = s?.history?.length > 0 && s.landmarks;
-        if (!active) return;
-        const isPinch = s.isPinching;
-        const wasLast = side === 'Left' ? lastPinchL : lastPinchR;
-        if (isPinch && !wasLast) {
-          const lms = s.landmarks;
-          const px  = ((1 - lms[4].x) + (1 - lms[8].x)) * 0.5 * W;
-          const py  = (lms[4].y + lms[8].y) * 0.5 * H;
-          doPinchFire(px, py, side === 'Left', W, H);
-        }
-        if (side === 'Left') lastPinchL = isPinch;
-        else                 lastPinchR = isPinch;
-      });
-
-      // ── Particle pools (always) ──
-      drawParticles('Left',   false);
-      drawParticles('Right',  true);
-      drawParticles('Bridge', null);
-
       animFrame = requestAnimationFrame(narutoLoop);
+    }
+
+    /* ── KAMEHAMEHA DETECTOR ──────────────────────────────────── */
+    function isKamehamehaClose(sL, sR, W, H) {
+      if (!sL.landmarks || !sR.landmarks) return false;
+      const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
+      const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
+      const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
+      const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
+      return dist2(palmL, palmR) < W * 0.26; // 2 lòng bàn tay gần nhau
     }
 
     /* ═══════════════════════════════════════════════════════
@@ -252,6 +307,14 @@ document.addEventListener('DOMContentLoaded', function () {
       const palm   = avgPts(pts, [0, 5, 9, 13, 17]);
       const handSz = dist2(pts[0], pts[9]); // wrist → middle MCP
 
+      // Calculate hand openness amount (fingertips distance to palm)
+      const tipIdxs = [4, 8, 12, 16, 20];
+      let avgTipDist = 0;
+      tipIdxs.forEach(t => avgTipDist += dist2(pts[t], palm));
+      avgTipDist /= tipIdxs.length;
+      // Normalization: raw open amount 0 (closed) to ~1.3 (fully open)
+      const openAmount = clamp(avgTipDist / (handSz * 1.5), 0.3, 1.4);
+
       // Fingertip + MCP pairs for energy lines
       const fingerPairs = [
         { tip: 4,  mcp: 2  }, // thumb
@@ -265,16 +328,19 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.globalCompositeOperation = 'screen';
 
       if (!s.isPinching) {
-        // ── Palm organic glow ──
-        drawOrganicCore(palm, handSz, isLeft);
+        // scale visual base on openness
+        const scl = openAmount;
 
-        // ── Energy tendrils palm → each fingertip ──
+        // ── Palm organic glow ──
+        drawOrganicCore(palm, handSz * (0.8 + scl * 0.4), isLeft);
+
+        // ── Energy tendrils palm → mỗi đầu ngón ──
         for (const { tip, mcp } of fingerPairs) {
           drawTendril(palm, pts[mcp], pts[tip], isLeft);
         }
 
         // ── Chakra ring (segmented, imperfect) ──
-        drawImperfectRing(palm, handSz * 0.95, isLeft);
+        drawImperfectRing(palm, handSz * 0.95 * scl, isLeft);
 
         // ── Emit sparks from extended fingertips ──
         for (const { tip } of fingerPairs) {
@@ -520,16 +586,16 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.save();
       nCtx.globalCompositeOperation = 'screen';
 
-      /* ── GIAI ĐOẠN 1: Seed sparks tại palm ──────────────────── */
-      for (const [palm, sz] of [[palmL, szL], [palmR, szR]]) {
-        const coreR = sz * 0.25 * sp * pulse;
-        if (coreR < 1) continue;
-        const gc = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, coreR * 2.5);
-        gc.addColorStop(0,   `rgba(220,245,255,${sp * 0.95})`);
-        gc.addColorStop(0.4, `rgba(90,170,255,${sp * 0.55})`);
-        gc.addColorStop(1,   'rgba(0,0,0,0)');
-        nCtx.fillStyle = gc;
-        nCtx.beginPath(); nCtx.arc(palm.x, palm.y, coreR * 2.5, 0, Math.PI * 2); nCtx.fill();
+      /* ── GIAI ĐOẠN 1: Seed sparks (Bỏ đốm sáng to) ─────────────── */
+      // Chỉ vẽ glow rất mờ, không vẽ đốm đặc
+      if (sp < 0.3) {
+        for (const palm of [palmL, palmR]) {
+          const g = nCtx.createRadialGradient(palm.x, palm.y, 0, palm.x, palm.y, szL * sp);
+          g.addColorStop(0, `rgba(100,180,255,${sp * 0.3})`);
+          g.addColorStop(1, 'rgba(0,0,0,0)');
+          nCtx.fillStyle = g;
+          nCtx.beginPath(); nCtx.arc(palm.x, palm.y, szL * sp, 0, Math.PI * 2); nCtx.fill();
+        }
       }
 
       /* ── GIAI ĐOẠN 2: Core phình lên (sp > 0.10) ──────────── */
@@ -837,3 +903,189 @@ document.addEventListener('DOMContentLoaded', function () {
 
   })();
 });
+    function drawKamehaCharge(sL, sR, W, H, p) {
+      const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
+      const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
+      const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
+      const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
+      const mid   = { x: (palmL.x + palmR.x) * 0.5, y: (palmL.y + palmR.y) * 0.5 };
+      const sz    = (dist2(ptsL[0], ptsL[9]) + dist2(ptsR[0], ptsR[9])) * 0.5;
+
+      const r = sz * (0.5 + p * 2.0); // phình to khi charge
+      const pulse = 0.8 + 0.2 * Math.sin(T * 0.02);
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+
+      // 1. Orb
+      const g = nCtx.createRadialGradient(mid.x, mid.y, 0, mid.x, mid.y, r);
+      g.addColorStop(0, `rgba(240, 255, 255, ${0.9 * pulse})`);
+      g.addColorStop(0.4, `rgba(100, 180, 255, ${0.7 * pulse})`);
+      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      nCtx.fillStyle = g;
+      nCtx.beginPath(); nCtx.arc(mid.x, mid.y, r, 0, Math.PI * 2); nCtx.fill();
+
+      // 2. Swirling rings
+      for (let i = 0; i < 3; i++) {
+        const ang = T * 0.005 + i * 2.1;
+        nCtx.strokeStyle = `rgba(150, 220, 255, ${0.4 * p})`;
+        nCtx.lineWidth = 2;
+        nCtx.beginPath();
+        nCtx.ellipse(mid.x, mid.y, r * 1.2, r * 0.4, ang, 0, Math.PI * 2);
+        nCtx.stroke();
+      }
+
+      // 3. Spikes/Lines intake
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2 + T * 0.002;
+        const dist = r * (1.5 + Math.sin(T * 0.01 + i) * 0.5);
+        const x = mid.x + Math.cos(ang) * dist;
+        const y = mid.y + Math.sin(ang) * dist;
+        nCtx.beginPath();
+        nCtx.moveTo(x, y);
+        nCtx.lineTo(mid.x, mid.y);
+        nCtx.strokeStyle = `rgba(200, 240, 255, ${0.3 * p})`;
+        nCtx.stroke();
+      }
+
+      if (Math.random() < 0.3 + p * 0.4) {
+        spawnKamehaParticle(mid, r);
+      }
+
+      nCtx.restore();
+    }
+
+    function drawKamehaBeam(origin, angle, p, W, H) {
+      const len = W * 1.5;
+      const width = 120 * (1 - p); // beam nhỏ dần khi tan biến
+      const endX = origin.x + Math.cos(angle) * len;
+      const endY = origin.y + Math.sin(angle) * len;
+
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+
+      // Beam body
+      const g = nCtx.createLinearGradient(origin.x, origin.y, endX, endY);
+      g.addColorStop(0, 'rgba(255, 255, 255, 1)');
+      g.addColorStop(0.1, 'rgba(100, 200, 255, 0.9)');
+      g.addColorStop(1, 'rgba(50, 100, 255, 0)');
+
+      nCtx.shadowColor = '#44aaff';
+      nCtx.shadowBlur = 40;
+      nCtx.strokeStyle = g;
+      nCtx.lineWidth = width;
+      nCtx.lineCap = 'round';
+
+      nCtx.beginPath();
+      nCtx.moveTo(origin.x, origin.y);
+      nCtx.lineTo(endX, endY);
+      nCtx.stroke();
+
+      // Core white line
+      nCtx.lineWidth = width * 0.4;
+      nCtx.strokeStyle = '#fff';
+      nCtx.beginPath();
+      nCtx.moveTo(origin.x, origin.y);
+      nCtx.lineTo(endX, endY);
+      nCtx.stroke();
+
+      // Turbulence/Noise (simple jittered lines)
+      for (let i = 0; i < 4; i++) {
+        nCtx.beginPath();
+        nCtx.moveTo(origin.x, origin.y);
+        const jitterX = (Math.random() - 0.5) * 40;
+        const jitterY = (Math.random() - 0.5) * 40;
+        nCtx.lineTo(endX + jitterX, endY + jitterY);
+        nCtx.lineWidth = width * 0.1;
+        nCtx.strokeStyle = `rgba(200, 240, 255, ${0.5 * (1 - p)})`;
+        nCtx.stroke();
+      }
+
+      // Origin shock ring
+      if (p < 0.3) {
+        nCtx.beginPath();
+        nCtx.arc(origin.x, origin.y, 80 * (p / 0.3), 0, Math.PI * 2);
+        nCtx.strokeStyle = `rgba(255, 255, 255, ${0.8 * (1 - p / 0.3)})`;
+        nCtx.lineWidth = 5;
+        nCtx.stroke();
+      }
+
+      nCtx.restore();
+    }
+
+    function spawnKamehaParticle(center, r) {
+      const ang = Math.random() * Math.PI * 2;
+      const dist = r * (1 + Math.random() * 0.5);
+      particles.Kameha.push({
+        x: center.x + Math.cos(ang) * dist,
+        y: center.y + Math.sin(ang) * dist,
+        vx: (center.x - (center.x + Math.cos(ang) * dist)) * 0.1,
+        vy: (center.y - (center.y + Math.sin(ang) * dist)) * 0.1,
+        life: 1.0,
+        size: 2 + Math.random() * 3,
+        fire: false
+      });
+    }
+    /* ── FACE DETECTION ─────────────────────────────────────── */
+    async function detectFace(video) {
+      if (!window.faceapi || !window.faceapi.nets.tinyFaceDetector.params) return;
+      const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 160 }));
+      if (result) {
+        const box = result.box;
+        // Mirror X because camera is mirrored
+        facePos = {
+          x: 1 - (box.x + box.width / 2) / video.videoWidth,
+          y: (box.y + box.height / 2) / video.videoHeight,
+          w: box.width / video.videoWidth,
+          h: box.height / video.videoHeight
+        };
+      } else {
+        facePos = null;
+      }
+    }
+
+    /* ── DRAW SSJ HAIR (Procedural) ───────────────────────── */
+    function drawSSJHair(face, W, H) {
+      const cx = face.x * W;
+      const cy = face.y * H;
+      const fw = face.w * W;
+      const fh = face.h * H;
+
+      nCtx.save();
+      // Tóc nằm trên trán
+      const tx = cx;
+      const ty = cy - fh * 0.45;
+      const tw = fw * 1.5;
+      const th = fh * 1.2;
+
+      nCtx.translate(tx, ty);
+      
+      // Glow vàng quanh tóc
+      nCtx.shadowColor = '#fbbf24';
+      nCtx.shadowBlur = 30 + Math.sin(T * 0.01) * 10;
+
+      nCtx.fillStyle = '#fbbf24'; // Goku Gold
+      nCtx.beginPath();
+      // Vẽ mớ tóc SSJ cơ bản bằng path
+      nCtx.moveTo(-tw * 0.5, 0);
+      nCtx.lineTo(-tw * 0.4, -th * 0.4);
+      nCtx.lineTo(-tw * 0.2, -th * 0.3);
+      nCtx.lineTo(-tw * 0.1, -th * 0.8); // Top spike 1
+      nCtx.lineTo(0, -th * 0.5);
+      nCtx.lineTo(tw * 0.1, -th * 1.0);  // Central spike
+      nCtx.lineTo(tw * 0.2, -th * 0.5);
+      nCtx.lineTo(tw * 0.4, -th * 0.8);  // Top spike 2
+      nCtx.lineTo(tw * 0.5, -th * 0.3);
+      nCtx.lineTo(tw * 0.6, 0);
+      nCtx.lineTo(tw * 0.3, th * 0.2);
+      nCtx.lineTo(-tw * 0.3, th * 0.2);
+      nCtx.closePath();
+      nCtx.fill();
+
+      // Highlight sáng trên tóc
+      nCtx.strokeStyle = '#fffbeb';
+      nCtx.lineWidth = 3;
+      nCtx.stroke();
+
+      nCtx.restore();
+    }
