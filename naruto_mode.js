@@ -241,18 +241,8 @@ document.addEventListener('DOMContentLoaded', function () {
       if (kameha.state === 'charging') {
         kameha.progress = Math.min((T - kameha.chargeStart) / KAMEHA_CHARGE_MS, 1);
         // Auto-fire khi chạm mức
-        if (kameha.progress >= 1) {
-          const ptsL = sL.landmarks.map(lm => lm2px(lm, W, H));
-          const ptsR = sR.landmarks.map(lm => lm2px(lm, W, H));
-          const palmL = avgPts(ptsL, [0, 5, 9, 13, 17]);
-          const palmR = avgPts(ptsR, [0, 5, 9, 13, 17]);
-
           kameha.origin = { x: (palmL.x + palmR.x) * 0.5, y: (palmL.y + palmR.y) * 0.5 };
-          
-          if (kameha.origin.x < W * 0.45) kameha.angle = 0;
-          else if (kameha.origin.x > W * 0.55) kameha.angle = Math.PI;
-          else kameha.angle = -Math.PI / 2;
-
+          kameha.angle  = 0; // Hướng "về phía camera" không cần góc 2D
           kameha.state  = 'firing';
           kameha.firedAt = T;
           kameha.progress = 0;
@@ -270,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (Ractive) drawHandEffect(sR, 'Right', W, H);
         drawKamehaCharge(sL, sR, W, H, kameha.progress);
       } else if (kameha.state === 'firing') {
-        drawKamehaBeam(kameha.origin, kameha.angle, kameha.progress, W, H);
+        drawKamehaFirePerspective(kameha.origin, kameha.progress, W, H);
         drawParticles('Kameha', null, true);
       } else {
         const bridgeVisible = summon.progress > 0 || dualBridge;
@@ -967,8 +957,51 @@ document.addEventListener('DOMContentLoaded', function () {
       nCtx.restore();
     }
 
+    function drawKamehaFirePerspective(origin, p, W, H) {
+      nCtx.save();
+      nCtx.globalCompositeOperation = 'screen';
+
+      // 1. Phình to nổ (Beam lao về camera)
+      const maxR = W * 0.8;
+      const r = 50 + maxR * Math.pow(p, 0.6);
+      const alpha = 1 - p;
+
+      const g = nCtx.createRadialGradient(origin.x, origin.y, r * 0.1, origin.x, origin.y, r);
+      g.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
+      g.addColorStop(0.3, `rgba(100, 180, 255, ${alpha * 0.8})`);
+      g.addColorStop(1, 'rgba(0, 50, 200, 0)');
+
+      nCtx.fillStyle = g;
+      nCtx.beginPath(); nCtx.arc(origin.x, origin.y, r, 0, Math.PI * 2); nCtx.fill();
+
+      // 2. Shock rings lao về Viewer
+      for (let i = 0; i < 3; i++) {
+        const ringP = (p * 3 + i) % 3 / 3; // 0->1
+        const ringR = ringP * maxR * 1.2;
+        const ringAlpha = (1 - ringP) * alpha;
+        nCtx.strokeStyle = `rgba(200, 240, 255, ${ringAlpha})`;
+        nCtx.lineWidth = 10 * (1 - ringP);
+        nCtx.beginPath();
+        nCtx.arc(origin.x, origin.y, ringR, 0, Math.PI * 2);
+        nCtx.stroke();
+      }
+
+      // 3. Central blinding line/X
+      nCtx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+      nCtx.lineWidth = 40 * alpha;
+      const xL = 200 * (1 - p);
+      nCtx.beginPath();
+      nCtx.moveTo(origin.x - xL, origin.y); nCtx.lineTo(origin.x + xL, origin.y);
+      nCtx.moveTo(origin.x, origin.y - xL); nCtx.lineTo(origin.x, origin.y + xL);
+      nCtx.stroke();
+
+      nCtx.restore();
+    }
+
     function drawKamehaBeam(origin, angle, p, W, H) {
+      // (Legacy - Giữ lại phòng hán)
       const len = W * 1.5;
+
       const width = 120 * (1 - p);
       const endX = origin.x + Math.cos(angle) * len;
       const endY = origin.y + Math.sin(angle) * len;
@@ -1022,27 +1055,49 @@ document.addEventListener('DOMContentLoaded', function () {
     /* ── FACE DETECTION & SSJ HAIR ────────────────────────── */
     async function detectFace(video) {
       if (!window.faceapi || !window.faceapi.nets.tinyFaceDetector.params) return;
-      // Giảm size xuống 128 để detect nhanh hơn
-      const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 128, scoreThreshold: 0.3 }));
+      
+      const result = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ 
+        inputSize: 160, 
+        scoreThreshold: 0.2 // Cực nhạy để bắt mặt trong tối
+      }));
+
       if (result) {
         const box = result.box;
-        // FaceAPI box coordinates are relative to video element actual size
         facePos = {
-          x: box.x + box.width / 2,
-          y: box.y + box.height / 2,
-          w: box.width,
-          h: box.height,
-          vW: video.videoWidth || video.width,
-          vH: video.videoHeight || video.height
+          x: box.x + box.width / 2, y: box.y + box.height / 2,
+          w: box.width, h: box.height,
+          vW: video.videoWidth || video.width, vH: video.videoHeight || video.height,
+          method: 'api'
         };
-      } else facePos = null;
+      } else {
+        // Fallback: Nếu 2 tay đang chụm lại hoặc POINTING, đoán vị trí đầu
+        const sL = window.handEngine?.handStates?.['Left'];
+        const sR = window.handEngine?.handStates?.['Right'];
+        if (sL?.landmarks && sR?.landmarks) {
+          const pL = avgPts(sL.landmarks.map(lm => lm2px(lm, 640, 480)), [0,5,9,13,17]);
+          const pR = avgPts(sR.landmarks.map(lm => lm2px(lm, 640, 480)), [0,5,9,13,17]);
+          facePos = {
+            x: (pL.x + pR.x) * 0.5,
+            y: Math.min(pL.y, pR.y) - 200, // Đầu nằm trên tay
+            w: 180, h: 220, vW: 640, vH: 480,
+            method: 'hands'
+          };
+        } else {
+           facePos = null;
+        }
+      }
     }
 
     function drawSSJHair(face, W, H) {
-      const rx = (face.x / face.vW) * W;
-      const ry = (face.y / face.vH) * H;
-      const fw = (face.w / face.vW) * W;
-      const fh = (face.h / face.vH) * H;
+      // Map coordinates
+      let rx, ry, fw, fh;
+      if (face.method === 'hands') {
+        rx = face.x / 640 * W; ry = face.y / 480 * H;
+        fw = face.w / 640 * W; fh = face.h / 480 * H;
+      } else {
+        rx = (face.x / face.vW) * W; ry = (face.y / face.vH) * H;
+        fw = (face.w / face.vW) * W; fh = (face.h / face.vH) * H;
+      }
 
       // Debug face box (mờ) - Nếu thấy box này bám đúng mặt là OK
       nCtx.save();
