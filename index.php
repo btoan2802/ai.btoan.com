@@ -545,6 +545,10 @@
             <i class="bi bi-hand-index-thumb" style="color:#2b7cff;"></i>
             <span>Hand Interaction</span>
           </div>
+          <div id="toggleNarutoMode" class="util-item" style="cursor:pointer;">
+            <span style="font-size:18px;">🌀</span>
+            <span>Naruto</span>
+          </div>
         </div>
 
         <div class="sidebar-title">
@@ -857,6 +861,196 @@
   <script src="hand_scene.js?v=9"></script>
   <script src="hand_shapes.js?v=4"></script>
   <script src="hand_engine.js?v=10"></script>
-</body>
+  <!-- ====== NARUTO SHURIKEN MODE ====== -->
+  <div id="naruto-overlay" style="display:none; position:fixed; inset:0; z-index:9999999; background:#000; overflow:hidden;">
 
+    <!-- Camera feed -->
+    <video id="naruto-camera" autoplay playsinline muted style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); opacity:0.85;"></video>
+
+    <!-- FX Layer: shuriken animations -->
+    <div id="naruto-fx-layer" style="position:absolute; inset:0; pointer-events:none;"></div>
+
+    <!-- Canvas overlay for drawing -->
+    <canvas id="naruto-canvas" style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
+
+    <!-- HUD -->
+    <div style="position:absolute; top:20px; left:0; right:0; display:flex; justify-content:center; pointer-events:none;">
+      <div style="background:rgba(0,0,0,0.6); color:#f97316; font-weight:900; font-size:16px; letter-spacing:3px; padding:8px 24px; border:1px solid #f97316; border-radius:4px; font-family:monospace;">
+        🌀 NARUTO MODE — Pinch để ném shuriken!
+      </div>
+    </div>
+
+    <!-- Score -->
+    <div id="naruto-score" style="position:absolute; top:20px; right:24px; background:rgba(0,0,0,0.7); color:#facc15; font-size:20px; font-weight:900; padding:8px 18px; border:1px solid #facc15; border-radius:6px; font-family:monospace;">
+      💠 0
+    </div>
+
+    <!-- Close button -->
+    <button onclick="closeNaruto()" style="position:absolute; top:20px; left:20px; background:rgba(220,38,38,0.85); border:none; color:#fff; font-size:14px; font-weight:700; padding:8px 16px; border-radius:8px; cursor:pointer; z-index:10;">
+      ✕ Đóng
+    </button>
+  </div>
+
+  <style>
+    @keyframes shuriken-fly {
+      0%   { transform: translate(0,0) rotate(0deg) scale(1); opacity:1; }
+      80%  { opacity:1; }
+      100% { transform: translate(var(--dx), var(--dy)) rotate(1440deg) scale(0.3); opacity:0; }
+    }
+    @keyframes boom-anim {
+      0%   { transform: scale(0.5); opacity:1; }
+      100% { transform: scale(2.5); opacity:0; }
+    }
+    .shuriken-fly {
+      position: absolute;
+      pointer-events: none;
+      font-size: 36px;
+      animation: shuriken-fly 0.9s cubic-bezier(0.2,0.8,0.2,1) forwards;
+    }
+    .boom-fx {
+      position: absolute;
+      pointer-events: none;
+      font-size: 60px;
+      animation: boom-anim 0.5s ease-out forwards;
+      transform-origin: center;
+    }
+    #toggleNarutoMode.naruto-active {
+      background: #f97316 !important;
+      color: #fff !important;
+    }
+    #toggleNarutoMode:hover {
+      background: #fff7ed !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(249,115,22,0.2);
+    }
+  </style>
+
+  <script>
+  (function() {
+    let narutoActive = false;
+    let narutoScore  = 0;
+    let narutoHands  = null;
+    let narutoStream = null;
+    let lastPinchL   = false, lastPinchR = false;
+    let animFrame    = null;
+
+    const btn = document.getElementById('toggleNarutoMode');
+    btn.addEventListener('click', () => narutoActive ? closeNaruto() : openNaruto());
+
+    window.closeNaruto = function() {
+      narutoActive = false;
+      document.getElementById('naruto-overlay').style.display = 'none';
+      btn.classList.remove('naruto-active');
+      if (narutoStream) { narutoStream.getTracks().forEach(t => t.stop()); narutoStream = null; }
+      if (narutoHands) { narutoHands.close(); narutoHands = null; }
+      if (animFrame)   { cancelAnimationFrame(animFrame); animFrame = null; }
+    };
+
+    async function openNaruto() {
+      narutoActive = true;
+      narutoScore  = 0;
+      document.getElementById('naruto-score').textContent = '💠 0';
+      document.getElementById('naruto-overlay').style.display = 'block';
+      document.getElementById('naruto-fx-layer').innerHTML = '';
+      btn.classList.add('naruto-active');
+
+      // Camera
+      try {
+        narutoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width:1280, height:720 } });
+        const vid = document.getElementById('naruto-camera');
+        vid.srcObject = narutoStream;
+        await new Promise(r => vid.onloadedmetadata = r);
+        vid.play();
+      } catch(e) {
+        alert('Không thể mở camera: ' + e.message);
+        closeNaruto(); return;
+      }
+
+      // MediaPipe Hands
+      if (typeof Hands === 'undefined') {
+        alert('MediaPipe Hands chưa load. Hãy tải lại trang!');
+        closeNaruto(); return;
+      }
+      narutoHands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+      narutoHands.setOptions({ maxNumHands:2, modelComplexity:0, minDetectionConfidence:0.7, minTrackingConfidence:0.5 });
+      narutoHands.onResults(onNarutoResults);
+
+      const vid = document.getElementById('naruto-camera');
+      const camera = new Camera(vid, {
+        onFrame: async () => { if(narutoActive) await narutoHands.send({ image: vid }); },
+        width: 1280, height: 720
+      });
+      camera.start();
+    }
+
+    function dist(a, b) {
+      return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+
+    function onNarutoResults(results) {
+      if (!narutoActive || !results.multiHandLandmarks) return;
+      const W = window.innerWidth, H = window.innerHeight;
+
+      results.multiHandLandmarks.forEach((lm, i) => {
+        const label = results.multiHandedness[i]?.label || 'Right';
+        const thumb = lm[4], index = lm[8];
+        const isPinch = dist(thumb, index) < 0.07;
+
+        const isLeft = (label === 'Left');
+        const wasLast = isLeft ? lastPinchL : lastPinchR;
+
+        if (isPinch && !wasLast) {
+          // Pinch started → launch shuriken
+          const sx = (1 - thumb.x) * W;
+          const sy = thumb.y * H;
+
+          // Random target direction (upward + spread)
+          const angle = (-Math.PI / 2) + (Math.random() - 0.5) * Math.PI * 0.8;
+          const power = 400 + Math.random() * 300;
+          const dx = Math.cos(angle) * power;
+          const dy = Math.sin(angle) * power;
+
+          launchShuriken(sx, sy, dx, dy);
+        }
+
+        if (isLeft) lastPinchL = isPinch;
+        else        lastPinchR = isPinch;
+      });
+    }
+
+    function launchShuriken(sx, sy, dx, dy) {
+      const layer = document.getElementById('naruto-fx-layer');
+      const el = document.createElement('div');
+      el.className = 'shuriken-fly';
+      el.textContent = '🌀';
+      el.style.left  = sx + 'px';
+      el.style.top   = sy + 'px';
+      el.style.setProperty('--dx', dx + 'px');
+      el.style.setProperty('--dy', dy + 'px');
+      layer.appendChild(el);
+
+      // Score + boom after flight
+      setTimeout(() => {
+        el.remove();
+        narutoScore++;
+        document.getElementById('naruto-score').textContent = '💠 ' + narutoScore;
+        spawnBoom(sx + dx * 0.8, sy + dy * 0.8);
+      }, 900);
+    }
+
+    function spawnBoom(x, y) {
+      const layer = document.getElementById('naruto-fx-layer');
+      const boom  = document.createElement('div');
+      boom.className = 'boom-fx';
+      boom.textContent = '💥';
+      boom.style.left = (x - 30) + 'px';
+      boom.style.top  = (y - 30) + 'px';
+      layer.appendChild(boom);
+      setTimeout(() => boom.remove(), 500);
+    }
+
+  })();
+  </script>
+
+</body>
 </html>
