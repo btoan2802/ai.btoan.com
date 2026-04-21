@@ -36,6 +36,7 @@ error_reporting(E_ALL);
 function sendJson(array $data, int $statusCode = 200): void
 {
     http_response_code($statusCode);
+    header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
@@ -44,8 +45,7 @@ function sendJsonError(string $message, $debug = null, int $statusCode = 200): v
 {
     sendJson([
         'success' => false,
-        'error' => $message,
-        'debug_info' => $debug
+        'error' => $message
     ], $statusCode);
 }
 
@@ -227,16 +227,9 @@ try {
         }
     }
 
-    sendJsonError($lastAttemptError, [
-        'model' => $model,
-        'http_code' => $lastHttpCode,
-        'raw_response' => $lastRawResponse
-    ]);
+    sendJsonError($lastAttemptError);
 
 } catch (Throwable $e) {
     error_log("Fatal Exception in generate_image.php: " . $e->getMessage());
-    sendJsonError($e->getMessage(), [
-        'file' => $e->getFile(),
-        'line' => $e->getLine()
-    ]);
+    sendJsonError($e->getMessage());
 }
