@@ -56,11 +56,6 @@ QUY TẮC XUẤT FILE:
   Ví dụ: [GENIMAGE] A realistic cat wearing a space helmet, cinematic lighting.
   KHÔNG giải thích thêm, chỉ trả về tag này.
 
-Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
-
-Nếu có nhiều thông tin về cùng một dữ kiện,
-hãy luôn dùng thông tin mới nhất và bỏ qua thông tin cũ.
-
 Khi viết công thức toán:
 - dùng $ ... $
 - tránh xuống dòng không cần thiết.
@@ -352,11 +347,11 @@ function addBotBubble(text, exportType = null) {
 // 📐 SMART MATH NORMALIZER
 function normalizeMathText(text) {
     if (!text) return "";
-    
+
     // 1. Remove forced line breaks between formula and its condition (với, khi, n != ...)
     // Detect patterns like: $$...$$ \n (với...)
     let cleaned = text.replace(/(\$\$[\s\S]*?\$\$)\s*\n\s*(\(với|\(khi|với|khi|dk:|đk:|n\s*[≠|!=])/gi, "$1 $2");
-    
+
     // 2. Fix multiple single newlines that should be a single paragraph
     // But keep double newlines as paragraph breaks
     // (This makes it look more like ChatGPT)
@@ -367,7 +362,7 @@ function normalizeMathText(text) {
 
 function streamBot(text, exportType = null) {
     const normalizedText = normalizeMathText(text);
-    
+
     const row = document.createElement("div")
     row.className = "msgrow bot"
 
@@ -376,7 +371,7 @@ function streamBot(text, exportType = null) {
 
     const content = document.createElement("div")
     content.className = "message-content"
-    
+
     bubble.appendChild(content)
     bubble.appendChild(createMessageActions({ text, exportType }))
 
@@ -447,47 +442,7 @@ function streamBot(text, exportType = null) {
 // ====== Gemini ======
 async function callGemini(userText, images, files) {
 
-    let memoryData = []
     let detectedIntent = "chat";
-
-    // 🧠 Step 1: Semantic Intent Routing (Classifier)
-    try {
-        const cRes = await fetch("/ai/api/classify_intent.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: userText })
-        });
-        const cData = await cRes.json();
-        detectedIntent = cData.intent || "chat";
-        console.log("🎯 Semantic Route:", detectedIntent);
-    } catch (e) {
-        console.warn("Intent routing failed, defaulting to chat", e);
-    }
-
-    const isVisualMode = detectedIntent.startsWith("visual_exact_");
-
-    // 📚 Step 2: Memory Load (Skip in Visual Mode)
-    if (!isVisualMode) {
-        try {
-            const mem = await fetch("/ai/api/get_memory.php?user_id=" + localStorage.getItem("user_id"))
-            let text = await mem.text()
-            if (text.trim() !== "") memoryData = JSON.parse(text);
-        } catch (e) {
-            console.log("memory load error", e)
-        }
-    } else {
-        console.log("🛡️ Visual Mode: Bypassing user memory to prevent contamination");
-    }
-
-    let extraKnowledge = ""
-    let userMemory = ""
-
-    if (memoryData.length) {
-        userMemory = `
-    Thông tin mới nhất về người dùng:
-    ${memoryData[0].memory_value}
-    `
-    }
 
     const isThinking =
         mode === "thinking" ||
@@ -510,7 +465,7 @@ async function callGemini(userText, images, files) {
             {
                 role: "user",
                 parts: [
-                    { text: systemInstruction + thinkingPrompt + toolInstruction + "\n" + userMemory }
+                    { text: systemInstruction + thinkingPrompt + toolInstruction }
                 ]
             },
 
@@ -642,7 +597,6 @@ async function send() {
     if (!userText.toLowerCase().includes("tìm trên mạng") && !userText.startsWith("/search")) {
         lastUserMessage = userText
     }
-    detectMemory(userText)
 
     const imgInput = document.getElementById("fileImg")
     const camInput = document.getElementById("fileCam")
@@ -653,7 +607,7 @@ async function send() {
 
     // ✅ FIXED: Only collect from imgInput because addImages consolidated everything there
     const allImages = Array.from(imgInput.files)
-    
+
     if (allImages.length > 0) {
         for (const file of allImages) {
 
@@ -803,12 +757,12 @@ async function send() {
         if (reply.includes("[GENIMAGE]")) {
             const tag = "[GENIMAGE]";
             const index = reply.indexOf(tag);
-            
+
             // Extract the pure text (combine content before and after the prompt if any)
             let textBefore = reply.substring(0, index).trim();
             // We assume the prompt is after the tag, but we stop at the next newline if the bot keeps talking
             let remainder = reply.substring(index + tag.length).trim();
-            
+
             // Split remainder into prompt and potential further text
             // If the bot follows instructions, this is just the prompt. 
             // If not, we take the first line as prompt and rest as text.
@@ -875,7 +829,7 @@ async function send() {
                 } else {
                     const errMsg = imgData?.error || "Lỗi không xác định";
                     const isQuota = errMsg.toLowerCase().includes("quota") || rawText.includes("429");
-                    
+
                     const errorBubble = document.createElement("div");
                     errorBubble.className = "msgrow bot";
                     errorBubble.innerHTML = `
@@ -919,7 +873,7 @@ async function send() {
             }
         }
 
-        detectCorrection(userText);
+
 
         typing.remove();
         streamBot(reply, exportType);
@@ -1170,7 +1124,7 @@ async function deleteChat(id) {
 }
 
 async function loadConversation(id, updateUrl = true) {
-    if (conversation_id === id && chatEl.innerHTML !== "" && !updateUrl) return; 
+    if (conversation_id === id && chatEl.innerHTML !== "" && !updateUrl) return;
 
     conversation_id = id;
     if (updateUrl) {
@@ -1178,7 +1132,7 @@ async function loadConversation(id, updateUrl = true) {
     }
 
 
-    
+
     // Immediate UI Feedback
     updateSidebarActive(id);
     chatEl.innerHTML = `
@@ -1366,7 +1320,7 @@ window.onload = function () {
         }, 200);
     } else if (window.location.pathname === "/" || window.location.pathname.endsWith("index.php") || window.location.pathname === "") {
         console.log("🚀 BtoanAI: Starting new chat");
-        newChat(false); 
+        newChat(false);
     }
 
 
@@ -1634,78 +1588,6 @@ function showLogin() {
 
 }
 
-async function detectCorrection(userText) {
-
-    const keywords = [
-        "sai",
-        "không đúng",
-        "phải là",
-        "đáp án là",
-        "correct",
-        "actually"
-    ]
-
-    let isCorrection = false
-
-    keywords.forEach(k => {
-        if (userText.toLowerCase().includes(k)) {
-            isCorrection = true
-        }
-    })
-
-    if (!isCorrection) return
-
-    await fetch("/ai/api/save_training.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            question: lastUserMessage,
-            ai_answer: lastAIAnswer,
-            correct_answer: userText,
-            user_id: localStorage.getItem("user_id")
-        })
-    })
-
-    console.log("AI learned correction")
-
-}
-async function detectMemory(userText) {
-
-    const keywords = [
-        "tôi là",
-        "tên tôi",
-        "tôi tên",
-        "tôi năm nay",
-        "tuổi",
-        "tôi sống ở"
-    ]
-
-    let save = false
-
-    keywords.forEach(k => {
-        if (userText.toLowerCase().includes(k)) {
-            save = true
-        }
-    })
-
-    if (!save) return
-
-    await fetch("/ai/api/save_memory.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            user_id: localStorage.getItem("user_id"),
-            memory: userText
-        })
-    })
-
-    console.log("memory saved")
-
-}
 function togglePassword(id, el) {
 
     const input = document.getElementById(id);
@@ -2369,7 +2251,7 @@ function viewImage(src) {
     const modal = document.getElementById("image-preview-modal");
     const img = document.getElementById("preview-img");
     if (!modal || !img) return;
-    
+
     img.src = src;
     modal.style.display = "flex";
 }
