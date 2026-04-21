@@ -213,49 +213,89 @@ body {
 .util-item[id="toggleHandMode"]:hover { border-color: #2b7cff; color: #2b7cff; }
 .util-item[id="toggleNarutoMode"]:hover { border-color: #f97316; color: #f97316; }
 
-/* 💎 Message Actions (Copy/Export) */
-.message-actions {
+/* 💎 Modern Corner Message Actions (ChatGPT Style) */
+
+.assistant-corner-actions {
+    position: absolute;
+    bottom: 6px;
+    right: 8px;
     display: flex;
-    gap: 6px;
-    margin-top: 12px;
-    opacity: 0.6;
+    gap: 4px;
+    opacity: 0;
     transition: opacity 0.2s;
+    background: transparent;
+    z-index: 10;
 }
-.bubble:hover .message-actions {
+.bubble:hover .assistant-corner-actions {
     opacity: 1;
 }
-.message-action-btn {
+.corner-action-btn {
     background: transparent;
-    border: 1px solid #e2e8f0;
-    color: #64748b;
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 8px;
+    border: none;
+    color: #94a3b8;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    cursor: pointer;
     transition: all 0.2s;
 }
-.message-action-btn:hover {
-    background: #f8fafc;
-    border-color: #cbd5e1;
-    color: #1e293b;
+.corner-action-btn:hover {
+    background: #f1f5f9;
+    color: #475569;
 }
-.message-action-btn i { font-size: 13px; }
+.corner-action-btn i { font-size: 14px; }
 
-/* 💻 Code Block Styles */
+/* 🏠 Enhanced Chat Layout Width */
+#chat {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+.bot .bubble {
+    max-width: 100%;
+    width: 100%;
+    padding-bottom: 35px !important; /* Room for corner actions */
+    position: relative;
+    border-radius: 18px;
+}
+
+
+.me .bubble {
+    max-width: 85%; /* Still offset slightly for contrast */
+}
+
+.topbar, .composer-inner, #attachments {
+    max-width: 1200px !important;
+    width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+/* 💻 Code Block Styles - Absolute Visibility */
 pre {
   position: relative !important;
   margin: 15px 0 !important;
   border-radius: 12px !important;
-  overflow: visible !important; /* To let button shadow show if needed */
+  overflow: hidden !important; 
+  background: #0b1020 !important;
 }
 
 pre code {
+  display: block !important;
   border-radius: 12px !important;
-  padding: 1.25em !important;
-  padding-top: 2.5em !important; /* Space for the header/button */
+  padding: 1.5em !important;
+  padding-top: 3em !important; 
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  max-height: none !important; /* Ensure full length shows */
+  min-height: 50px !important;
+  width: 100% !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  font-size: 13.5px !important;
+  line-height: 1.6 !important;
 }
 
 .copy-code-btn {
@@ -277,12 +317,13 @@ pre code {
   z-index: 100;
   backdrop-filter: blur(4px);
 }
-
 .copy-code-btn:hover {
   background: rgba(255, 255, 255, 0.12);
   border-color: rgba(255, 255, 255, 0.3);
   color: #fff;
 }
+
+
 
 .copy-code-btn i { font-size: 12px; }
 

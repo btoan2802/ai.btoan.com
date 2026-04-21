@@ -210,9 +210,11 @@ function addUserBubble(text, images = []) {
     }
 
     html += `
-        <button class="copy-btn-msg" type="button">
-            <i class="bi bi-clipboard"></i>
-        </button>
+        <div class="assistant-corner-actions">
+            <button class="corner-action-btn copy-btn-msg" title="Copy tin nhắn">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </div>
     `
 
     bubble.innerHTML = html
@@ -221,7 +223,7 @@ function addUserBubble(text, images = []) {
     if (copyBtn) {
         copyBtn.onclick = async () => {
             await navigator.clipboard.writeText(text || "")
-            copyBtn.innerHTML = `<i class="bi bi-check"></i>`
+            copyBtn.innerHTML = `<i class="bi bi-check2"></i>`
             setTimeout(() => {
                 copyBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
             }, 1200)
@@ -234,52 +236,37 @@ function addUserBubble(text, images = []) {
 
 function createMessageActions({ text, exportType = null, onExport = null }) {
     const actions = document.createElement("div")
-    actions.className = "message-actions"
+    actions.className = "assistant-corner-actions"
 
     if (exportType) {
         const exportBtn = document.createElement("button")
-        exportBtn.className = "message-action-btn message-action-btn-primary"
-        exportBtn.type = "button"
-        exportBtn.innerHTML = `
-            <i class="bi bi-download message-action-icon"></i>
-            <span>Tải ${exportType.toUpperCase()}</span>
-        `
+        exportBtn.className = "corner-action-btn"
+        exportBtn.title = `Tải ${exportType.toUpperCase()}`
+        exportBtn.innerHTML = `<i class="bi bi-download"></i>`
         exportBtn.onclick = () => {
             if (typeof onExport === "function") return onExport()
-            if (exportType === "docx") {
-                exportDOCX(text)
-            } else {
-                exportFile(text)
-            }
+            if (exportType === "docx") exportDOCX(text)
+            else exportFile(text)
         }
         actions.appendChild(exportBtn)
     }
 
-    const copyAllBtn = document.createElement("button")
-    copyAllBtn.className = "message-action-btn"
-    copyAllBtn.type = "button"
-    copyAllBtn.innerHTML = `
-        <i class="bi bi-copy"></i>
-        <span>Copy chat</span>
-    `
-
-    copyAllBtn.onclick = async () => {
+    const copyBtn = document.createElement("button")
+    copyBtn.className = "corner-action-btn"
+    copyBtn.title = "Copy tin nhắn"
+    copyBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
+    copyBtn.onclick = async () => {
         await navigator.clipboard.writeText(text || "")
-        copyAllBtn.innerHTML = `
-            <i class="bi bi-check2 message-action-icon"></i>
-            <span>Đã copy</span>
-        `
+        copyBtn.innerHTML = `<i class="bi bi-check2"></i>`
         setTimeout(() => {
-            copyAllBtn.innerHTML = `
-                <i class="bi bi-clipboard message-action-icon"></i>
-                <span>Copy</span>
-            `
-        }, 1200)
+            copyBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
+        }, 2000)
     }
+    actions.appendChild(copyBtn)
 
-    actions.appendChild(copyAllBtn)
     return actions
 }
+
 
 function addBotBubble(text, exportType = null) {
     if (!chatEl) return
