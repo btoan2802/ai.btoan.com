@@ -651,14 +651,12 @@ async function send() {
     let images = []
     let files = []
 
-    if (imgInput.files.length > 0 || camInput.files.length > 0) {
-
-        const allImages = [
-            ...Array.from(imgInput.files),
-            ...Array.from(camInput.files)
-        ]
-
+    // ✅ FIXED: Only collect from imgInput because addImages consolidated everything there
+    const allImages = Array.from(imgInput.files)
+    
+    if (allImages.length > 0) {
         for (const file of allImages) {
+
 
             const base64 = await new Promise(resolve => {
                 const reader = new FileReader()
