@@ -818,8 +818,20 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ prompt: imagePrompt })
                 })
-                const imgData = await imgRes.json()
+                
+                const raw = await imgRes.text()
+                console.log("IMAGE GEN RAW:", raw)
+
                 imgLoading.remove()
+
+                let imgData
+                try {
+                    imgData = JSON.parse(raw)
+                } catch (e) {
+                    addBotBubble("❌ Backend trả về định dạng lạ (không phải JSON): " + (raw.substring(0, 200) || "Empty response"))
+                    isSending = false
+                    return
+                }
 
                 if (imgData.success) {
                     const row = document.createElement("div")
@@ -837,11 +849,11 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
                     `
                     chatEl.appendChild(row)
                 } else {
-                    addBotBubble("❌ Lỗi tạo ảnh: " + imgData.error)
+                    addBotBubble("❌ Lỗi tạo ảnh: " + (imgData.error || "Unknown error"))
                 }
             } catch (e) {
                 imgLoading.remove()
-                addBotBubble("❌ Lỗi kết nối khi tạo ảnh: " + e.message)
+                addBotBubble("❌ Lỗi mạng/kết nối: " + e.message)
             }
 
             isSending = false
