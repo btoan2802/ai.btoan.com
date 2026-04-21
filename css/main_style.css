@@ -433,7 +433,7 @@ pre code {
 
 /* 💎 Premium Menu Items & Footer */
 .sidebar-footer {
-    padding: 15px 12px;
+    padding: 20px 14px;
     margin-top: auto;
     border-top: 1px solid #f1f5f9;
 }
@@ -441,48 +441,76 @@ pre code {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 14px;
-    border-radius: 8px;
+    padding: 12px 14px;
+    border-radius: 10px;
     cursor: pointer;
-    color: #ef4444; 
+    color: #64748b;
     font-weight: 600;
     font-size: 14px;
     transition: all 0.2s;
 }
 .logout-wrapper:hover {
-    background: #fef2f2;
-    color: #dc2626;
+    background: #f1f5f9;
+    color: #0f172a;
+}
+.logout-wrapper svg {
+    color: #94a3b8;
+}
+.logout-wrapper:hover svg {
+    color: #ef4444;
 }
 
+
+.user-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    width: 240px;
+    background: #fff;
+    border: 1px solid #f1f5f9;
+    border-radius: 12px;
+    padding: 8px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    z-index: 1000;
+}
 .menu-item-premium {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
+    gap: 12px;
+    padding: 10px 14px;
     cursor: pointer;
     border-radius: 8px;
     margin-bottom: 2px;
     color: #475569;
-    font-size: 13.5px;
+    font-size: 14px;
     font-weight: 500;
     transition: all 0.2s;
 }
 .menu-item-premium:hover {
-    background: #f1f5f9;
-    color: #1e293b;
+    background: #f8fafc;
+    color: #0f172a;
+}
+.menu-item-premium.text-danger {
+    color: #ef4444;
 }
 .menu-item-premium.text-danger:hover {
     background: #fef2f2;
     color: #dc2626;
 }
+.menu-item-divider {
+    height: 1px;
+    background: #f1f5f9;
+    margin: 6px 8px;
+}
 .menu-item-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    color: inherit;
+    width: 20px;
+    height: 20px;
 }
+
 
 @keyframes boom-anim { 0% { transform: scale(0.5); opacity:1; } 100% { transform: scale(2.5); opacity:0; } }
 /* 🔘 Lightweight Icon Controls (ChatGPT Style) */

@@ -61,7 +61,7 @@ Hãy trả về theo format:
 KHÔNG trả lời ngay.
 `;
 // ====== state ======
-let history = [];
+let chatHistoryBuffer = [];
 let lastUserMessage = "";
 
 function escapeHtml(str = "") {
@@ -598,13 +598,14 @@ async function callGemini(userText, images, files) {
     }
 
     if (!isInternalPrompt) {
-        history.push({ role: "user", parts });
-        history.push({ role: "model", parts: [{ text: reply }] });
+        chatHistoryBuffer.push({ role: "user", parts });
+        chatHistoryBuffer.push({ role: "model", parts: [{ text: reply }] });
     }
 
-    if (history.length > 20) {
-        history = history.slice(-20);
+    if (chatHistoryBuffer.length > 20) {
+        chatHistoryBuffer = chatHistoryBuffer.slice(-20);
     }
+
 
     return reply;
 
@@ -1226,8 +1227,9 @@ async function loadConversation(id, updateUrl = true) {
 
     conversation_id = id;
     if (updateUrl) {
-        history.pushState({ cid: id }, "", `/c/${id}`);
+        window.history.pushState({ cid: id }, "", `/c/${id}`);
     }
+
 
     
     // Immediate UI Feedback
@@ -1239,7 +1241,7 @@ async function loadConversation(id, updateUrl = true) {
         </div>
     `;
     attachments.innerHTML = "";
-    history = [];
+    chatHistoryBuffer = [];
     lastExportContent = "";
 
     try {
@@ -1252,7 +1254,7 @@ async function loadConversation(id, updateUrl = true) {
         data.forEach(m => {
             if (m.role === "user") {
                 addUserBubble(m.text, m.images || [])
-                history.push({
+                chatHistoryBuffer.push({
                     role: "user",
                     parts: [{ text: m.text }]
                 })
@@ -1306,7 +1308,7 @@ async function loadConversation(id, updateUrl = true) {
                     }
 
                 }
-                history.push({
+                chatHistoryBuffer.push({
                     role: "model",
                     parts: [{ text: m.text }]
                 })
@@ -1616,11 +1618,12 @@ function newChat(updateUrl = true) {
 
     conversation_id = null
     if (updateUrl) {
-        history.pushState(null, "", "/");
+        window.history.pushState(null, "", "/");
     }
     updateSidebarActive(null) // Clear active sidebar state
 
-    history = []
+    chatHistoryBuffer = []
+
     lastExportContent = ""
     const chatEl = document.getElementById("chat")
 
