@@ -784,18 +784,29 @@ async function send() {
             }
         }
 
-        // 🔥 AUTO GENIMAGE (IMPROVED)
+        // 🔥 AUTO GENIMAGE (ROBUST JOIN)
         if (reply.includes("[GENIMAGE]")) {
             const tag = "[GENIMAGE]";
             const index = reply.indexOf(tag);
-            const textPart = reply.substring(0, index).trim();
-            const imagePrompt = reply.substring(index + tag.length).trim();
+            
+            // Extract the pure text (combine content before and after the prompt if any)
+            let textBefore = reply.substring(0, index).trim();
+            // We assume the prompt is after the tag, but we stop at the next newline if the bot keeps talking
+            let remainder = reply.substring(index + tag.length).trim();
+            
+            // Split remainder into prompt and potential further text
+            // If the bot follows instructions, this is just the prompt. 
+            // If not, we take the first line as prompt and rest as text.
+            let promptLines = remainder.split("\n");
+            const imagePrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
+
+            const fullText = (textBefore + "\n" + textAfter).trim();
 
             typing.remove();
 
-            if (textPart) {
-                // Stream or add the text part immediately
-                streamBot(textPart, exportType);
+            if (fullText) {
+                streamBot(fullText, exportType);
             }
 
             const imgLoading = document.createElement("div");
@@ -805,7 +816,7 @@ async function send() {
             scrollToBottom();
 
             try {
-                const textToStore = textPart || "Mô tả ảnh:";
+                const textToStore = fullText || "Mô tả ảnh:";
                 const imgRes = await fetch("/ai/api/generate_image.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -818,6 +829,7 @@ async function send() {
                 });
 
                 const rawText = await imgRes.text();
+
                 imgLoading.remove();
 
                 let imgData = null;
@@ -1465,18 +1477,19 @@ function toggleSidebar() {
 
 
 function setMode(m) {
-
-    mode = m
-
-    const btn = document.getElementById("modeBtn")
+    mode = m;
+    const btn = document.getElementById("modeStatus");
+    if (!btn) return;
 
     if (m === "thinking") {
-        btn.innerText = "🧠 Thinking"
+        btn.innerText = "🧠 Thinking";
+        btn.className = "badge bg-warning text-dark ms-1";
     } else {
-        btn.innerText = "⚡ Fast"
+        btn.innerText = "⚡ Fast";
+        btn.className = "badge bg-light text-dark ms-1";
     }
-
 }
+
 
 document.getElementById("pickImage")?.addEventListener("click", () => {
     document.getElementById("fileImg").click()

@@ -209,6 +209,8 @@
               <button class="action-icon-btn" data-bs-toggle="dropdown" title="Tính năng thêm">
                 <i class="bi bi-plus-lg"></i>
               </button>
+              <span id="modeStatus" class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">⚡ Fast</span>
+
 
               <ul class="dropdown-menu">
                 <li><button id="pickImage" class="dropdown-item">🖼️ Gửi ảnh</button></li>
