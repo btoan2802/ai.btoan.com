@@ -859,10 +859,16 @@ async function send() {
 
                     if (imageStart !== -1) {
                         const start = imageStart + imageKey.length;
-                        const end = raw.indexOf('"', start);
-                        if (end !== -1) {
-                            imageBase64 = raw.substring(start, end);
+                        let end = raw.indexOf('","', start);
+
+                        if (end === -1) {
+                            end = raw.indexOf('"}', start);
                         }
+                        if (end === -1) {
+                            end = raw.length;
+                        }
+
+                        imageBase64 = raw.substring(start, end);
                     }
 
                     if (errorStart !== -1) {
@@ -911,7 +917,19 @@ async function send() {
                     return;
                 }
 
-                const imageSrc = `data:${imgData.mimeType};base64,${imgData.imageBase64}`;
+                const cleanMimeType = String(imgData.mimeType || "image/png").trim();
+
+                const cleanBase64 = String(imgData.imageBase64 || "")
+                    .replace(/\s+/g, "")              // bỏ xuống dòng, space
+                    .replace(/[^A-Za-z0-9+/=]/g, ""); // chỉ giữ ký tự base64 hợp lệ
+
+                if (!cleanBase64) {
+                    addBotBubble("❌ Base64 ảnh rỗng hoặc bị lỗi");
+                    isSending = false;
+                    return;
+                }
+
+                const imageSrc = `data:${cleanMimeType};base64,${cleanBase64}`;
 
                 const row = document.createElement("div");
                 row.className = "msgrow bot";
