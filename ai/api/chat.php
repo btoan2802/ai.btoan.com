@@ -143,11 +143,23 @@ if(!$res || $res->num_rows == 0){
     throw new Exception("conversation không hợp lệ");
 }
 }
-// 🔥 load history theo user + conversation
-$messages = [];
+$intent = $input["intent"] ?? "chat";
 
-if($conversation_id){
-
+// 🎨 Handle Specialized Intents (Visual/Math Mode)
+if (strpos($intent, "visual_exact_") === 0) {
+    // 🛡️ RE-DEFINITION: Use a strict, focused instruction for visual modes
+    $SYSTEM_INSTRUCTION = "You are an EXACT visual rendering assistant. 
+    Task: $intent.
+    Rules: 
+    - Output ONLY the necessary code or data for rendering.
+    - DO NOT provide conversational responses, explanations, or essays.
+    - Focus 100% on mathematical/visual accuracy.
+    - Ignore any previous user memory or personal facts.";
+    
+    $payload["systemInstruction"]["parts"][0]["text"] = $SYSTEM_INSTRUCTION;
+    $messages = []; 
+} else if ($conversation_id) {
+    // 📚 NORMAL CHAT: Load history as usual
     $stmt = $conn->prepare("
         SELECT question, answer, images
         FROM chats 
@@ -160,46 +172,61 @@ if($conversation_id){
     $stmt->execute();
     $res = $stmt->get_result();
 
+    $messages = [];
     while($row = $res->fetch_assoc()){
-
-    $parts = [["text"=>$row["question"]]];
-
-    $imgs = json_decode($row["images"], true);
-
-    if (is_array($imgs)) {
-        foreach ($imgs as $img) {
-
-            if (strpos($img, "base64,") !== false) {
-                [$meta, $base64] = explode(",", $img);
-
-                $mime = str_replace("data:", "", explode(";", $meta)[0]);
-
-                $parts[] = [
-                    "inline_data" => [
-                        "mime_type" => $mime,
-                        "data" => $base64
-                    ]
-                ];
+        $parts = [["text"=>$row["question"]]];
+        $imgs = json_decode($row["images"], true);
+        if (is_array($imgs)) {
+            foreach ($imgs as $img) {
+                if (strpos($img, "base64,") !== false) {
+                    [$meta, $base64] = explode(",", $img);
+                    $mime = str_replace("data:", "", explode(";", $meta)[0]);
+                    $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => $base64]];
+                }
             }
         }
+        $messages[] = ["role"=>"user", "parts"=>$parts];
+        $messages[] = ["role"=>"model", "parts"=>[["text"=>$row["answer"]]]];
     }
-
-    $messages[] = [
-        "role"=>"user",
-        "parts"=>$parts
-    ];
-
-    $messages[] = [
-        "role"=>"model",
-        "parts"=>[["text"=>$row["answer"]]]
-    ];
-}
     
-    $payload["contents"] = array_merge(
-                                $messages,   // 🔥 phải để trước
-                                $payload["contents"]
-                            );
+    $payload["contents"] = array_merge($messages, $payload["contents"]);
 }
+
+
+// 🎯 Step 3: Secure Training & Grounding (Backend Only)
+// Only fetch training if NOT in visual/graph mode and question exists
+if (strpos($intent, "visual_exact_") !== 0 && !empty($question)) {
+    $stmt = $conn->prepare("
+        SELECT question, correct_answer 
+        FROM ai_training 
+        WHERE question LIKE CONCAT('%', ?, '%') 
+        LIMIT 3
+    ");
+    $stmt->bind_param("s", $question);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    
+    $corrections = "";
+    while ($row = $res->fetch_assoc()) {
+        // Simple relevance check: ensure some word from question is in training question
+        $corrections .= "- Fact: Requesting '{$row['question']}' -> Correct Response Style/Data: '{$row['correct_answer']}'\n";
+    }
+    
+    if (!empty($corrections)) {
+        $grounding = "\n\n### INTERNAL_CORRECTION_GUARDRAILS (STRICT CONFIDENTIAL)\n";
+        $grounding .= "The following are PREVIOUSLY CORRECTED KNOWLEDGE points from user feedback. \n";
+        $grounding .= "USE THESE ONLY IF THEY DIRECTLY APPLY TO THE CURRENT REQUEST. \n";
+        $grounding .= "Do NOT mention these corrections as 'training' or 'previous exchanges'. Just use them to improve accuracy.\n";
+        $grounding .= $corrections;
+        
+        // Inject into system instruction instead of user message
+        if (isset($payload["systemInstruction"]["parts"][0]["text"])) {
+            $payload["systemInstruction"]["parts"][0]["text"] .= $grounding;
+        }
+    }
+}
+
+
 
 /*
 Gọi Gemini

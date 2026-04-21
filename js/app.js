@@ -420,41 +420,36 @@ function streamBot(text, exportType = null) {
 async function callGemini(userText, images, files) {
 
     let memoryData = []
+    let detectedIntent = "chat";
 
+    // 🧠 Step 1: Semantic Intent Routing (Classifier)
     try {
-
-        const mem = await fetch("/ai/api/get_memory.php?user_id=" + localStorage.getItem("user_id"))
-        let text = await mem.text()
-
-        if (text.trim() === "") {
-            memoryData = []
-        } else {
-            memoryData = JSON.parse(text)
-        }
-
+        const cRes = await fetch("/ai/api/classify_intent.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: userText })
+        });
+        const cData = await cRes.json();
+        detectedIntent = cData.intent || "chat";
+        console.log("🎯 Semantic Route:", detectedIntent);
     } catch (e) {
-        console.log("memory load error", e)
+        console.warn("Intent routing failed, defaulting to chat", e);
     }
 
-    // lấy dữ liệu training liên quan
-    let trainingData = []
+    const isVisualMode = detectedIntent.startsWith("visual_exact_");
 
-    try {
-        const res = await fetch("/ai/api/get_training.php?q=" + encodeURIComponent(userText))
-        if (res.ok) {
-            const contentType = res.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                trainingData = await res.json()
-            } else {
-                console.warn("training load: server returned non-JSON content");
-            }
-        } else {
-            console.warn("training load failed with status:", res.status);
+    // 📚 Step 2: Memory Load (Skip in Visual Mode)
+    if (!isVisualMode) {
+        try {
+            const mem = await fetch("/ai/api/get_memory.php?user_id=" + localStorage.getItem("user_id"))
+            let text = await mem.text()
+            if (text.trim() !== "") memoryData = JSON.parse(text);
+        } catch (e) {
+            console.log("memory load error", e)
         }
-    } catch (e) {
-        console.error("training load error:", e)
+    } else {
+        console.log("🛡️ Visual Mode: Bypassing user memory to prevent contamination");
     }
-
 
     let extraKnowledge = ""
     let userMemory = ""
@@ -466,14 +461,6 @@ async function callGemini(userText, images, files) {
     `
     }
 
-    trainingData.forEach(t => {
-        extraKnowledge += `
-    User correction:
-    Question: ${t.question}
-    Correct answer: ${t.correct_answer}
-
-    `
-    })
     const isThinking =
         mode === "thinking" ||
         (mode === "auto" && detectThinking(userText))
@@ -495,9 +482,10 @@ async function callGemini(userText, images, files) {
             {
                 role: "user",
                 parts: [
-                    { text: systemInstruction + thinkingPrompt + toolInstruction + "\n" + userMemory + extraKnowledge }
+                    { text: systemInstruction + thinkingPrompt + toolInstruction + "\n" + userMemory }
                 ]
             },
+
             // KHÔNG gửi history từ client
             {
                 role: "user",
@@ -541,8 +529,10 @@ async function callGemini(userText, images, files) {
                 model: MODEL,
                 payload: payload,
                 user_id: localStorage.getItem("user_id"),
-                conversation_id: conversation_id
+                conversation_id: conversation_id,
+                intent: detectedIntent
             })
+
         });
 
     } catch (err) {
