@@ -1406,20 +1406,22 @@ window.onload = function () {
     sendBtn = document.getElementById("send");
 
     // Routing Logic
+    // Routing Logic
     const urlParams = new URLSearchParams(window.location.search);
     const cidFromQuery = urlParams.get('c');
-    const pathParts = window.location.pathname.split('/');
-    const cidFromPath = pathParts[1] === 'c' ? pathParts[2] : null;
-    const cidToLoad = cidFromPath || cidFromQuery;
+    const pathMatch = window.location.pathname.match(/\/c\/([0-9]+)/);
+    const cidToLoad = (pathMatch ? pathMatch[1] : null) || cidFromQuery;
 
     if (cidToLoad) {
-        // Wait for history to load then switch
+        console.log("🚀 BtoanAI: Restoring conversation", cidToLoad);
         setTimeout(() => {
             loadConversation(cidToLoad, false);
-        }, 300);
-    } else if (window.location.pathname === "/" || window.location.pathname.endsWith("index.php")) {
+        }, 200);
+    } else if (window.location.pathname === "/" || window.location.pathname.endsWith("index.php") || window.location.pathname === "") {
+        console.log("🚀 BtoanAI: Starting new chat");
         newChat(false); 
     }
+
 
 
     window.addEventListener('popstate', (e) => {
