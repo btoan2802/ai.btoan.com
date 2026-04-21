@@ -1137,9 +1137,7 @@ function logout() {
 
 // ====== HISTORY ======
 async function loadHistory() {
-
     const user_id = localStorage.getItem("user_id");
-
     const res = await fetch("/ai/api/get_conversations.php?user_id=" + user_id);
     const data = await res.json();
 
@@ -1147,13 +1145,14 @@ async function loadHistory() {
     if (!list) return;
 
     list.innerHTML = "";
-
     if (data.length === 0) return;
 
-    data.forEach((c, i) => {
-
+    data.forEach((c) => {
         const div = document.createElement("div")
-        div.className = "chat-history-item d-flex justify-content-between align-items-center"
+        // Apply active class if this is the current conversation
+        const isActive = conversation_id == c.id;
+        div.className = `chat-history-item d-flex justify-content-between align-items-center ${isActive ? 'active' : ''}`;
+        div.setAttribute('data-id', c.id);
 
         div.innerHTML = `
     <div class="chat-title">${c.title}</div>
@@ -1177,19 +1176,23 @@ async function loadHistory() {
             </li>
         </ul>
     </div>
-    `
+    `;
 
-
-        div.onclick = () => loadConversation(c.id)
-        div.style.cursor = "pointer"
-
-
-        list.appendChild(div)
-
-
+        div.onclick = () => loadConversation(c.id);
+        list.appendChild(div);
     });
-
 }
+
+function updateSidebarActive(id) {
+    document.querySelectorAll('.chat-history-item').forEach(item => {
+        if (item.getAttribute('data-id') == id) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
 
 //rename
 
@@ -1247,78 +1250,73 @@ async function deleteChat(id) {
 }
 
 async function loadConversation(id) {
+    if (conversation_id === id && chatEl.innerHTML !== "") return; // Avoid redundant loads
 
-    conversation_id = id
-
-    const res = await fetch("/ai/api/get_messages.php?conversation_id=" + id)
-    const data = await res.json()
-
-    chatEl.innerHTML = "";
+    conversation_id = id;
+    
+    // Immediate UI Feedback
+    updateSidebarActive(id);
+    chatEl.innerHTML = `
+        <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted opacity-50">
+            <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+            <div style="font-size: 13px;">Đang tải cuộc trò chuyện...</div>
+        </div>
+    `;
     attachments.innerHTML = "";
-    history = []
-    lastExportContent = ""
+    history = [];
+    lastExportContent = "";
 
-    data.forEach(m => {
+    try {
+        const res = await fetch("/ai/api/get_messages.php?conversation_id=" + id);
+        const data = await res.json();
 
-        if (m.role === "user") {
+        chatEl.innerHTML = ""; // Clear loader
 
-            addUserBubble(m.text, m.images || [])
 
-            history.push({
-                role: "user",
-                parts: [{ text: m.text }]
-            })
-
-        } else {
-
-            if (m.text.startsWith("[EXPORT_FILE]||")) {
-
-                const base64Data = m.text.split("||")[1]
-                const content = atob(base64Data)
-
-                const clean = fixLatex(cleanExportContent(content))
-
-                const base64Encoded = btoa(unescape(encodeURIComponent(clean)))
-                const url = "data:text/plain;base64," + base64Encoded
-
-                addBotBubble(`
+        data.forEach(m => {
+            if (m.role === "user") {
+                addUserBubble(m.text, m.images || [])
+                history.push({
+                    role: "user",
+                    parts: [{ text: m.text }]
+                })
+            } else {
+                if (m.text.startsWith("[EXPORT_FILE]||")) {
+                    const base64Data = m.text.split("||")[1]
+                    const content = atob(base64Data)
+                    const clean = fixLatex(cleanExportContent(content))
+                    const base64Encoded = btoa(unescape(encodeURIComponent(clean)))
+                    const url = "data:text/plain;base64," + base64Encoded
+                    addBotBubble(`
     📄 File đã xuất trước đó:
 
     👉 <a href="${url}" target="_blank">Mở lại</a>
     `)
-            } else {
-
-                let text = m.text
-                let exportType = null
-
-                if (text.includes("[EXPORT]")) {
-                    const parts = text.split("[EXPORT]")
-                    text = parts[0].trim()
-                    exportType = parts[1].trim().toLowerCase()
-                }
-
-                // nếu nội dung đủ tốt để export thì lưu lại
-                if (
-                    isValidForExport(text) &&
-                    !text.includes("📄 File đã xuất trước đó") &&
-                    !text.includes("📄 File DOCX đã sẵn sàng") &&
-                    !text.includes("📄 File đã sẵn sàng")
-                ) {
-                    lastExportContent = text
-                    localStorage.setItem("lastExportContent", text)
-                }
-
-                addBotBubble(text, exportType)
-                if (Array.isArray(m.images) && m.images.length > 0) {
-                    const row = document.createElement("div");
-                    row.className = "msgrow bot";
-
-                    const bubble = document.createElement("div");
-                    bubble.className = "bubble position-relative";
-
-                    const imageSrc = m.images[0];
-
-                    bubble.innerHTML = `
+                } else {
+                    let text = m.text
+                    let exportType = null
+                    if (text.includes("[EXPORT]")) {
+                        const parts = text.split("[EXPORT]")
+                        text = parts[0].trim()
+                        exportType = parts[1].trim().toLowerCase()
+                    }
+                    if (
+                        isValidForExport(text) &&
+                        !text.includes("📄 File đã xuất trước đó") &&
+                        !text.includes("📄 File DOCX đã sẵn sàng") &&
+                        !text.includes("📄 File đã sẵn sàng")
+                    ) {
+                        lastExportContent = text
+                        localStorage.setItem("lastExportContent", text)
+                    }
+                    addBotBubble(text, exportType)
+                    if (Array.isArray(m.images) && m.images.length > 0) {
+                        const row = document.createElement("div");
+                        row.className = "msgrow bot";
+                        const bubble = document.createElement("div");
+                        bubble.className = "bubble position-relative";
+                        const imageSrc = m.images[0];
+                        bubble.innerHTML = `
         <div class="mb-2">Đây là ảnh của bạn:</div>
         <img
             src="${imageSrc}"
@@ -1336,25 +1334,22 @@ async function loadConversation(id) {
             </a>
         </div>
     `;
-
-                    bubble.querySelector("img").onclick = () => window.open(imageSrc, "_blank");
-
-                    row.appendChild(bubble);
-                    chatEl.appendChild(row);
+                        bubble.querySelector("img").onclick = () => window.open(imageSrc, "_blank");
+                        row.appendChild(bubble);
+                        chatEl.appendChild(row);
+                    }
                 }
+                history.push({
+                    role: "model",
+                    parts: [{ text: m.text }]
+                })
             }
-
-            history.push({
-                role: "model",
-                parts: [{ text: m.text }]
-            })
-
-        }
-
-    })
-
-    scrollToBottom()
-
+        })
+        scrollToBottom()
+    } catch (e) {
+        console.error("LOAD CONV ERROR:", e)
+        chatEl.innerHTML = '<div class="p-4 text-center text-danger">⚠️ Không thể tải cuộc trò chuyện.</div>'
+    }
 }
 
 function getLastBotMessageText() {
@@ -1624,10 +1619,11 @@ document.getElementById("fileDoc")?.addEventListener("change", (e) => {
 
 })
 function newChat() {
-    autoRenamed = false  // 🔥 THÊM DÒNG NÀY
+    autoRenamed = false
     lastAIAnswer = ""
 
     conversation_id = null
+    updateSidebarActive(null) // Clear active sidebar state
     history = []
     lastExportContent = ""
     const chatEl = document.getElementById("chat")
@@ -1637,7 +1633,6 @@ function newChat() {
     }
 
     addBotBubble("chào bạn 😄 tôi là Btoan AI.")
-
 }
 document.addEventListener("click", function (e) {
 
