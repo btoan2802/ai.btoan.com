@@ -942,7 +942,7 @@ async function send() {
         <img 
             src="${imageSrc}" 
             alt="Generated image"
-            style="max-width:100%;border-radius:10px;cursor:pointer;display:block;"
+            style="width:100%;height:auto;object-fit:contain;border-radius:10px;cursor:pointer;display:block;"
         >
         <div class="mt-2">
             <a 
