@@ -70,27 +70,27 @@ body {
 }
 
 .chat-history-item {
-  padding: 8px 12px;
+  padding: 9px 12px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 500;
-  color: #334155;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 12px;
-  margin: 4px 12px;
+  color: #475569;
+  transition: all 0.2s ease;
+  border-radius: 10px;
+  margin: 2px 10px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   position: relative;
 }
 .chat-history-item:hover {
   background: #f1f5f9;
-  color: #2b7cff;
+  color: #1e293b;
 }
 .chat-history-item.active {
-  background: #eff6ff;
-  color: #2b7cff;
-  border: 1px solid rgba(43, 124, 255, 0.1);
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 600;
 }
 
 .chat-title {
@@ -101,72 +101,80 @@ body {
 }
 
 .history-action-btn {
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
+  border-radius: 6px;
   border: none;
   background: transparent;
-  color: #64748b;
+  color: #94a3b8;
   transition: all 0.2s;
   padding: 0;
   opacity: 0;
-  transform: translateX(5px);
 }
 
 .chat-history-item:hover .history-action-btn {
-  opacity: 1;
-  transform: translateX(0);
+  opacity: 0.7;
 }
 
 .history-action-btn:hover {
-  background: #fff;
-  color: #2b7cff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  background: #e2e8f0;
+  color: #1e293b;
+  opacity: 1 !important;
 }
 
 .history-action-btn:active {
-  transform: scale(0.92);
+  transform: scale(0.9);
 }
 
 .dropdown-menu {
-  border: none;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
   border-radius: 12px;
-  padding: 8px;
+  padding: 6px;
+  min-width: 140px;
 }
 
 .dropdown-item {
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 7px 10px;
   font-weight: 500;
-  font-size: 13.5px;
+  font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  color: #475569;
 }
 
 .dropdown-item:hover {
-  background: #f8fafc;
+  background: #f1f5f9;
+  color: #1e293b;
 }
+
+.dropdown-item.text-danger:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
 
 
 .new-chat-btn {
-  padding: 14px;
-  margin: 20px 15px;
+  padding: 12px;
+  margin: 15px 12px 20px;
   background: linear-gradient(135deg, #2b7cff 0%, #7c3aed 100%);
   color: white;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
   text-align: center;
   font-weight: 700;
-  font-size: 15px;
-  box-shadow: 0 8px 20px rgba(43, 124, 255, 0.25);
-  transition: all 0.3s;
+  font-size: 14.5px;
+  box-shadow: 0 4px 15px rgba(43, 124, 255, 0.2);
+  transition: all 0.25s;
   border: none;
 }
+
 .new-chat-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 12px 25px rgba(43, 124, 255, 0.35);
@@ -181,12 +189,12 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 15px;
-    border-radius: 12px;
+    padding: 9px 12px;
+    border-radius: 10px;
     color: #475569;
     text-decoration: none !important;
     font-weight: 600;
-    font-size: 13.5px;
+    font-size: 13px;
     transition: all 0.25s;
     margin-bottom: 4px;
     background: #fafafa;
@@ -194,15 +202,120 @@ body {
 }
 .util-item:hover {
     background: #ffffff;
-    color: #2b7cff;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    color: #1e293b;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     border-color: #e2e8f0;
 }
-.util-item i { font-size: 16px; width: 20px; text-align: center; }
+.util-item i { font-size: 15px; width: 18px; text-align: center; }
+
 
 .util-item[id="toggleHandMode"]:hover { border-color: #2b7cff; color: #2b7cff; }
 .util-item[id="toggleNarutoMode"]:hover { border-color: #f97316; color: #f97316; }
+
+/* 💎 Message Actions (Copy/Export) */
+.message-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 12px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+.bubble:hover .message-actions {
+    opacity: 1;
+}
+.message-action-btn {
+    background: transparent;
+    border: 1px solid #e2e8f0;
+    color: #64748b;
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+.message-action-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #1e293b;
+}
+.message-action-btn i { font-size: 13px; }
+
+/* 💻 Code Block Styles */
+pre {
+  position: relative !important;
+  margin: 15px 0 !important;
+  border-radius: 12px !important;
+  overflow: visible !important; /* To let button shadow show if needed */
+}
+
+pre code {
+  border-radius: 12px !important;
+  padding: 1.25em !important;
+  padding-top: 2.5em !important; /* Space for the header/button */
+}
+
+.copy-code-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  cursor: pointer;
+  z-index: 100;
+  backdrop-filter: blur(4px);
+}
+
+.copy-code-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+.copy-code-btn i { font-size: 12px; }
+
+/* 👤 User Message Copy Button */
+.copy-btn-msg {
+    position: absolute;
+    bottom: -10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #94a3b8;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    opacity: 0;
+}
+.bubble:hover .copy-btn-msg {
+    opacity: 1;
+}
+.copy-btn-msg:hover {
+    color: #2b7cff;
+    border-color: #2b7cff;
+    transform: scale(1.1);
+}
+
+
 
 .topbar {
   display: flex;

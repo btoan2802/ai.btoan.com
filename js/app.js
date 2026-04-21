@@ -256,12 +256,13 @@ function createMessageActions({ text, exportType = null, onExport = null }) {
     }
 
     const copyAllBtn = document.createElement("button")
-    copyAllBtn.className = "message-action-btn message-action-btn-secondary"
+    copyAllBtn.className = "message-action-btn"
     copyAllBtn.type = "button"
     copyAllBtn.innerHTML = `
-        <i class="bi bi-clipboard message-action-icon"></i>
-        <span>Copy</span>
+        <i class="bi bi-copy"></i>
+        <span>Copy chat</span>
     `
+
     copyAllBtn.onclick = async () => {
         await navigator.clipboard.writeText(text || "")
         copyAllBtn.innerHTML = `
@@ -306,13 +307,14 @@ function addBotBubble(text, exportType = null) {
 
     /* copy từng block code */
     bubble.querySelectorAll("pre").forEach(block => {
+        if (block.querySelector(".copy-code-btn")) return;
 
         const btn = document.createElement("button")
-        btn.className = "copy-btn"
-        btn.innerHTML = `<i class="bi bi-clipboard"></i>`
+        btn.className = "copy-code-btn"
+        btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
 
-        btn.onclick = () => {
-
+        btn.onclick = (e) => {
+            e.stopPropagation();
             const code = block.querySelector("code")?.innerText || block.innerText
 
             if (navigator.clipboard) {
@@ -326,17 +328,14 @@ function addBotBubble(text, exportType = null) {
                 document.body.removeChild(textarea)
             }
 
-            btn.innerHTML = `<i class="bi bi-check"></i>`
-
+            btn.innerHTML = `<i class="bi bi-check2"></i> Copied`
             setTimeout(() => {
-                btn.innerHTML = `<i class="bi bi-clipboard"></i>`
-            }, 1500)
-
+                btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
+            }, 2000)
         }
-
         block.appendChild(btn)
-
     })
+
 
     /* math */
     if (window.MathJax) {
@@ -398,26 +397,25 @@ function streamBot(text, exportType = null) {
 
             /* thêm nút copy cho code */
             content.querySelectorAll("pre").forEach(block => {
-
-                if (block.querySelector(".copy-btn")) return
+                if (block.querySelector(".copy-code-btn")) return
 
                 const btn = document.createElement("button")
-                btn.className = "copy-btn"
-                btn.innerHTML = `<i class="bi bi-clipboard"></i>`
+                btn.className = "copy-code-btn"
+                btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
 
-                btn.onclick = () => {
-                    const code = block.innerText
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const code = block.querySelector("code")?.innerText || block.innerText
                     navigator.clipboard.writeText(code)
 
-                    btn.innerHTML = `<i class="bi bi-check"></i>`
-
+                    btn.innerHTML = `<i class="bi bi-check2"></i> Copied`
                     setTimeout(() => {
-                        btn.innerHTML = `<i class="bi bi-clipboard"></i>`
-                    }, 1500)
+                        btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
+                    }, 2000)
                 }
-
                 block.appendChild(btn)
             })
+
 
             /* math */
             if (window.MathJax) {
@@ -1158,7 +1156,7 @@ async function loadHistory() {
     <div class="chat-title">${c.title}</div>
     <div class="dropdown" onclick="event.stopPropagation()">
         <button class="history-action-btn" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="bi bi-pencil-square"></i>
+            <i class="bi bi-three-dots"></i>
         </button>
         <ul class="dropdown-menu dropdown-menu-end">
             <li>
