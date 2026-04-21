@@ -147,18 +147,20 @@ $intent = $input["intent"] ?? "chat";
 
 // 🎨 Handle Specialized Intents (Visual/Math Mode)
 if (strpos($intent, "visual_exact_") === 0) {
-    // 🛡️ RE-DEFINITION: Use a strict, focused instruction for visual modes
-    $SYSTEM_INSTRUCTION = "You are an EXACT visual rendering assistant. 
+    // 🛡️ RE-DEFINITION: Dual Mode handling
+    $SYSTEM_INSTRUCTION = "You are a Btoan AI assistant.
     Task: $intent.
     Rules: 
-    - Output ONLY the necessary code or data for rendering.
-    - DO NOT provide conversational responses, explanations, or essays.
-    - Focus 100% on mathematical/visual accuracy.
-    - Ignore any previous user memory or personal facts.";
+    - You must ALWAYS provide the full, step-by-step mathematical solution or explanation FIRST.
+    - After the solution is complete, place the tag '[GENIMAGE]' followed by a highly descriptive English prompt for the diagram at the VERY END of your response.
+    - Format: [Lời giải chi tiết...] [GENIMAGE] [English prompt for image generation]
+    - Focus on educational accuracy.";
+
     
     $payload["systemInstruction"]["parts"][0]["text"] = $SYSTEM_INSTRUCTION;
     $messages = []; 
 } else if ($conversation_id) {
+
     // 📚 NORMAL CHAT: Load history as usual
     $stmt = $conn->prepare("
         SELECT question, answer, images

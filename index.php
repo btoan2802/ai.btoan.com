@@ -118,7 +118,8 @@
 
   <!-- B. CHAT APP -->
   <div id="chatApp" style="display:none">
-    <div class="d-flex" style="height:100vh">
+    <div class="d-flex main-app-wrapper">
+
       <div id="sidebar" class="sidebar">
         <div class="sidebar-header">
            <div class="new-chat-wrapper" onclick="newChat()" title="Chat mới">

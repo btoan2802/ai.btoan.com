@@ -4,12 +4,25 @@
 */
 
 /* GLOBAL */
-body {
+html, body {
+  height: 100%;
+  height: 100dvh;
   margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto;
+  padding: 0;
+  overflow: hidden;
   background: #f8fafc;
-  height: 100vh;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto;
 }
+
+.main-app-wrapper {
+  width: 100%;
+  height: 100vh; /* Fallback */
+  height: 100dvh;
+  height: var(--app-height, 100dvh);
+  display: flex;
+  overflow: hidden;
+}
+
 
 /* CUSTOM SCROLLBAR - Minimalist & Subtle */
 ::-webkit-scrollbar { width: 4px; height: 4px; }

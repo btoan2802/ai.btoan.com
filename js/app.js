@@ -1,5 +1,16 @@
 // ====== cấu hình ======
 const WORKER_URL = "/ai/api/chat.php";
+
+// 📱 MOBILE VIEWPORT HEIGHT FIX
+function setAppHeight() {
+    const doc = document.documentElement;
+    const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    doc.style.setProperty('--app-height', `${height}px`);
+}
+window.addEventListener('resize', setAppHeight);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+setAppHeight();
+
 const MODEL = "gemini-2.5-flash";
 const TEMPERATURE = 0.5;
 const MAX_OUTPUT_TOKENS = 20000;
@@ -773,27 +784,28 @@ async function send() {
             }
         }
 
-        // 🔥 AUTO GENIMAGE
+        // 🔥 AUTO GENIMAGE (IMPROVED)
         if (reply.includes("[GENIMAGE]")) {
-            const parts = reply.split("[GENIMAGE]");
-            const textPart = parts[0].trim();
-            const imagePrompt = parts[1].trim();
+            const tag = "[GENIMAGE]";
+            const index = reply.indexOf(tag);
+            const textPart = reply.substring(0, index).trim();
+            const imagePrompt = reply.substring(index + tag.length).trim();
 
             typing.remove();
 
             if (textPart) {
-                addBotBubble(textPart);
+                // Stream or add the text part immediately
+                streamBot(textPart, exportType);
             }
 
             const imgLoading = document.createElement("div");
             imgLoading.className = "msgrow bot";
-            imgLoading.innerHTML = `<div class="bubble">🎨 Đang vẽ ảnh: <i>${escapeHtml(imagePrompt)}</i>...</div>`;
+            imgLoading.innerHTML = `<div class="bubble">🎨 Đang vẽ ảnh minh họa...</div>`;
             chatEl.appendChild(imgLoading);
-            chatEl.scrollTop = chatEl.scrollHeight;
+            scrollToBottom();
 
             try {
-                const textToStore = textPart || "Đây là ảnh của bạn:";
-
+                const textToStore = textPart || "Mô tả ảnh:";
                 const imgRes = await fetch("/ai/api/generate_image.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -806,142 +818,58 @@ async function send() {
                 });
 
                 const rawText = await imgRes.text();
-                console.log("IMAGE GEN RAW:", rawText);
-
                 imgLoading.remove();
 
                 let imgData = null;
-
                 try {
                     imgData = JSON.parse(rawText);
                 } catch (e) {
-                    console.log("JSON.parse(rawText) error:", e);
-
-                    const raw = String(rawText || "");
-
-                    const successKey = '"success":true';
-                    const mimeKey = '"mimeType":"';
-                    const imageKey = '"imageBase64":"';
-                    const errorKey = '"error":"';
-
-                    const hasSuccess = raw.includes(successKey);
-
-                    const mimeStart = raw.indexOf(mimeKey);
-                    const imageStart = raw.indexOf(imageKey);
-                    const errorStart = raw.indexOf(errorKey);
-
-                    let mimeType = null;
-                    let imageBase64 = null;
-                    let errorText = null;
-
-                    if (mimeStart !== -1) {
-                        const start = mimeStart + mimeKey.length;
-                        const end = raw.indexOf('"', start);
-                        if (end !== -1) {
-                            mimeType = raw.substring(start, end);
-                        }
-                    }
-
-                    if (imageStart !== -1) {
-                        const start = imageStart + imageKey.length;
-                        let end = raw.indexOf('","', start);
-
-                        if (end === -1) {
-                            end = raw.indexOf('"}', start);
-                        }
-                        if (end === -1) {
-                            end = raw.length;
-                        }
-
-                        imageBase64 = raw.substring(start, end);
-                    }
-
-                    if (errorStart !== -1) {
-                        const start = errorStart + errorKey.length;
-                        const end = raw.indexOf('"', start);
-                        if (end !== -1) {
-                            errorText = raw.substring(start, end);
-                        }
-                    }
-
-                    if (hasSuccess && mimeType && imageBase64) {
-                        imgData = {
-                            success: true,
-                            mimeType,
-                            imageBase64
-                        };
-                    } else if (errorText) {
-                        imgData = {
-                            success: false,
-                            error: errorText
-                        };
-                    } else {
-                        console.log("RAW HEAD:", raw.slice(0, 300));
-                        console.log("RAW TAIL:", raw.slice(-300));
-                        addBotBubble("❌ Backend trả về dữ liệu lỗi");
-                        isSending = false;
-                        return;
-                    }
+                    console.error("JSON parse failed for image response", e);
                 }
 
-                if (!imgRes.ok) {
-                    addBotBubble("❌ HTTP lỗi tạo ảnh: " + imgRes.status);
-                    isSending = false;
-                    return;
+                if (imgRes.ok && imgData?.success) {
+                    const cleanMimeType = String(imgData.mimeType || "image/png").trim();
+                    const cleanBase64 = String(imgData.imageBase64 || "").replace(/\s+/g, "");
+                    const imageSrc = `data:${cleanMimeType};base64,${cleanBase64}`;
+
+                    const row = document.createElement("div");
+                    row.className = "msgrow bot";
+                    row.innerHTML = `
+                        <div class="bubble image-bubble-premium">
+                            <div class="image-wrapper-premium">
+                                <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
+                                <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    chatEl.appendChild(row);
+                } else {
+                    const errMsg = imgData?.error || "Lỗi không xác định";
+                    const isQuota = errMsg.toLowerCase().includes("quota") || rawText.includes("429");
+                    
+                    const errorBubble = document.createElement("div");
+                    errorBubble.className = "msgrow bot";
+                    errorBubble.innerHTML = `
+                        <div class="bubble border-danger text-danger" style="font-size:0.9rem;">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            ${isQuota ? "<b>Hết lượt vẽ ảnh (Quota Exceeded):</b> Vui lòng thử lại sau 1-2 phút hoặc nhờ AI giải thích bằng chữ." : "Lỗi vẽ ảnh: " + errMsg}
+                        </div>
+                    `;
+                    chatEl.appendChild(errorBubble);
                 }
-
-                if (!imgData || imgData.success !== true) {
-                    addBotBubble("❌ Lỗi tạo ảnh: " + (imgData?.error || "Unknown error"));
-                    isSending = false;
-                    return;
-                }
-
-                if (!imgData.imageBase64 || !imgData.mimeType) {
-                    addBotBubble("❌ Backend thiếu dữ liệu ảnh");
-                    isSending = false;
-                    return;
-                }
-
-                const cleanMimeType = String(imgData.mimeType || "image/png").trim();
-
-                const cleanBase64 = String(imgData.imageBase64 || "")
-                    .replace(/\s+/g, "")              // bỏ xuống dòng, space
-                    .replace(/[^A-Za-z0-9+/=]/g, ""); // chỉ giữ ký tự base64 hợp lệ
-
-                if (!cleanBase64) {
-                    addBotBubble("❌ Base64 ảnh rỗng hoặc bị lỗi");
-                    isSending = false;
-                    return;
-                }
-
-                const imageSrc = `data:${cleanMimeType};base64,${cleanBase64}`;
-
-                const row = document.createElement("div");
-                row.className = "msgrow bot";
-                const bubble = document.createElement("div");
-                bubble.className = "bubble image-bubble-premium";
-                bubble.innerHTML = `
-                    <div class="image-wrapper-premium">
-                        <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
-                        <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
-                            <i class="bi bi-download"></i>
-                        </a>
-                    </div>
-                    <div class="image-caption-premium">Đây là ảnh của bạn</div>
-                `;
-
-                row.appendChild(bubble);
-                chatEl.appendChild(row);
 
             } catch (e) {
                 imgLoading.remove();
-                addBotBubble("❌ Lỗi mạng/kết nối: " + e.message);
+                addBotBubble("❌ Lỗi kết nối khi vẽ ảnh: " + e.message);
             }
 
             isSending = false;
-            chatEl.scrollTop = chatEl.scrollHeight;
+            scrollToBottom();
             return;
         }
+
 
         // 🔥 AUTO SEARCH
         if (reply.startsWith("[SEARCH]")) {
