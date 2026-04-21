@@ -1521,14 +1521,17 @@ window.onload = function () {
 
 }
 function toggleSidebar() {
-
     const sb = document.getElementById("sidebar")
-
     if (!sb) return
 
-    sb.classList.toggle("open")
-
+    if (isMobile()) {
+        sb.classList.toggle("open")
+    } else {
+        sb.classList.toggle("collapsed")
+        document.body.classList.toggle("sidebar-collapsed")
+    }
 }
+
 
 function setMode(m) {
 

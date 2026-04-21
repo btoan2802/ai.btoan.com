@@ -118,23 +118,31 @@
   <!-- B. CHAT APP -->
   <div id="chatApp" style="display:none">
     <div class="d-flex" style="height:100vh">
-      <!-- SIDEBAR -->
       <div id="sidebar" class="sidebar">
-        <div class="new-chat-btn" onclick="newChat()">+ Chat mới</div>
+        <div class="sidebar-header">
+           <div class="new-chat-wrapper" onclick="newChat()" title="Chat mới">
+              <i class="bi bi-plus-lg"></i>
+              <span>Chat mới</span>
+           </div>
+           <button class="icon-toggle-btn" onclick="toggleSidebar()" title="Đóng sidebar">
+              <i class="bi bi-layout-sidebar"></i>
+           </button>
+        </div>
         <div class="sidebar-utils">
-          <a href="./code/code.php" class="util-item">
-            <i class="bi bi-code-slash" style="color:#7c3aed;"></i>
+          <a href="./code/code.php" class="util-item" title="Btoan Code IDE">
+            <i class="bi bi-journal-code"></i>
             <span>Btoan AI Code</span>
           </a>
-          <div id="toggleHandMode" class="util-item" style="cursor:pointer;">
-            <i class="bi bi-hand-index-thumb" style="color:#2b7cff;"></i>
-            <span>Hand Interaction</span>
+          <div id="toggleHandMode" class="util-item" style="cursor:pointer;" title="Bật/Tắt Hand Interaction">
+            <i class="bi bi-hand-index"></i>
+            <span>Điều khiển tay</span>
           </div>
-          <div id="toggleNarutoMode" class="util-item" style="cursor:pointer;">
-            <span style="font-size:18px;">🌀</span>
-            <span>Naruto</span>
+          <div id="toggleNarutoMode" class="util-item" style="cursor:pointer;" title="Bật/Tắt hiệu ứng Naruto">
+            <i class="bi bi-hurricane"></i>
+            <span>Chakra Naruto</span>
           </div>
         </div>
+
         <div class="sidebar-title">Lịch sử chat</div>
         <div id="historyList" style="flex:1; overflow-y:auto;"></div>
         <div style="padding:15px; margin-top:auto;">
@@ -145,11 +153,14 @@
 
       <div class="flex-grow-1 d-flex flex-column">
         <div class="topbar">
-          <button class="menu-btn" onclick="toggleSidebar()">☰</button>
-          <div class="d-flex align-items-center gap-2">
+          <div class="topbar-left">
+            <button class="icon-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()" title="Mở sidebar">
+              <i class="bi bi-layout-sidebar"></i>
+            </button>
             <div class="brand-text">Btoan AI</div>
           </div>
           <div class="ms-auto d-flex align-items-center">
+
             <div id="userBox" class="user-box">
               <div class="user-info" onclick="toggleUserMenu()">
                 <div id="userAvatar" class="avatar">U</div>
@@ -176,7 +187,10 @@
               multiple hidden>
 
             <div class="chat-actions-group">
-              <button class="btn btn-action-plus" data-bs-toggle="dropdown"><i class="bi bi-plus-lg"></i></button>
+              <button class="action-icon-btn" data-bs-toggle="dropdown" title="Tính năng thêm">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+
               <ul class="dropdown-menu">
                 <li><button id="pickImage" class="dropdown-item">🖼️ Gửi ảnh</button></li>
                 <li><button id="pickCamera" class="dropdown-item">📷 Chụp ảnh</button></li>
@@ -310,6 +324,7 @@
   </div>
 
   <!-- Cuối body: Toàn bộ script -->
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
