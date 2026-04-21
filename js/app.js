@@ -830,13 +830,41 @@ async function send() {
 
                 imgLoading.remove();
 
-                let imgData;
+                let imgData = null;
+
                 try {
                     imgData = await imgRes.json();
                 } catch (e) {
-                    addBotBubble("❌ Backend trả về JSON không parse được. Độ dài: " + String(rawText || "").length + " | Cuối chuỗi: " + String(rawText || "").slice(-120));
-                    isSending = false;
-                    return;
+                    console.log("JSON parse error:", e);
+
+                    const raw = String(rawText || "");
+
+                    const successMatch = raw.match(/"success"\s*:\s*(true|false)/);
+                    const mimeMatch = raw.match(/"mimeType"\s*:\s*"([^"]+)"/);
+                    const imageMatch = raw.match(/"imageBase64"\s*:\s*"([A-Za-z0-9+/=]+)"/);
+                    const errorMatch = raw.match(/"error"\s*:\s*"([^"]+)"/);
+
+                    if (successMatch && successMatch[1] === "true" && mimeMatch && imageMatch) {
+                        imgData = {
+                            success: true,
+                            mimeType: mimeMatch[1],
+                            imageBase64: imageMatch[1]
+                        };
+                    } else if (errorMatch) {
+                        imgData = {
+                            success: false,
+                            error: errorMatch[1]
+                        };
+                    } else {
+                        addBotBubble(
+                            "❌ Backend trả về JSON không parse được. Độ dài: " +
+                            raw.length +
+                            " | Cuối chuỗi: " +
+                            raw.slice(-120)
+                        );
+                        isSending = false;
+                        return;
+                    }
                 }
 
                 if (!imgRes.ok) {
