@@ -578,11 +578,6 @@ async function callGemini(userText, images, files) {
     if (conversation_id && !autoRenamed) {
 
         autoRenamed = true
-        const cleanTitle = (lastUserMessage || "Chat mới")
-            .replace(/[#*\n]/g, " ")
-            .trim()
-            .substring(0, 40)
-
         fetch("/ai/api/rename_conversation.php", {
             method: "POST",
             headers: {
@@ -590,9 +585,10 @@ async function callGemini(userText, images, files) {
             },
             body: JSON.stringify({
                 id: conversation_id,
-                title: cleanTitle
+                isAuto: true
             })
         }).then(() => loadHistory())
+
     }
 
     if (!isInternalPrompt) {
@@ -1633,9 +1629,8 @@ function newChat(updateUrl = true) {
     if (chatEl) {
         chatEl.innerHTML = ""
     }
-
-    addBotBubble("chào bạn 😄 tôi là Btoan AI.")
 }
+
 document.addEventListener("click", function (e) {
 
     const sidebar = document.getElementById("sidebar")
