@@ -820,22 +820,17 @@ async function send() {
                     body: JSON.stringify({ prompt: imagePrompt })
                 });
 
-                const rawRes = imgRes.clone();
-                const rawText = await rawRes.text();
-
+                const rawText = await imgRes.text();
                 console.log("IMAGE GEN RAW:", rawText);
-                console.log("RAW FIRST CHARS:", Array.from(String(rawText || "").slice(0, 8)).map(c => c.charCodeAt(0)));
-                console.log("RAW LAST CHARS:", Array.from(String(rawText || "").slice(-8)).map(c => c.charCodeAt(0)));
-                console.log("RAW LENGTH:", String(rawText || "").length);
 
                 imgLoading.remove();
 
                 let imgData = null;
 
                 try {
-                    imgData = await imgRes.json();
+                    imgData = JSON.parse(rawText);
                 } catch (e) {
-                    console.log("JSON parse error:", e);
+                    console.log("JSON.parse(rawText) error:", e);
 
                     const raw = String(rawText || "");
 
@@ -856,12 +851,7 @@ async function send() {
                             error: errorMatch[1]
                         };
                     } else {
-                        addBotBubble(
-                            "❌ Backend trả về JSON không parse được. Độ dài: " +
-                            raw.length +
-                            " | Cuối chuỗi: " +
-                            raw.slice(-120)
-                        );
+                        addBotBubble("❌ Backend trả về dữ liệu lỗi");
                         isSending = false;
                         return;
                     }
@@ -894,29 +884,29 @@ async function send() {
                 bubble.className = "bubble position-relative";
 
                 bubble.innerHTML = `
-                    <div class="mb-2">Đây là ảnh của bạn:</div>
-                    <img 
-                        src="${imageSrc}" 
-                        alt="Generated image"
-                        style="max-width:100%;border-radius:10px;cursor:pointer;display:block;"
-                    >
-                    <div class="mt-2">
-                        <a 
-                            href="${imageSrc}" 
-                            download="btoan_ai_image.png" 
-                            class="btn btn-sm btn-outline-light"
-                            style="font-size:12px;border-color:rgba(255,255,255,0.2)"
-                        >
-                            <i class="bi bi-download"></i> Tải ảnh
-                        </a>
-                    </div>
-                `;
+        <div class="mb-2">Đây là ảnh của bạn:</div>
+        <img 
+            src="${imageSrc}" 
+            alt="Generated image"
+            style="max-width:100%;border-radius:10px;cursor:pointer;display:block;"
+        >
+        <div class="mt-2">
+            <a 
+                href="${imageSrc}" 
+                download="btoan_ai_image.png" 
+                class="btn btn-sm btn-outline-light"
+                style="font-size:12px;border-color:rgba(255,255,255,0.2)"
+            >
+                <i class="bi bi-download"></i> Tải ảnh
+            </a>
+        </div>
+    `;
 
-                const imgEl = bubble.querySelector("img");
-                imgEl.onclick = () => window.open(imageSrc, "_blank");
+                bubble.querySelector("img").onclick = () => window.open(imageSrc, "_blank");
 
                 row.appendChild(bubble);
                 chatEl.appendChild(row);
+
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi mạng/kết nối: " + e.message);
