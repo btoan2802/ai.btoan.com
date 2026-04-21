@@ -255,11 +255,12 @@ body {
     width: 100%;
 }
 .bot .bubble {
-    max-width: 100%;
-    width: 100%;
+    max-width: 88%;
+    width: fit-content;
     padding-bottom: 35px !important; /* Room for corner actions */
     position: relative;
     border-radius: 18px;
+    min-width: 60px; /* Ensure enough room for at least one icon */
 }
 
 
