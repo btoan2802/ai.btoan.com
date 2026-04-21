@@ -825,23 +825,37 @@ async function send() {
 
                 imgLoading.remove();
 
-                let cleanedRaw = String(raw || "").trim();
+                let cleanedRaw = String(raw || "");
 
-                // nếu backend lỡ trả JSON dạng string: "{\"success\":true,...}"
-                if (
-                    cleanedRaw.startsWith('"') &&
-                    cleanedRaw.endsWith('"')
-                ) {
+                // xóa BOM + ký tự rác đầu/cuối
+                cleanedRaw = cleanedRaw
+                    .replace(/^\uFEFF/, "")
+                    .replace(/^[\u0000-\u001F]+/, "")
+                    .replace(/[\u0000-\u001F]+$/g, "")
+                    .trim();
+
+                // nếu response bị bọc thêm text ngoài JSON, cắt từ { đầu tới } cuối
+                const firstBrace = cleanedRaw.indexOf("{");
+                const lastBrace = cleanedRaw.lastIndexOf("}");
+                if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                    cleanedRaw = cleanedRaw.slice(firstBrace, lastBrace + 1);
+                }
+
+                // nếu backend trả JSON dạng string: "{\"success\":true,...}"
+                if (cleanedRaw.startsWith('"') && cleanedRaw.endsWith('"')) {
                     try {
                         cleanedRaw = JSON.parse(cleanedRaw);
                     } catch (_) { }
                 }
 
+                console.log("CLEANED RAW:", cleanedRaw);
+                console.log("RAW FIRST CHARS:", Array.from(String(raw || "").slice(0, 8)).map(c => c.charCodeAt(0)));
+
                 let imgData;
                 try {
                     imgData = typeof cleanedRaw === "string" ? JSON.parse(cleanedRaw) : cleanedRaw;
                 } catch (e) {
-                    addBotBubble("❌ Backend trả về JSON lỗi: " + String(raw || "").substring(0, 300));
+                    addBotBubble("❌ Backend trả về JSON lỗi: " + String(cleanedRaw || "").substring(0, 300));
                     isSending = false;
                     return;
                 }
