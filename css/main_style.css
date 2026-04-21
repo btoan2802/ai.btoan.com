@@ -11,11 +11,11 @@ body {
   height: 100vh;
 }
 
-/* CUSTOM SCROLLBAR */
-::-webkit-scrollbar { width: 6px; }
+/* CUSTOM SCROLLBAR - Minimalist & Subtle */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
 
 /* LOGIN BOX */
 #loginBox {
