@@ -820,42 +820,21 @@ async function send() {
                     body: JSON.stringify({ prompt: imagePrompt })
                 });
 
-                const raw = await imgRes.text();
-                console.log("IMAGE GEN RAW:", raw);
+                const rawRes = imgRes.clone();
+                const rawText = await rawRes.text();
+
+                console.log("IMAGE GEN RAW:", rawText);
+                console.log("RAW FIRST CHARS:", Array.from(String(rawText || "").slice(0, 8)).map(c => c.charCodeAt(0)));
+                console.log("RAW LAST CHARS:", Array.from(String(rawText || "").slice(-8)).map(c => c.charCodeAt(0)));
+                console.log("RAW LENGTH:", String(rawText || "").length);
 
                 imgLoading.remove();
 
-                let cleanedRaw = String(raw || "");
-
-                // xóa BOM + ký tự rác đầu/cuối
-                cleanedRaw = cleanedRaw
-                    .replace(/^\uFEFF/, "")
-                    .replace(/^[\u0000-\u001F]+/, "")
-                    .replace(/[\u0000-\u001F]+$/g, "")
-                    .trim();
-
-                // nếu response bị bọc thêm text ngoài JSON, cắt từ { đầu tới } cuối
-                const firstBrace = cleanedRaw.indexOf("{");
-                const lastBrace = cleanedRaw.lastIndexOf("}");
-                if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-                    cleanedRaw = cleanedRaw.slice(firstBrace, lastBrace + 1);
-                }
-
-                // nếu backend trả JSON dạng string: "{\"success\":true,...}"
-                if (cleanedRaw.startsWith('"') && cleanedRaw.endsWith('"')) {
-                    try {
-                        cleanedRaw = JSON.parse(cleanedRaw);
-                    } catch (_) { }
-                }
-
-                console.log("CLEANED RAW:", cleanedRaw);
-                console.log("RAW FIRST CHARS:", Array.from(String(raw || "").slice(0, 8)).map(c => c.charCodeAt(0)));
-
                 let imgData;
                 try {
-                    imgData = typeof cleanedRaw === "string" ? JSON.parse(cleanedRaw) : cleanedRaw;
+                    imgData = await imgRes.json();
                 } catch (e) {
-                    addBotBubble("❌ Backend trả về JSON lỗi: " + String(cleanedRaw || "").substring(0, 300));
+                    addBotBubble("❌ Backend trả về JSON không parse được. Độ dài: " + String(rawText || "").length + " | Cuối chuỗi: " + String(rawText || "").slice(-120));
                     isSending = false;
                     return;
                 }
