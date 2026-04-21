@@ -873,7 +873,7 @@ async function send() {
             }
         }
 
-        detectCorrection(userText);
+
 
         typing.remove();
         streamBot(reply, exportType);
