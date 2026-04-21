@@ -834,23 +834,59 @@ async function send() {
 
                     const raw = String(rawText || "");
 
-                    const successMatch = raw.match(/"success"\s*:\s*(true|false)/);
-                    const mimeMatch = raw.match(/"mimeType"\s*:\s*"([^"]+)"/);
-                    const imageMatch = raw.match(/"imageBase64"\s*:\s*"([A-Za-z0-9+/=]+)"/);
-                    const errorMatch = raw.match(/"error"\s*:\s*"([^"]+)"/);
+                    const successKey = '"success":true';
+                    const mimeKey = '"mimeType":"';
+                    const imageKey = '"imageBase64":"';
+                    const errorKey = '"error":"';
 
-                    if (successMatch && successMatch[1] === "true" && mimeMatch && imageMatch) {
+                    const hasSuccess = raw.includes(successKey);
+
+                    const mimeStart = raw.indexOf(mimeKey);
+                    const imageStart = raw.indexOf(imageKey);
+                    const errorStart = raw.indexOf(errorKey);
+
+                    let mimeType = null;
+                    let imageBase64 = null;
+                    let errorText = null;
+
+                    if (mimeStart !== -1) {
+                        const start = mimeStart + mimeKey.length;
+                        const end = raw.indexOf('"', start);
+                        if (end !== -1) {
+                            mimeType = raw.substring(start, end);
+                        }
+                    }
+
+                    if (imageStart !== -1) {
+                        const start = imageStart + imageKey.length;
+                        const end = raw.indexOf('"', start);
+                        if (end !== -1) {
+                            imageBase64 = raw.substring(start, end);
+                        }
+                    }
+
+                    if (errorStart !== -1) {
+                        const start = errorStart + errorKey.length;
+                        const end = raw.indexOf('"', start);
+                        if (end !== -1) {
+                            errorText = raw.substring(start, end);
+                        }
+                    }
+
+                    if (hasSuccess && mimeType && imageBase64) {
                         imgData = {
                             success: true,
-                            mimeType: mimeMatch[1],
-                            imageBase64: imageMatch[1]
+                            mimeType,
+                            imageBase64
                         };
-                    } else if (errorMatch) {
+                    } else if (errorText) {
                         imgData = {
                             success: false,
-                            error: errorMatch[1]
+                            error: errorText
                         };
                     } else {
+                        console.log("RAW HEAD:", raw.slice(0, 300));
+                        console.log("RAW TAIL:", raw.slice(-300));
                         addBotBubble("❌ Backend trả về dữ liệu lỗi");
                         isSending = false;
                         return;
