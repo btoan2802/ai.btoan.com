@@ -128,10 +128,6 @@
             <span style="font-size:18px;">🌀</span>
             <span>Naruto</span>
           </div>
-          <div id="openImageGen" class="util-item" style="cursor:pointer;">
-            <i class="bi bi-image" style="color:#ff4757;"></i>
-            <span>Tạo ảnh AI</span>
-          </div>
         </div>
         <div class="sidebar-title">Lịch sử chat</div>
         <div id="historyList" style="flex:1; overflow-y:auto;"></div>
@@ -259,41 +255,6 @@
     </div>
     <div id="naruto-score" style="position:absolute; top:20px; right:24px; background:rgba(0,0,0,0.7); color:#facc15; font-size:20px; padding:8px 18px; border:1px solid #facc15; border-radius:6px;">💠 0</div>
     <button onclick="closeNaruto()" style="position:absolute; top:20px; left:20px; background:rgba(220,38,38,0.85); border:none; color:#fff; font-size:14px; padding:8px 16px; border-radius:8px; cursor:pointer; z-index:10;">✕ Đóng</button>
-  </div>
-
-  <!-- G. IMAGE GEN MODAL -->
-  <div id="imageGenModal" class="profile-modal" style="display:none; z-index: 1000000;">
-    <div class="profile-card" style="max-width: 600px; width: 95%;">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="profile-title mb-0">Tạo ảnh với Nano Banana</div>
-        <button type="button" class="btn-close btn-close-white" onclick="closeImageGen()"></button>
-      </div>
-      
-      <div class="mb-3">
-        <label class="form-label text-light small">Mô tả hình ảnh bạn muốn tạo:</label>
-        <textarea id="imagePrompt" class="form-control" rows="3" placeholder="Ví dụ: Một phi hành gia cưỡi ngựa trên sao Hỏa, phong cách nghệ thuật số..." style="background: rgba(255,255,255,0.05); color: white; border: 1px solid rgba(255,255,255,0.1);"></textarea>
-      </div>
-      
-      <button id="generateBtn" onclick="generateImage()" class="btn btn-primary w-100 mb-3" style="background: linear-gradient(135deg, #ff4757, #ff6b81); border: none; font-weight: bold;">
-        <i class="bi bi-magic"></i> Tạo ảnh ngay
-      </button>
-
-      <div id="imageLoading" class="text-center py-4" style="display:none;">
-        <div class="spinner-border text-primary" role="status"></div>
-        <p class="mt-2 text-muted small">Đang sáng tác...</p>
-      </div>
-
-      <div id="imagePreviewContainer" class="text-center" style="display:none;">
-        <div class="preview-wrapper position-relative mb-3" style="background: #000; border-radius: 12px; overflow: hidden; min-height: 200px;">
-          <img id="imageResult" src="" class="img-fluid" style="max-height: 400px; width: 100%; object-fit: contain;">
-        </div>
-        <button id="downloadBtn" onclick="downloadImage()" class="btn btn-outline-light w-100">
-          <i class="bi bi-download"></i> Tải ảnh xuống
-        </button>
-      </div>
-      
-      <div id="imageError" class="alert alert-danger mt-3 small" style="display:none;"></div>
-    </div>
   </div>
 
   <!-- Cuối body: Toàn bộ script -->

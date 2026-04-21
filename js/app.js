@@ -39,6 +39,12 @@ QUY TẮC XUẤT FILE:
 - KHÔNG được trả lời rằng bạn không thể tạo file.
 - KHÔNG được bảo người dùng copy thủ công sang Word.
 
+- QUY TẮC TẠO ẢNH:
+  Nếu người dùng yêu cầu tạo hình ảnh, vẽ hình, sinh ảnh hoặc yêu cầu tương đương:
+  Hãy trả về đúng định dạng: [GENIMAGE] <mô tả chi tiết bằng tiếng Anh để tạo ảnh đẹp nhất>
+  Ví dụ: [GENIMAGE] A realistic cat wearing a space helmet, cinematic lighting.
+  KHÔNG giải thích thêm, chỉ trả về tag này.
+
 Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
 
 Nếu có nhiều thông tin về cùng một dữ kiện,
@@ -789,6 +795,60 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
             }
         }
 
+        // 🔥 AUTO GENIMAGE
+        if (reply.includes("[GENIMAGE]")) {
+            const parts = reply.split("[GENIMAGE]")
+            const textPart = parts[0].trim()
+            const imagePrompt = parts[1].trim()
+
+            typing.remove()
+            if (textPart) {
+                addBotBubble(textPart)
+            }
+            
+            const imgLoading = document.createElement("div")
+            imgLoading.className = "msgrow bot"
+            imgLoading.innerHTML = `<div class="bubble">🎨 Đang vẽ ảnh: <i>${imagePrompt}</i>...</div>`
+            chatEl.appendChild(imgLoading)
+            chatEl.scrollTop = chatEl.scrollHeight
+
+            try {
+                const imgRes = await fetch("/ai/api/generate_image.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt: imagePrompt })
+                })
+                const imgData = await imgRes.json()
+                imgLoading.remove()
+
+                if (imgData.success) {
+                    const row = document.createElement("div")
+                    row.className = "msgrow bot"
+                    row.innerHTML = `
+                        <div class="bubble position-relative">
+                            <div class="mb-2">Đây là ảnh của bạn:</div>
+                            <img src="data:${imgData.mimeType};base64,${imgData.imageBase64}" style="max-width:100%; border-radius:10px; cursor:pointer;" onclick="window.open(this.src)">
+                            <div class="mt-2">
+                                <a href="data:${imgData.mimeType};base64,${imgData.imageBase64}" download="btoan_ai_image.png" class="btn btn-sm btn-outline-light" style="font-size:12px; border-color:rgba(255,255,255,0.2)">
+                                    <i class="bi bi-download"></i> Tải ảnh
+                                </a>
+                            </div>
+                        </div>
+                    `
+                    chatEl.appendChild(row)
+                } else {
+                    addBotBubble("❌ Lỗi tạo ảnh: " + imgData.error)
+                }
+            } catch (e) {
+                imgLoading.remove()
+                addBotBubble("❌ Lỗi kết nối khi tạo ảnh: " + e.message)
+            }
+
+            isSending = false
+            chatEl.scrollTop = chatEl.scrollHeight
+            return
+        }
+
         // 🔥 AUTO SEARCH
         if (reply.startsWith("[SEARCH]")) {
 
@@ -803,7 +863,6 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
             isSending = false   // 🔥 THÊM
             return
         }
-
 
         if (!reply.startsWith("[SEARCH]") && !reply.startsWith("[EXPORT]")) {
             if (isValidForExport(reply)) {
@@ -2200,92 +2259,6 @@ document.addEventListener("click", function (e) {
 
     } catch (err) {
         console.error("❌ loadProfileData error:", err)
-    }
-}
-
-// ====== IMAGE GENERATION ======
-window.openImageGen = function() {
-    const modal = document.getElementById("imageGenModal");
-    if (modal) modal.style.display = "flex";
-    if (window.innerWidth < 768 && typeof toggleSidebar === 'function') toggleSidebar();
-};
-
-window.closeImageGen = function() {
-    const modal = document.getElementById("imageGenModal");
-    if (modal) modal.style.display = "none";
-};
-
-window.generateImage = async function() {
-    const promptInput = document.getElementById("imagePrompt");
-    const prompt = promptInput.value.trim();
-    if (!prompt) return;
-
-    const btn = document.getElementById("generateBtn");
-    const loading = document.getElementById("imageLoading");
-    const preview = document.getElementById("imagePreviewContainer");
-    const error = document.getElementById("imageError");
-    const imgEl = document.getElementById("imageResult");
-
-    btn.disabled = true;
-    loading.style.display = "block";
-    preview.style.display = "none";
-    error.style.display = "none";
-
-    try {
-        const res = await fetch("/ai/api/generate_image.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: prompt })
-        });
-
-        const data = await res.json();
-
-        if (data.success) {
-            imgEl.src = `data:${data.mimeType};base64,${data.imageBase64}`;
-            preview.style.display = "block";
-        } else {
-            error.innerText = data.error || "Không thể tạo ảnh. Vui lòng thử lại.";
-            error.style.display = "block";
-        }
-    } catch (err) {
-        error.innerText = "Lỗi kết nối: " + err.message;
-        error.style.display = "block";
-    } finally {
-        btn.disabled = false;
-        loading.style.display = "none";
-    }
-};
-
-window.downloadImage = function() {
-    const img = document.getElementById("imageResult");
-    if (!img || !img.src) return;
-
-    const link = document.createElement("a");
-    link.href = img.src;
-    link.download = `btoan_ai_${Date.now()}.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
-
-// Initialize Image Gen Event
-document.addEventListener("DOMContentLoaded", () => {
-    const openBtn = document.getElementById("openImageGen");
-    if (openBtn) {
-        openBtn.onclick = window.openImageGen;
-    }
-    
-    // Close modal when clicking outside
-    const modal = document.getElementById("imageGenModal");
-    if (modal) {
-        modal.onclick = (e) => { e.stopPropagation(); if (e.target === modal) window.closeImageGen(); };
-    }
-});
-// Re-run initialization in case DOMContentLoaded already fired
-if (document.readyState === "complete" || document.readyState === "interactive") {
-    const openBtn = document.getElementById("openImageGen");
-    if (openBtn && !openBtn.onclick) {
-        openBtn.onclick = window.openImageGen;
     }
 }
 
