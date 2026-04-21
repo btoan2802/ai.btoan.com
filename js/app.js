@@ -2203,4 +2203,90 @@ document.addEventListener("click", function (e) {
     }
 }
 
+// ====== IMAGE GENERATION ======
+window.openImageGen = function() {
+    const modal = document.getElementById("imageGenModal");
+    if (modal) modal.style.display = "flex";
+    if (window.innerWidth < 768 && typeof toggleSidebar === 'function') toggleSidebar();
+};
+
+window.closeImageGen = function() {
+    const modal = document.getElementById("imageGenModal");
+    if (modal) modal.style.display = "none";
+};
+
+window.generateImage = async function() {
+    const promptInput = document.getElementById("imagePrompt");
+    const prompt = promptInput.value.trim();
+    if (!prompt) return;
+
+    const btn = document.getElementById("generateBtn");
+    const loading = document.getElementById("imageLoading");
+    const preview = document.getElementById("imagePreviewContainer");
+    const error = document.getElementById("imageError");
+    const imgEl = document.getElementById("imageResult");
+
+    btn.disabled = true;
+    loading.style.display = "block";
+    preview.style.display = "none";
+    error.style.display = "none";
+
+    try {
+        const res = await fetch("/ai/api/generate_image.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: prompt })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+            imgEl.src = `data:${data.mimeType};base64,${data.imageBase64}`;
+            preview.style.display = "block";
+        } else {
+            error.innerText = data.error || "Không thể tạo ảnh. Vui lòng thử lại.";
+            error.style.display = "block";
+        }
+    } catch (err) {
+        error.innerText = "Lỗi kết nối: " + err.message;
+        error.style.display = "block";
+    } finally {
+        btn.disabled = false;
+        loading.style.display = "none";
+    }
+};
+
+window.downloadImage = function() {
+    const img = document.getElementById("imageResult");
+    if (!img || !img.src) return;
+
+    const link = document.createElement("a");
+    link.href = img.src;
+    link.download = `btoan_ai_${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};
+
+// Initialize Image Gen Event
+document.addEventListener("DOMContentLoaded", () => {
+    const openBtn = document.getElementById("openImageGen");
+    if (openBtn) {
+        openBtn.onclick = window.openImageGen;
+    }
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById("imageGenModal");
+    if (modal) {
+        modal.onclick = (e) => { e.stopPropagation(); if (e.target === modal) window.closeImageGen(); };
+    }
+});
+// Re-run initialization in case DOMContentLoaded already fired
+if (document.readyState === "complete" || document.readyState === "interactive") {
+    const openBtn = document.getElementById("openImageGen");
+    if (openBtn && !openBtn.onclick) {
+        openBtn.onclick = window.openImageGen;
+    }
+}
+
 
