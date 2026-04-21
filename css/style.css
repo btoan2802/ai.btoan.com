@@ -1,4 +1,4 @@
-﻿:root{
+:root{
 
   --bg: #f7f7f8;          /* nền ChatGPT */
 
@@ -261,20 +261,22 @@ body{
 
 
 .bot .bubble{
-
   background: #ffffff;
-
   border: 1px solid var(--stroke);
-
   border-radius: 18px;
-
   padding: 16px 18px;
-
   max-width: 100%;
-
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-
 }
+
+.bubble img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 12px;
+  display: block;
+}
+
 
 
 
@@ -984,17 +986,8 @@ transform:translateX(0);
 
 
 
-.chat-history-item button{
+/* Removed redundant button style to use main_style.css */
 
-border:none;
-
-background:none;
-
-font-size:18px;
-
-z-index:2;
-
-}
 
 .chat-title{
 
@@ -1386,15 +1379,8 @@ color:white;
 
 }
 
-.chat-history-item button{
+/* Removed redundant button style */
 
-  border:none;
-
-  background:none;
-
-  font-size:18px;
-
-}
 
 .p-2.border-top{
 

@@ -252,6 +252,8 @@ function stopAutoCaptureCheck() {
   }
 }
 
+let capturedDescriptor = null;
+
 async function autoCaptureAndSave() {
   if (isSavingFace) return;
   isSavingFace = true;
@@ -260,6 +262,20 @@ async function autoCaptureAndSave() {
   const canvas = document.getElementById("face-canvas");
 
   if (!video || !canvas) return;
+
+  // 🧠 COMPUTE DESCRIPTOR FOR STORAGE
+  const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                                 .withFaceLandmarks()
+                                 .withFaceDescriptor();
+
+  if (!detection) {
+      isSavingFace = false;
+      autoCaptureCooldown = false;
+      setFaceEnrollMessage("❌ Không thể lấy mã khuôn mặt, thử lại...", true);
+      return;
+  }
+  
+  capturedDescriptor = JSON.stringify(Array.from(detection.descriptor));
 
   const width = video.videoWidth;
   const height = video.videoHeight;
@@ -284,10 +300,10 @@ async function saveFaceImage() {
       username = usernameInput ? usernameInput.value.trim() : "";
   }
 
-  if (!username) {
+  if (!username || !capturedDescriptor) {
     isSavingFace = false;
     autoCaptureCooldown = false;
-    setFaceEnrollMessage("Thiếu username", true);
+    setFaceEnrollMessage("Thiếu dữ liệu", true);
     return;
   }
 
@@ -295,11 +311,13 @@ async function saveFaceImage() {
     const formData = new FormData();
     formData.append("username", username);
     formData.append("image", capturedFaceImage);
+    formData.append("descriptor", capturedDescriptor); // 🔒 Biometric reference
 
     const response = await fetch("ai/api/save_face.php", {
       method: "POST",
       body: formData
     });
+
 
     const result = await response.json();
 
@@ -392,37 +410,42 @@ async function loginWithFace() {
     const loop = setInterval(async () => {
         if (!isFaceLoginActive) { clearInterval(loop); return; }
 
-        const liveDetection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+        const liveDetection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 }))
+                                       .withFaceLandmarks()
+                                       .withFaceDescriptor();
         
         if (liveDetection) {
-            const bestMatch = faceMatcher.findBestMatch(liveDetection.descriptor);
-            console.log("[FaceID] Result:", bestMatch.toString());
+            setFaceEnrollMessage("🔍 Đang truyền dữ liệu xác thực...");
+            
+            // 🔒 BACKEND VERIFICATION ONLY
+            const formData = new FormData();
+            formData.append("username", username);
+            formData.append("descriptor", JSON.stringify(Array.from(liveDetection.descriptor)));
 
-            if (bestMatch.distance < 0.55) { // Threshold for success
-                clearInterval(loop);
-                setFaceEnrollMessage("✅ Khớp khuôn mặt! Đang đăng nhập...");
-                
-                const formData = new FormData();
-                formData.append("username", username);
+            try {
                 const loginRes = await fetch("ai/api/login_face.php", { method: "POST", body: formData });
                 const loginData = await loginRes.json();
 
                 if (loginData.success) {
+                    clearInterval(loop);
+                    setFaceEnrollMessage("✅ Xác thực thành công! Đang vào hệ thống...");
                     localStorage.setItem("user_id", loginData.user_id);
                     localStorage.setItem("username", loginData.username);
                     localStorage.setItem("last_logged_in_username", loginData.username);
                     setTimeout(() => window.location.reload(), 800);
                 } else {
-                    setFaceEnrollMessage("❌ Lỗi: " + loginData.message, true);
-                    isFaceLoginActive = false;
+                    // Fail from server (Distance too high or user not found)
+                    setFaceEnrollMessage("❌ " + loginData.message, true);
                 }
-            } else {
-                setFaceEnrollMessage("❌ Khuôn mặt không khớp! Thử lại...");
+            } catch (e) {
+                console.error("Auth error:", e);
+                setFaceEnrollMessage("Lỗi kết nối xác thực", true);
             }
         } else {
             setFaceEnrollMessage("Đưa khuôn mặt vào giữa khung");
         }
-    }, 500);
+    }, 1000); // 1s sync interval
+
 
     // Timeout after 20s
     setTimeout(() => { if (isFaceLoginActive) { clearInterval(loop); setFaceEnrollMessage("Hết thời gian chờ", true); isFaceLoginActive = false; }}, 20000);

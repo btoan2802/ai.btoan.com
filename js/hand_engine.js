@@ -19,11 +19,11 @@ class HandEngine {
         };
 
         // --- TRACKING CONFIG ---
-        this.smoothFactor = 0.15;       // Low = smoother (0.1-0.2 ideal)
-        this.deadZone = 3;              // Ignore movement < 3px
-        this.historySize = 5;           // Average over 5 frames
-        this.pinchEnter = 0.055;        // Threshold to START pinch
-        this.pinchExit  = 0.072;        // Threshold to END pinch (hysteresis)
+        this.smoothFactor = 0.35;       // Tăng để chuột theo tay nhanh hơn (bỏ cảm giác bị trễ/lag)
+        this.deadZone = 2;              // Giảm một chút để nhạy hơn
+        this.historySize = 3;           // Chỉ lấy trung bình 3 frame để giảm độ trễ (latency)
+        this.pinchEnter = 0.70;         // Threshold START pinch (normalized by hand size, norm~1.2 khi mở)
+        this.pinchExit  = 0.90;         // Threshold END pinch (hysteresis)
         this.tapWindow  = 300;          // ms: pinch shorter than this = click
 
         // --- DUAL HAND STATE ---
@@ -34,6 +34,16 @@ class HandEngine {
             initialRotX: 0,
             initialRotY: 0,
             initialRotZ: 0
+        };
+
+        // --- DEBUG STATS FOR MOBILE ---
+        this.debug = {
+            modelLoaded: false,
+            cameraStarted: false,
+            frameCounter: 0,
+            lastFrameT: 0,
+            fps: 0,
+            isMobile: /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
         };
 
         this.init();
@@ -49,21 +59,28 @@ class HandEngine {
             lockTarget: null,
             pinchStartTime: 0,
             pinchEmpty: false,
-            history: []    // [{x,y}, ...] for averaging
+            history: [],    // [{x,y}, ...] for averaging
+            landmarks: null // raw MediaPipe normalized landmarks (21 points)
         };
     }
 
     async init() {
         this.hands = new Hands({
-            locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.4/${f}`
+            locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}`
         });
         this.hands.setOptions({
             maxNumHands: 2,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.7,
-            minTrackingConfidence: 0.7
+            modelComplexity: 0, // Đổi từ 1 xuống 0 (Lite Model): Giảm tải CPU, tăng gấp đôi FPS, vô cùng mượt mà
+            minDetectionConfidence: 0.6,
+            minTrackingConfidence: 0.6
         });
-        this.hands.onResults(this.onResults.bind(this));
+        this.hands.onResults((results) => {
+            if (!this.debug.modelLoaded) {
+                this.debug.modelLoaded = true;
+                console.log('[HandEngine] First results received - Model is Loaded');
+            }
+            this.onResults(results);
+        });
 
         const toggle = document.getElementById('toggleHandMode');
         if (toggle) toggle.onclick = () => this.toggle();
@@ -72,20 +89,39 @@ class HandEngine {
 
     toggle() { this.isActive ? this.stop() : this.start(); }
 
-    async start() {
-        this.overlay.style.display = 'block';
+    async start(showOverlay = true) {
+        if (showOverlay) this.overlay.style.display = 'block';
         try {
             if (!this.camera) {
+                // Mobile optimized camera check
+                const constraints = this.debug.isMobile 
+                    ? { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+                    : { width: 640, height: 480 };
+
                 this.camera = new Camera(this.video, {
                     onFrame: async () => {
-                        if (this.isActive) await this.hands.send({ image: this.video });
+                        this.debug.frameCounter++;
+                        const now = performance.now();
+                        if (now - this.debug.lastFrameT > 1000) {
+                            this.debug.fps = this.debug.frameCounter;
+                            this.debug.frameCounter = 0;
+                            this.debug.lastFrameT = now;
+                        }
+                        if (this.isActive) {
+                            await this.hands.send({ image: this.video });
+                        }
                     },
-                    width: 1280, height: 720
+                    ...constraints
                 });
             }
             await this.camera.start();
             this.isActive = true;
-        } catch (e) { console.error(e); }
+            this.debug.cameraStarted = true;
+            console.log('[HandEngine] Camera started, isActive=true, isMobile=' + this.debug.isMobile);
+        } catch (e) { 
+            console.error('[HandEngine] start() error:', e); 
+            this.debug.cameraStarted = false;
+        }
     }
 
     stop() {
@@ -132,25 +168,52 @@ class HandEngine {
     }
 
     /**
-     * Pinch detection with hysteresis:
-     * - Need distance < pinchEnter to START pinching
-     * - Need distance > pinchExit to STOP pinching
-     * This prevents flickering at the threshold boundary.
+     * Pinch detection — normalize theo hand size để ổn định với mọi khoảng cách camera.
+     *
+     * rawDist = khoảng cách thumb tip (4) ↔ index tip (8) trong MediaPipe 0-1 space
+     * handSize = wrist (0) ↔ middle_mcp (9), đại diện kích thước bàn tay
+     * normDist = rawDist / handSize  ⇒  so sánh với pinchEnter/pinchExit
+     *
+     * Khi chụm ngón: normDist ≈ 0.1 – 0.3
+     * Khi mở tay:   normDist ≈ 0.6 – 1.2
      */
-    detectPinch(s, thumb, index) {
-        const d = Math.sqrt(
+    detectPinch(s, thumb, index, landmarks) {
+        // Raw distance trong normalized 0-1 space
+        const rawDist = Math.sqrt(
             Math.pow(thumb.x - index.x, 2) +
             Math.pow(thumb.y - index.y, 2)
         );
 
+        // Hand size: wrist (0) → middle MCP (9)
+        const wrist   = landmarks[0];
+        const midMcp  = landmarks[9];
+        const handSize = Math.sqrt(
+            Math.pow(wrist.x - midMcp.x, 2) +
+            Math.pow(wrist.y - midMcp.y, 2)
+        ) || 0.001;
+
+        const normDist = rawDist / handSize;
+
         s.prevPinching = s.isPinching;
 
         if (s.isPinching) {
-            // Currently pinching — need larger distance to release
-            s.isPinching = d < this.pinchExit;
+            s.isPinching = normDist < this.pinchExit;
         } else {
-            // Not pinching — need smaller distance to start
-            s.isPinching = d < this.pinchEnter;
+            s.isPinching = normDist < this.pinchEnter;
+        }
+
+        // Debug dày mỗi 300ms — in đủ 7 giá trị để trace
+        const now = Date.now();
+        if (!s._dbgTs || now - s._dbgTs > 300) {
+            s._dbgTs = now;
+            console.log(
+                `[Pinch] thumb(${thumb.x.toFixed(3)},${thumb.y.toFixed(3)}) ` +
+                `index(${index.x.toFixed(3)},${index.y.toFixed(3)}) ` +
+                `raw=${rawDist.toFixed(4)} handSz=${handSize.toFixed(4)} ` +
+                `norm=${normDist.toFixed(3)} ` +
+                `enter=${this.pinchEnter} exit=${this.pinchExit} ` +
+                `isPinching=${s.isPinching}`
+            );
         }
     }
 
@@ -164,8 +227,12 @@ class HandEngine {
         if (results.multiHandLandmarks) {
             results.multiHandLandmarks.forEach((landmarks, i) => {
                 const label = results.multiHandedness[i].label;
+                const score = results.multiHandedness[i].score;
                 detectedSet.add(label);
-
+                
+                // Store score for external confidence checks
+                this.handStates[label].score = score;
+                
                 // Draw skeleton (subtle)
                 window.drawConnectors(this.ctx, landmarks, window.HAND_CONNECTIONS,
                     { color: 'rgba(255,255,255,0.08)', lineWidth: 1 });
@@ -178,15 +245,27 @@ class HandEngine {
 
         this.evaluateMultiHandState();
         this.syncUI(detectedSet);
+
+        // Reset landmarks nếu không còn detect được ở frame này
+        ['Left', 'Right'].forEach(side => {
+            if (!detectedSet.has(side)) {
+                this.handStates[side].landmarks = null;
+                this.handStates[side].score = 0;
+            }
+        });
+
         this.ctx.restore();
     }
 
     // ========== PER-HAND PROCESSING ==========
 
     processHand(side, landmarks) {
-        const s = this.handStates[side];
+        const s     = this.handStates[side];
         const thumb = landmarks[4];
         const index = landmarks[8];
+
+        // Expose raw landmarks so external systems (e.g. naruto_mode) can draw per-finger effects
+        s.landmarks = landmarks;
 
         // Raw position (mirror X for natural feel)
         const rawX = (1 - index.x) * window.innerWidth;
@@ -195,8 +274,8 @@ class HandEngine {
         // Stabilize
         this.stabilizePosition(s, rawX, rawY);
 
-        // Pinch with hysteresis
-        this.detectPinch(s, thumb, index);
+        // Pinch with hysteresis + hand-size normalization
+        this.detectPinch(s, thumb, index, landmarks);
 
         const now = Date.now();
 

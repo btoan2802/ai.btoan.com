@@ -1,5 +1,16 @@
 // ====== cấu hình ======
 const WORKER_URL = "/ai/api/chat.php";
+
+// 📱 MOBILE VIEWPORT HEIGHT FIX
+function setAppHeight() {
+    const doc = document.documentElement;
+    const height = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    doc.style.setProperty('--app-height', `${height}px`);
+}
+window.addEventListener('resize', setAppHeight);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', setAppHeight);
+setAppHeight();
+
 const MODEL = "gemini-2.5-flash";
 const TEMPERATURE = 0.5;
 const MAX_OUTPUT_TOKENS = 20000;
@@ -39,6 +50,12 @@ QUY TẮC XUẤT FILE:
 - KHÔNG được trả lời rằng bạn không thể tạo file.
 - KHÔNG được bảo người dùng copy thủ công sang Word.
 
+- QUY TẮC TẠO ẢNH:
+  Nếu người dùng yêu cầu tạo hình ảnh, vẽ hình, sinh ảnh hoặc yêu cầu tương đương:
+  Hãy trả về đúng định dạng: [GENIMAGE] <mô tả chi tiết bằng tiếng Anh để tạo ảnh đẹp nhất>
+  Ví dụ: [GENIMAGE] A realistic cat wearing a space helmet, cinematic lighting.
+  KHÔNG giải thích thêm, chỉ trả về tag này.
+
 Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
 
 Nếu có nhiều thông tin về cùng một dữ kiện,
@@ -55,7 +72,7 @@ Hãy trả về theo format:
 KHÔNG trả lời ngay.
 `;
 // ====== state ======
-let history = [];
+let chatHistoryBuffer = [];
 let lastUserMessage = "";
 
 function escapeHtml(str = "") {
@@ -143,8 +160,10 @@ function addImages(files) {
     const imgInput = document.getElementById("fileImg")
     const dt = new DataTransfer()
 
-    // giữ file cũ
-    Array.from(imgInput.files).forEach(f => dt.items.add(f))
+    // giữ file cũ (chỉ add nếu files không phải từ chính input đó)
+    if (files !== imgInput.files && files !== document.getElementById("fileCam")?.files) {
+        Array.from(imgInput.files).forEach(f => dt.items.add(f))
+    }
 
     Array.from(files).forEach(file => {
 
@@ -202,9 +221,11 @@ function addUserBubble(text, images = []) {
     }
 
     html += `
-        <button class="copy-btn-msg" type="button">
-            <i class="bi bi-clipboard"></i>
-        </button>
+        <div class="assistant-corner-actions">
+            <button class="corner-action-btn copy-btn-msg" title="Copy tin nhắn">
+                <i class="bi bi-clipboard"></i>
+            </button>
+        </div>
     `
 
     bubble.innerHTML = html
@@ -213,7 +234,7 @@ function addUserBubble(text, images = []) {
     if (copyBtn) {
         copyBtn.onclick = async () => {
             await navigator.clipboard.writeText(text || "")
-            copyBtn.innerHTML = `<i class="bi bi-check"></i>`
+            copyBtn.innerHTML = `<i class="bi bi-check2"></i>`
             setTimeout(() => {
                 copyBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
             }, 1200)
@@ -226,51 +247,37 @@ function addUserBubble(text, images = []) {
 
 function createMessageActions({ text, exportType = null, onExport = null }) {
     const actions = document.createElement("div")
-    actions.className = "message-actions"
+    actions.className = "assistant-corner-actions"
 
     if (exportType) {
         const exportBtn = document.createElement("button")
-        exportBtn.className = "message-action-btn message-action-btn-primary"
-        exportBtn.type = "button"
-        exportBtn.innerHTML = `
-            <i class="bi bi-download message-action-icon"></i>
-            <span>Tải ${exportType.toUpperCase()}</span>
-        `
+        exportBtn.className = "corner-action-btn"
+        exportBtn.title = `Tải ${exportType.toUpperCase()}`
+        exportBtn.innerHTML = `<i class="bi bi-download"></i>`
         exportBtn.onclick = () => {
             if (typeof onExport === "function") return onExport()
-            if (exportType === "docx") {
-                exportDOCX(text)
-            } else {
-                exportFile(text)
-            }
+            if (exportType === "docx") exportDOCX(text)
+            else exportFile(text)
         }
         actions.appendChild(exportBtn)
     }
 
-    const copyAllBtn = document.createElement("button")
-    copyAllBtn.className = "message-action-btn message-action-btn-secondary"
-    copyAllBtn.type = "button"
-    copyAllBtn.innerHTML = `
-        <i class="bi bi-clipboard message-action-icon"></i>
-        <span>Copy</span>
-    `
-    copyAllBtn.onclick = async () => {
+    const copyBtn = document.createElement("button")
+    copyBtn.className = "corner-action-btn"
+    copyBtn.title = "Copy tin nhắn"
+    copyBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
+    copyBtn.onclick = async () => {
         await navigator.clipboard.writeText(text || "")
-        copyAllBtn.innerHTML = `
-            <i class="bi bi-check2 message-action-icon"></i>
-            <span>Đã copy</span>
-        `
+        copyBtn.innerHTML = `<i class="bi bi-check2"></i>`
         setTimeout(() => {
-            copyAllBtn.innerHTML = `
-                <i class="bi bi-clipboard message-action-icon"></i>
-                <span>Copy</span>
-            `
-        }, 1200)
+            copyBtn.innerHTML = `<i class="bi bi-clipboard"></i>`
+        }, 2000)
     }
+    actions.appendChild(copyBtn)
 
-    actions.appendChild(copyAllBtn)
     return actions
 }
+
 
 function addBotBubble(text, exportType = null) {
     if (!chatEl) return
@@ -298,13 +305,14 @@ function addBotBubble(text, exportType = null) {
 
     /* copy từng block code */
     bubble.querySelectorAll("pre").forEach(block => {
+        if (block.querySelector(".copy-code-btn")) return;
 
         const btn = document.createElement("button")
-        btn.className = "copy-btn"
-        btn.innerHTML = `<i class="bi bi-clipboard"></i>`
+        btn.className = "copy-code-btn"
+        btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
 
-        btn.onclick = () => {
-
+        btn.onclick = (e) => {
+            e.stopPropagation();
             const code = block.querySelector("code")?.innerText || block.innerText
 
             if (navigator.clipboard) {
@@ -318,17 +326,14 @@ function addBotBubble(text, exportType = null) {
                 document.body.removeChild(textarea)
             }
 
-            btn.innerHTML = `<i class="bi bi-check"></i>`
-
+            btn.innerHTML = `<i class="bi bi-check2"></i> Copied`
             setTimeout(() => {
-                btn.innerHTML = `<i class="bi bi-clipboard"></i>`
-            }, 1500)
-
+                btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
+            }, 2000)
         }
-
         block.appendChild(btn)
-
     })
+
 
     /* math */
     if (window.MathJax) {
@@ -344,17 +349,34 @@ function addBotBubble(text, exportType = null) {
 
 }
 
-function streamBot(text, exportType = null) {
+// 📐 SMART MATH NORMALIZER
+function normalizeMathText(text) {
+    if (!text) return "";
+    
+    // 1. Remove forced line breaks between formula and its condition (với, khi, n != ...)
+    // Detect patterns like: $$...$$ \n (với...)
+    let cleaned = text.replace(/(\$\$[\s\S]*?\$\$)\s*\n\s*(\(với|\(khi|với|khi|dk:|đk:|n\s*[≠|!=])/gi, "$1 $2");
+    
+    // 2. Fix multiple single newlines that should be a single paragraph
+    // But keep double newlines as paragraph breaks
+    // (This makes it look more like ChatGPT)
+    cleaned = cleaned.replace(/([^\n])\n([^\n\*\[\-\d])/g, "$1 $2");
 
+    return cleaned;
+}
+
+function streamBot(text, exportType = null) {
+    const normalizedText = normalizeMathText(text);
+    
     const row = document.createElement("div")
     row.className = "msgrow bot"
 
     const bubble = document.createElement("div")
     bubble.className = "bubble position-relative"
 
-    // 🔥 tách content riêng (KHÔNG bị reset)
     const content = document.createElement("div")
-
+    content.className = "message-content"
+    
     bubble.appendChild(content)
     bubble.appendChild(createMessageActions({ text, exportType }))
 
@@ -362,12 +384,12 @@ function streamBot(text, exportType = null) {
     chatEl.appendChild(row)
 
     let i = 0
-
     const timer = setInterval(() => {
-
-        // ❗ CHỈ render content → KHÔNG đụng footer
-        content.innerHTML = marked.parse(text.substring(0, i))
+        // Use normalized text for rendering
+        const currentText = normalizedText.substring(0, i);
+        content.innerHTML = marked.parse(currentText)
             .replace(/language-j\b/g, "language-java")
+
 
         /* highlight realtime */
         content.querySelectorAll("pre code").forEach(el => {
@@ -390,26 +412,25 @@ function streamBot(text, exportType = null) {
 
             /* thêm nút copy cho code */
             content.querySelectorAll("pre").forEach(block => {
-
-                if (block.querySelector(".copy-btn")) return
+                if (block.querySelector(".copy-code-btn")) return
 
                 const btn = document.createElement("button")
-                btn.className = "copy-btn"
-                btn.innerHTML = `<i class="bi bi-clipboard"></i>`
+                btn.className = "copy-code-btn"
+                btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
 
-                btn.onclick = () => {
-                    const code = block.innerText
+                btn.onclick = (e) => {
+                    e.stopPropagation();
+                    const code = block.querySelector("code")?.innerText || block.innerText
                     navigator.clipboard.writeText(code)
 
-                    btn.innerHTML = `<i class="bi bi-check"></i>`
-
+                    btn.innerHTML = `<i class="bi bi-check2"></i> Copied`
                     setTimeout(() => {
-                        btn.innerHTML = `<i class="bi bi-clipboard"></i>`
-                    }, 1500)
+                        btn.innerHTML = `<i class="bi bi-copy"></i> Copy code`
+                    }, 2000)
                 }
-
                 block.appendChild(btn)
             })
+
 
             /* math */
             if (window.MathJax) {
@@ -427,32 +448,35 @@ function streamBot(text, exportType = null) {
 async function callGemini(userText, images, files) {
 
     let memoryData = []
+    let detectedIntent = "chat";
 
+    // 🧠 Step 1: Semantic Intent Routing (Classifier)
     try {
-
-        const mem = await fetch("/ai/api/get_memory.php?user_id=" + localStorage.getItem("user_id"))
-        let text = await mem.text()
-
-        if (text.trim() === "") {
-            memoryData = []
-        } else {
-            memoryData = JSON.parse(text)
-        }
-
+        const cRes = await fetch("/ai/api/classify_intent.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: userText })
+        });
+        const cData = await cRes.json();
+        detectedIntent = cData.intent || "chat";
+        console.log("🎯 Semantic Route:", detectedIntent);
     } catch (e) {
-        console.log("memory load error", e)
+        console.warn("Intent routing failed, defaulting to chat", e);
     }
 
-    // lấy dữ liệu training liên quan
-    let trainingData = []
+    const isVisualMode = detectedIntent.startsWith("visual_exact_");
 
-    try {
-
-        const res = await fetch("/ai/api/get_training.php?q=" + encodeURIComponent(userText))
-        trainingData = await res.json()
-
-    } catch (e) {
-        console.log("training load error", e)
+    // 📚 Step 2: Memory Load (Skip in Visual Mode)
+    if (!isVisualMode) {
+        try {
+            const mem = await fetch("/ai/api/get_memory.php?user_id=" + localStorage.getItem("user_id"))
+            let text = await mem.text()
+            if (text.trim() !== "") memoryData = JSON.parse(text);
+        } catch (e) {
+            console.log("memory load error", e)
+        }
+    } else {
+        console.log("🛡️ Visual Mode: Bypassing user memory to prevent contamination");
     }
 
     let extraKnowledge = ""
@@ -465,14 +489,6 @@ async function callGemini(userText, images, files) {
     `
     }
 
-    trainingData.forEach(t => {
-        extraKnowledge += `
-    User correction:
-    Question: ${t.question}
-    Correct answer: ${t.correct_answer}
-
-    `
-    })
     const isThinking =
         mode === "thinking" ||
         (mode === "auto" && detectThinking(userText))
@@ -494,9 +510,10 @@ async function callGemini(userText, images, files) {
             {
                 role: "user",
                 parts: [
-                    { text: systemInstruction + thinkingPrompt + toolInstruction + "\n" + userMemory + extraKnowledge }
+                    { text: systemInstruction + thinkingPrompt + toolInstruction + "\n" + userMemory }
                 ]
             },
+
             // KHÔNG gửi history từ client
             {
                 role: "user",
@@ -540,8 +557,10 @@ async function callGemini(userText, images, files) {
                 model: MODEL,
                 payload: payload,
                 user_id: localStorage.getItem("user_id"),
-                conversation_id: conversation_id
+                conversation_id: conversation_id,
+                intent: detectedIntent
             })
+
         });
 
     } catch (err) {
@@ -569,12 +588,10 @@ async function callGemini(userText, images, files) {
     // 🔥 FIX ĐÚNG CHỖ (sau parse)
     if (data?.conversation_id && !conversation_id) {
         conversation_id = data.conversation_id
-
-        // 👉 load history NGAY
+        window.history.pushState({ cid: conversation_id }, "", "/c/" + conversation_id);
         loadHistory()
-
-
     }
+
 
 
     if (!res.ok) {
@@ -587,11 +604,6 @@ async function callGemini(userText, images, files) {
     if (conversation_id && !autoRenamed) {
 
         autoRenamed = true
-        const cleanTitle = (lastUserMessage || "Chat mới")
-            .replace(/[#*\n]/g, " ")
-            .trim()
-            .substring(0, 40)
-
         fetch("/ai/api/rename_conversation.php", {
             method: "POST",
             headers: {
@@ -599,19 +611,21 @@ async function callGemini(userText, images, files) {
             },
             body: JSON.stringify({
                 id: conversation_id,
-                title: cleanTitle
+                isAuto: true
             })
         }).then(() => loadHistory())
+
     }
 
     if (!isInternalPrompt) {
-        history.push({ role: "user", parts });
-        history.push({ role: "model", parts: [{ text: reply }] });
+        chatHistoryBuffer.push({ role: "user", parts });
+        chatHistoryBuffer.push({ role: "model", parts: [{ text: reply }] });
     }
 
-    if (history.length > 20) {
-        history = history.slice(-20);
+    if (chatHistoryBuffer.length > 20) {
+        chatHistoryBuffer = chatHistoryBuffer.slice(-20);
     }
+
 
     return reply;
 
@@ -696,29 +710,29 @@ async function send() {
         return
     }
     // ===== TOOL DETECTION =====
-if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
+    if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
 
-    let query = userText
-    query = query.replace(/tìm trên mạng/gi, "")
-    query = query.replace(/^\/search/gi, "")
-    query = query.trim()
+        let query = userText
+        query = query.replace(/tìm trên mạng/gi, "")
+        query = query.replace(/^\/search/gi, "")
+        query = query.trim()
 
-    if (!query) {
-        addBotBubble("❌ bạn chưa nhập nội dung cần tìm")
-        isSending = false   // 🔥 THÊM
+        if (!query) {
+            addBotBubble("❌ bạn chưa nhập nội dung cần tìm")
+            isSending = false   // 🔥 THÊM
+            return
+        }
+
+        addUserBubble(userText)
+        scrollToBottom()
+
+        runSearch(query, userText)
+
+        msgEl.value = ""
+
+        isSending = false   // 🔥 QUAN TRỌNG
         return
     }
-
-    addUserBubble(userText)
-    scrollToBottom()
-
-    runSearch(query, userText)
-
-    msgEl.value = ""
-
-    isSending = false   // 🔥 QUAN TRỌNG
-    return
-}
 
     // ===== EXPORT COMMAND =====
 
@@ -787,51 +801,142 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
             }
         }
 
-        // 🔥 AUTO SEARCH
-        if (reply.startsWith("[SEARCH]")) {
+        // 🔥 AUTO GENIMAGE (ROBUST JOIN)
+        if (reply.includes("[GENIMAGE]")) {
+            const tag = "[GENIMAGE]";
+            const index = reply.indexOf(tag);
+            
+            // Extract the pure text (combine content before and after the prompt if any)
+            let textBefore = reply.substring(0, index).trim();
+            // We assume the prompt is after the tag, but we stop at the next newline if the bot keeps talking
+            let remainder = reply.substring(index + tag.length).trim();
+            
+            // Split remainder into prompt and potential further text
+            // If the bot follows instructions, this is just the prompt. 
+            // If not, we take the first line as prompt and rest as text.
+            let promptLines = remainder.split("\n");
+            const imagePrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
 
-            const query = reply.replace("[SEARCH]", "").trim()
+            const fullText = (textBefore + "\n" + textAfter).trim();
 
-            typing.remove()
+            typing.remove();
 
-            addBotBubble("🔎 Đang tìm: " + query)
+            if (fullText) {
+                streamBot(fullText, exportType);
+            }
 
-            await runSearch(query, userText)
+            const imgLoading = document.createElement("div");
+            imgLoading.className = "msgrow bot";
+            imgLoading.innerHTML = `<div class="bubble">🎨 Đang vẽ ảnh minh họa...</div>`;
+            chatEl.appendChild(imgLoading);
+            scrollToBottom();
 
-            isSending = false   // 🔥 THÊM
-            return
+            try {
+                const textToStore = fullText || "Mô tả ảnh:";
+                const imgRes = await fetch("/ai/api/generate_image.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: imagePrompt,
+                        conversation_id,
+                        user_id: Number(localStorage.getItem("user_id") || 0),
+                        assistant_text: textToStore
+                    })
+                });
+
+                const rawText = await imgRes.text();
+
+                imgLoading.remove();
+
+                let imgData = null;
+                try {
+                    imgData = JSON.parse(rawText);
+                } catch (e) {
+                    console.error("JSON parse failed for image response", e);
+                }
+
+                if (imgRes.ok && imgData?.success) {
+                    const cleanMimeType = String(imgData.mimeType || "image/png").trim();
+                    const cleanBase64 = String(imgData.imageBase64 || "").replace(/\s+/g, "");
+                    const imageSrc = `data:${cleanMimeType};base64,${cleanBase64}`;
+
+                    const row = document.createElement("div");
+                    row.className = "msgrow bot";
+                    row.innerHTML = `
+                        <div class="bubble image-bubble-premium">
+                            <div class="image-wrapper-premium">
+                                <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
+                                <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    chatEl.appendChild(row);
+                } else {
+                    const errMsg = imgData?.error || "Lỗi không xác định";
+                    const isQuota = errMsg.toLowerCase().includes("quota") || rawText.includes("429");
+                    
+                    const errorBubble = document.createElement("div");
+                    errorBubble.className = "msgrow bot";
+                    errorBubble.innerHTML = `
+                        <div class="bubble border-danger text-danger" style="font-size:0.9rem;">
+                            <i class="bi bi-exclamation-triangle"></i> 
+                            ${isQuota ? "<b>Hết lượt vẽ ảnh (Quota Exceeded):</b> Vui lòng thử lại sau 1-2 phút hoặc nhờ AI giải thích bằng chữ." : "Lỗi vẽ ảnh: " + errMsg}
+                        </div>
+                    `;
+                    chatEl.appendChild(errorBubble);
+                }
+
+            } catch (e) {
+                imgLoading.remove();
+                addBotBubble("❌ Lỗi kết nối khi vẽ ảnh: " + e.message);
+            }
+
+            isSending = false;
+            scrollToBottom();
+            return;
         }
 
+
+        // 🔥 AUTO SEARCH
+        if (reply.startsWith("[SEARCH]")) {
+            const query = reply.replace("[SEARCH]", "").trim();
+
+            typing.remove();
+
+            addBotBubble("🔎 Đang tìm: " + query);
+
+            await runSearch(query, userText);
+
+            isSending = false;
+            return;
+        }
 
         if (!reply.startsWith("[SEARCH]") && !reply.startsWith("[EXPORT]")) {
             if (isValidForExport(reply)) {
-                lastExportContent = reply
-                localStorage.setItem("lastExportContent", reply)
+                lastExportContent = reply;
+                localStorage.setItem("lastExportContent", reply);
             }
         }
 
-        detectCorrection(userText)
+        detectCorrection(userText);
 
-        typing.remove()
-        streamBot(reply, exportType)
-
-        // ❗ KHÔNG enable ở đây (vì stream chưa xong)
+        typing.remove();
+        streamBot(reply, exportType);
 
         setTimeout(() => {
             if (window.MathJax) {
-                MathJax.typeset()
+                MathJax.typeset();
             }
-        }, 100)
+        }, 100);
 
     } catch (e) {
-
-        typing.remove()
-        addBotBubble("lỗi: " + e.message)
-
-        isSending = false // 🔥 BẮT BUỘC
-
+        typing.remove();
+        addBotBubble("lỗi: " + e.message);
+        isSending = false;
     }
-
 }
 
 // ====== LOGIN ======
@@ -954,9 +1059,7 @@ function logout() {
 
 // ====== HISTORY ======
 async function loadHistory() {
-
     const user_id = localStorage.getItem("user_id");
-
     const res = await fetch("/ai/api/get_conversations.php?user_id=" + user_id);
     const data = await res.json();
 
@@ -964,51 +1067,54 @@ async function loadHistory() {
     if (!list) return;
 
     list.innerHTML = "";
-
     if (data.length === 0) return;
 
-    data.forEach((c, i) => {
-
+    data.forEach((c) => {
         const div = document.createElement("div")
-        div.className = "chat-history-item d-flex justify-content-between align-items-center"
+        // Apply active class if this is the current conversation
+        const isActive = conversation_id == c.id;
+        div.className = `chat-history-item d-flex justify-content-between align-items-center ${isActive ? 'active' : ''}`;
+        div.setAttribute('data-id', c.id);
 
         div.innerHTML = `
-    <div class="chat-title flex-grow-1">${c.title}</div>
-
-    <div class="dropdown">
-    <button class="btn btn-sm" data-bs-toggle="dropdown">⋮</button>
-
-    <ul class="dropdown-menu dropdown-menu-end">
-
-    <li>
-    <button class="dropdown-item"
-    onclick="renameChat(${c.id}, '${c.title}')">
-    ✏️ Đổi tên
-    </button>
-    </li>
-
-    <li>
-    <button class="dropdown-item text-danger"
-    onclick="deleteChat(${c.id})">
-    🗑️ Xoá
-    </button>
-    </li>
-
-    </ul>
+    <div class="chat-title">${c.title}</div>
+    <div class="dropdown" onclick="event.stopPropagation()">
+        <button class="history-action-btn" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-three-dots"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <button class="dropdown-item" onclick="renameChat(${c.id}, '${c.title.replace(/'/g, "\\'")}')">
+                    <i class="bi bi-pencil"></i> Đổi tên
+                </button>
+            </li>
+            <li>
+                <hr class="dropdown-divider opacity-50">
+            </li>
+            <li>
+                <button class="dropdown-item text-danger" onclick="deleteChat(${c.id})">
+                    <i class="bi bi-trash3"></i> Xoá
+                </button>
+            </li>
+        </ul>
     </div>
-    `
+    `;
 
-
-        div.onclick = () => loadConversation(c.id)
-        div.style.cursor = "pointer"
-
-
-        list.appendChild(div)
-
-
+        div.onclick = () => loadConversation(c.id);
+        list.appendChild(div);
     });
-
 }
+
+function updateSidebarActive(id) {
+    document.querySelectorAll('.chat-history-item').forEach(item => {
+        if (item.getAttribute('data-id') == id) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+}
+
 
 //rename
 
@@ -1065,82 +1171,103 @@ async function deleteChat(id) {
 
 }
 
-async function loadConversation(id) {
+async function loadConversation(id, updateUrl = true) {
+    if (conversation_id === id && chatEl.innerHTML !== "" && !updateUrl) return; 
 
-    conversation_id = id
+    conversation_id = id;
+    if (updateUrl) {
+        window.history.pushState({ cid: id }, "", `/c/${id}`);
+    }
 
-    const res = await fetch("/ai/api/get_messages.php?conversation_id=" + id)
-    const data = await res.json()
 
-    chatEl.innerHTML = "";
+    
+    // Immediate UI Feedback
+    updateSidebarActive(id);
+    chatEl.innerHTML = `
+        <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted opacity-50">
+            <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+            <div style="font-size: 13px;">Đang tải cuộc trò chuyện...</div>
+        </div>
+    `;
     attachments.innerHTML = "";
-    history = []
-    lastExportContent = ""
+    chatHistoryBuffer = [];
+    lastExportContent = "";
 
-    data.forEach(m => {
+    try {
+        const res = await fetch("/ai/api/get_messages.php?conversation_id=" + id);
+        const data = await res.json();
 
-        if (m.role === "user") {
+        chatEl.innerHTML = ""; // Clear loader
 
-            addUserBubble(m.text, m.images || [])
 
-            history.push({
-                role: "user",
-                parts: [{ text: m.text }]
-            })
-
-        } else {
-
-            if (m.text.startsWith("[EXPORT_FILE]||")) {
-
-                const base64Data = m.text.split("||")[1]
-                const content = atob(base64Data)
-
-                const clean = fixLatex(cleanExportContent(content))
-
-                const base64Encoded = btoa(unescape(encodeURIComponent(clean)))
-                const url = "data:text/plain;base64," + base64Encoded
-
-                addBotBubble(`
+        data.forEach(m => {
+            if (m.role === "user") {
+                addUserBubble(m.text, m.images || [])
+                chatHistoryBuffer.push({
+                    role: "user",
+                    parts: [{ text: m.text }]
+                })
+            } else {
+                if (m.text.startsWith("[EXPORT_FILE]||")) {
+                    const base64Data = m.text.split("||")[1]
+                    const content = atob(base64Data)
+                    const clean = fixLatex(cleanExportContent(content))
+                    const base64Encoded = btoa(unescape(encodeURIComponent(clean)))
+                    const url = "data:text/plain;base64," + base64Encoded
+                    addBotBubble(`
     📄 File đã xuất trước đó:
 
     👉 <a href="${url}" target="_blank">Mở lại</a>
     `)
-            } else {
+                } else {
+                    let text = m.text
+                    let exportType = null
+                    if (text.includes("[EXPORT]")) {
+                        const parts = text.split("[EXPORT]")
+                        text = parts[0].trim()
+                        exportType = parts[1].trim().toLowerCase()
+                    }
+                    if (
+                        isValidForExport(text) &&
+                        !text.includes("📄 File đã xuất trước đó") &&
+                        !text.includes("📄 File DOCX đã sẵn sàng") &&
+                        !text.includes("📄 File đã sẵn sàng")
+                    ) {
+                        lastExportContent = text
+                        localStorage.setItem("lastExportContent", text)
+                    }
+                    addBotBubble(text, exportType)
+                    if (Array.isArray(m.images) && m.images.length > 0) {
+                        const row = document.createElement("div");
+                        row.className = "msgrow bot";
+                        const bubble = document.createElement("div");
+                        bubble.className = "bubble image-bubble-premium";
+                        const imageSrc = m.images[0];
+                        bubble.innerHTML = `
+                            <div class="image-wrapper-premium">
+                                <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
+                                <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                            <div class="image-caption-premium">Đây là ảnh của bạn</div>
+                        `;
+                        row.appendChild(bubble);
+                        chatEl.appendChild(row);
+                    }
 
-                let text = m.text
-                let exportType = null
-
-                if (text.includes("[EXPORT]")) {
-                    const parts = text.split("[EXPORT]")
-                    text = parts[0].trim()
-                    exportType = parts[1].trim().toLowerCase()
                 }
-
-                // nếu nội dung đủ tốt để export thì lưu lại
-if (
-    isValidForExport(text) &&
-    !text.includes("📄 File đã xuất trước đó") &&
-    !text.includes("📄 File DOCX đã sẵn sàng") &&
-    !text.includes("📄 File đã sẵn sàng")
-) {
-    lastExportContent = text
-    localStorage.setItem("lastExportContent", text)
-}
-
-                addBotBubble(text, exportType)
+                chatHistoryBuffer.push({
+                    role: "model",
+                    parts: [{ text: m.text }]
+                })
             }
-
-            history.push({
-                role: "model",
-                parts: [{ text: m.text }]
-            })
-
-        }
-
-    })
-
-    scrollToBottom()
-
+        })
+        scrollToBottom()
+    } catch (e) {
+        console.error("LOAD CONV ERROR:", e)
+        chatEl.innerHTML = '<div class="p-4 text-center text-danger">⚠️ Không thể tải cuộc trò chuyện.</div>'
+    }
 }
 
 function getLastBotMessageText() {
@@ -1226,6 +1353,33 @@ window.onload = function () {
 
     }
     sendBtn = document.getElementById("send");
+
+    // Routing Logic
+    // Routing Logic
+    const urlParams = new URLSearchParams(window.location.search);
+    const cidFromQuery = urlParams.get('c');
+    const pathMatch = window.location.pathname.match(/\/c\/([0-9]+)/);
+    const cidToLoad = (pathMatch ? pathMatch[1] : null) || cidFromQuery;
+
+    if (cidToLoad) {
+        console.log("🚀 BtoanAI: Restoring conversation", cidToLoad);
+        setTimeout(() => {
+            loadConversation(cidToLoad, false);
+        }, 200);
+    } else if (window.location.pathname === "/" || window.location.pathname.endsWith("index.php") || window.location.pathname === "") {
+        console.log("🚀 BtoanAI: Starting new chat");
+        newChat(false); 
+    }
+
+
+
+    window.addEventListener('popstate', (e) => {
+        if (e.state && e.state.cid) {
+            loadConversation(e.state.cid, false);
+        } else {
+            newChat(false);
+        }
+    });
 
     chatEl.addEventListener("dragover", (e) => {
         e.preventDefault()
@@ -1327,28 +1481,32 @@ window.onload = function () {
 
 }
 function toggleSidebar() {
-
     const sb = document.getElementById("sidebar")
-
     if (!sb) return
 
-    sb.classList.toggle("open")
-
+    if (isMobile()) {
+        sb.classList.toggle("open")
+    } else {
+        sb.classList.toggle("collapsed")
+        document.body.classList.toggle("sidebar-collapsed")
+    }
 }
+
 
 function setMode(m) {
-
-    mode = m
-
-    const btn = document.getElementById("modeBtn")
+    mode = m;
+    const btn = document.getElementById("modeStatus");
+    if (!btn) return;
 
     if (m === "thinking") {
-        btn.innerText = "🧠 Thinking"
+        btn.innerText = "🧠 Thinking";
+        btn.className = "badge bg-warning text-dark ms-1";
     } else {
-        btn.innerText = "⚡ Fast"
+        btn.innerText = "⚡ Fast";
+        btn.className = "badge bg-light text-dark ms-1";
     }
-
 }
+
 
 document.getElementById("pickImage")?.addEventListener("click", () => {
     document.getElementById("fileImg").click()
@@ -1409,22 +1567,26 @@ document.getElementById("fileDoc")?.addEventListener("change", (e) => {
     })
 
 })
-function newChat() {
-    autoRenamed = false  // 🔥 THÊM DÒNG NÀY
+function newChat(updateUrl = true) {
+    autoRenamed = false
     lastAIAnswer = ""
 
     conversation_id = null
-    history = []
+    if (updateUrl) {
+        window.history.pushState(null, "", "/");
+    }
+    updateSidebarActive(null) // Clear active sidebar state
+
+    chatHistoryBuffer = []
+
     lastExportContent = ""
     const chatEl = document.getElementById("chat")
 
     if (chatEl) {
         chatEl.innerHTML = ""
     }
-
-    addBotBubble("chào bạn 😄 tôi là Btoan AI.")
-
 }
+
 document.addEventListener("click", function (e) {
 
     const sidebar = document.getElementById("sidebar")
@@ -1856,89 +2018,89 @@ function cleanExportContent(text) {
         .replace(/👉|📄|🔎/g, "")
         .trim()
 }
-    async function checkProfile(user_id) {
+async function checkProfile(user_id) {
 
-        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-        const data = await res.json()
+    const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+    const data = await res.json()
 
-        const fullName = data.full_name?.trim()
+    const fullName = data.full_name?.trim()
 
-        const name =
-            fullName ||
-            localStorage.getItem("full_name") ||
-            localStorage.getItem("username") ||
-            "User"
+    const name =
+        fullName ||
+        localStorage.getItem("full_name") ||
+        localStorage.getItem("username") ||
+        "User"
 
-        // ✅ set tên
-        document.getElementById("userName").innerText = name
+    // ✅ set tên
+    document.getElementById("userName").innerText = name
 
-        // ✅ avatar chữ cái đầu
-        const avatarEl = document.getElementById("userAvatar")
+    // ✅ avatar chữ cái đầu
+    const avatarEl = document.getElementById("userAvatar")
 
-        // reset
-        avatarEl.innerHTML = ""
-        avatarEl.style.background = "none"
+    // reset
+    avatarEl.innerHTML = ""
+    avatarEl.style.background = "none"
 
-        if (data.avatar) {
+    if (data.avatar) {
 
-            const url = data.avatar + "?t=" + Date.now()
+        const url = data.avatar + "?t=" + Date.now()
 
-            avatarEl.innerHTML = `
+        avatarEl.innerHTML = `
                 <img src="${url}" 
                     style="width:100%;height:100%;border-radius:50%">
             `
 
-        } else {
+    } else {
 
-            avatarEl.innerText = name.charAt(0).toUpperCase()
+        avatarEl.innerText = name.charAt(0).toUpperCase()
 
-            const colors = [
-                "linear-gradient(135deg,#6366f1,#4f46e5)",
-                "linear-gradient(135deg,#22c55e,#16a34a)",
-                "linear-gradient(135deg,#f59e0b,#d97706)",
-                "linear-gradient(135deg,#ef4444,#dc2626)"
-            ]
-
-            avatarEl.style.background = colors[name.length % colors.length]
-        }
-
-        // 🎨 màu avatar
         const colors = [
             "linear-gradient(135deg,#6366f1,#4f46e5)",
             "linear-gradient(135deg,#22c55e,#16a34a)",
             "linear-gradient(135deg,#f59e0b,#d97706)",
             "linear-gradient(135deg,#ef4444,#dc2626)"
         ]
+
         avatarEl.style.background = colors[name.length % colors.length]
-
-        // 💾 lưu lại full_name để dùng sau
-        if (fullName) {
-            localStorage.setItem("full_name", fullName)
-        }
-
-        // =========================
-        // 🔥 LOGIC MỚI (QUAN TRỌNG)
-        // =========================
-
-        // 👉 LUÔN show chat (không dùng profileBox nữa)
-        document.getElementById("chatApp").style.display = "flex"
-
-        // 👉 nếu CHƯA có profile → bật popup
-        if (!data.has_profile) {
-
-            document.getElementById("profileModal").style.display = "flex"
-
-            localStorage.setItem("has_profile", "0")
-
-        } else {
-
-            // 👉 có profile → đóng popup
-            document.getElementById("profileModal").style.display = "none"
-
-            localStorage.setItem("has_profile", "1")
-        }
-
     }
+
+    // 🎨 màu avatar
+    const colors = [
+        "linear-gradient(135deg,#6366f1,#4f46e5)",
+        "linear-gradient(135deg,#22c55e,#16a34a)",
+        "linear-gradient(135deg,#f59e0b,#d97706)",
+        "linear-gradient(135deg,#ef4444,#dc2626)"
+    ]
+    avatarEl.style.background = colors[name.length % colors.length]
+
+    // 💾 lưu lại full_name để dùng sau
+    if (fullName) {
+        localStorage.setItem("full_name", fullName)
+    }
+
+    // =========================
+    // 🔥 LOGIC MỚI (QUAN TRỌNG)
+    // =========================
+
+    // 👉 LUÔN show chat (không dùng profileBox nữa)
+    document.getElementById("chatApp").style.display = "flex"
+
+    // 👉 nếu CHƯA có profile → bật popup
+    if (!data.has_profile) {
+
+        document.getElementById("profileModal").style.display = "flex"
+
+        localStorage.setItem("has_profile", "0")
+
+    } else {
+
+        // 👉 có profile → đóng popup
+        document.getElementById("profileModal").style.display = "none"
+
+        localStorage.setItem("has_profile", "1")
+    }
+
+}
 async function saveProfile() {
 
     const user_id = localStorage.getItem("user_id")
@@ -2088,7 +2250,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         checkProfile(uid)
         loadHistory()
-        newChat()
+        // newChat() // Moved to startup routing in window.onload
+
 
     } else {
 
@@ -2114,35 +2277,35 @@ document.addEventListener("click", function (e) {
     }
 })
 
-        function openProfile() {
+function openProfile() {
 
-            const modal = document.getElementById("profileModal")
-            if (!modal) {
-                console.error("❌ profileModal not found")
-                return
-            }
+    const modal = document.getElementById("profileModal")
+    if (!modal) {
+        console.error("❌ profileModal not found")
+        return
+    }
 
-            const hasProfile = localStorage.getItem("has_profile") === "1"
+    const hasProfile = localStorage.getItem("has_profile") === "1"
 
-            // ✅ mở modal
-            modal.style.display = "flex"
+    // ✅ mở modal
+    modal.style.display = "flex"
 
-            // ===== UI TEXT =====
-            const title = modal.querySelector(".profile-title")
-            const btn = modal.querySelector(".profile-save-btn") // 🔥 fix selector chuẩn
+    // ===== UI TEXT =====
+    const title = modal.querySelector(".profile-title")
+    const btn = modal.querySelector(".profile-save-btn") // 🔥 fix selector chuẩn
 
-            if (hasProfile) {
-                if (title) title.innerText = "Chỉnh sửa thông tin"
-                if (btn) btn.innerText = "Lưu thay đổi"
-            } else {
-                if (title) title.innerText = "Hoàn thiện thông tin"
-                if (btn) btn.innerText = "Xác nhận"
-            }
+    if (hasProfile) {
+        if (title) title.innerText = "Chỉnh sửa thông tin"
+        if (btn) btn.innerText = "Lưu thay đổi"
+    } else {
+        if (title) title.innerText = "Hoàn thiện thông tin"
+        if (btn) btn.innerText = "Xác nhận"
+    }
 
-            // ===== LOAD DATA =====
-            loadProfileData()
-        }
-    async function loadProfileData() {
+    // ===== LOAD DATA =====
+    loadProfileData()
+}
+async function loadProfileData() {
 
     const user_id = localStorage.getItem("user_id")
     if (!user_id) return
@@ -2202,3 +2365,23 @@ document.addEventListener("click", function (e) {
 }
 
 
+
+// 📸 Image Preview Logic (Lightbox)
+function viewImage(src) {
+    const modal = document.getElementById("image-preview-modal");
+    const img = document.getElementById("preview-img");
+    if (!modal || !img) return;
+    
+    img.src = src;
+    modal.style.display = "flex";
+}
+
+function closeImagePreview() {
+    const modal = document.getElementById("image-preview-modal");
+    if (modal) modal.style.display = "none";
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") closeImagePreview();
+});
