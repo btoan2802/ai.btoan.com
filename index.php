@@ -357,6 +357,12 @@
   <script src="js/hand_engine.js?v=11"></script>
   <script src="js/naruto_mode.js?v=35"></script>
 
+  <!-- G. IMAGE PREVIEW MODAL -->
+  <div id="image-preview-modal" class="image-preview-modal" onclick="closeImagePreview()">
+    <span class="close-preview">&times;</span>
+    <img id="preview-img" class="preview-content" src="" alt="Preview">
+  </div>
 </body>
+
 
 </html>

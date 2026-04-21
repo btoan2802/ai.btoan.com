@@ -562,12 +562,10 @@ async function callGemini(userText, images, files) {
     // 🔥 FIX ĐÚNG CHỖ (sau parse)
     if (data?.conversation_id && !conversation_id) {
         conversation_id = data.conversation_id
-
-        // 👉 load history NGAY
+        window.history.pushState({ cid: conversation_id }, "", "/c/" + conversation_id);
         loadHistory()
-
-
     }
+
 
 
     if (!res.ok) {
@@ -930,7 +928,7 @@ async function send() {
                 bubble.className = "bubble image-bubble-premium";
                 bubble.innerHTML = `
                     <div class="image-wrapper-premium">
-                        <img src="${imageSrc}" alt="Generated image" onclick="window.open('${imageSrc}', '_blank')">
+                        <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
                         <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
                             <i class="bi bi-download"></i>
                         </a>
@@ -1296,7 +1294,7 @@ async function loadConversation(id, updateUrl = true) {
                         const imageSrc = m.images[0];
                         bubble.innerHTML = `
                             <div class="image-wrapper-premium">
-                                <img src="${imageSrc}" alt="Generated image" onclick="window.open('${imageSrc}', '_blank')">
+                                <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
                                 <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
                                     <i class="bi bi-download"></i>
                                 </a>
@@ -2416,3 +2414,23 @@ async function loadProfileData() {
 }
 
 
+
+// 📸 Image Preview Logic (Lightbox)
+function viewImage(src) {
+    const modal = document.getElementById("image-preview-modal");
+    const img = document.getElementById("preview-img");
+    if (!modal || !img) return;
+    
+    img.src = src;
+    modal.style.display = "flex";
+}
+
+function closeImagePreview() {
+    const modal = document.getElementById("image-preview-modal");
+    if (modal) modal.style.display = "none";
+}
+
+// Close modal on Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") closeImagePreview();
+});
