@@ -227,9 +227,17 @@ try {
         }
     }
 
-    sendJsonError($lastAttemptError);
+    sendJson([
+        'success' => false,
+        'error' => $lastAttemptError,
+        'marker' => 'ERR_NEW_555'
+    ], 200);
 
 } catch (Throwable $e) {
     error_log("Fatal Exception in generate_image.php: " . $e->getMessage());
-    sendJsonError($e->getMessage());
+    sendJson([
+        'success' => false,
+        'error' => $e->getMessage(),
+        'marker' => 'CATCH_NEW_555'
+    ], 200);
 }
