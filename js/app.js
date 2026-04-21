@@ -925,30 +925,17 @@ async function send() {
 
                 const row = document.createElement("div");
                 row.className = "msgrow bot";
-
                 const bubble = document.createElement("div");
-                bubble.className = "bubble position-relative";
-
+                bubble.className = "bubble image-bubble-premium";
                 bubble.innerHTML = `
-        <div class="mb-2">Đây là ảnh của bạn:</div>
-        <img 
-            src="${imageSrc}" 
-            alt="Generated image"
-            style="width:100%;height:auto;object-fit:contain;border-radius:10px;cursor:pointer;display:block;"
-        >
-        <div class="mt-2">
-            <a 
-                href="${imageSrc}" 
-                download="btoan_ai_image.png" 
-                class="btn btn-sm btn-outline-light"
-                style="font-size:12px;border-color:rgba(255,255,255,0.2)"
-            >
-                <i class="bi bi-download"></i> Tải ảnh
-            </a>
-        </div>
-    `;
-
-                bubble.querySelector("img").onclick = () => window.open(imageSrc, "_blank");
+                    <div class="image-wrapper-premium">
+                        <img src="${imageSrc}" alt="Generated image" onclick="window.open('${imageSrc}', '_blank')">
+                        <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
+                            <i class="bi bi-download"></i>
+                        </a>
+                    </div>
+                    <div class="image-caption-premium">Đây là ảnh của bạn</div>
+                `;
 
                 row.appendChild(bubble);
                 chatEl.appendChild(row);
@@ -1234,10 +1221,14 @@ async function deleteChat(id) {
 
 }
 
-async function loadConversation(id) {
-    if (conversation_id === id && chatEl.innerHTML !== "") return; // Avoid redundant loads
+async function loadConversation(id, updateUrl = true) {
+    if (conversation_id === id && chatEl.innerHTML !== "" && !updateUrl) return; 
 
     conversation_id = id;
+    if (updateUrl) {
+        history.pushState({ cid: id }, "", `/c/${id}`);
+    }
+
     
     // Immediate UI Feedback
     updateSidebarActive(id);
@@ -1299,30 +1290,21 @@ async function loadConversation(id) {
                         const row = document.createElement("div");
                         row.className = "msgrow bot";
                         const bubble = document.createElement("div");
-                        bubble.className = "bubble position-relative";
+                        bubble.className = "bubble image-bubble-premium";
                         const imageSrc = m.images[0];
                         bubble.innerHTML = `
-        <div class="mb-2">Đây là ảnh của bạn:</div>
-        <img
-            src="${imageSrc}"
-            alt="Generated image"
-            style="width:100%;height:auto;object-fit:contain;border-radius:10px;cursor:pointer;display:block;"
-        >
-        <div class="mt-2">
-            <a
-                href="${imageSrc}"
-                download="btoan_ai_image.png"
-                class="btn btn-sm btn-outline-light"
-                style="font-size:12px;border-color:rgba(255,255,255,0.2)"
-            >
-                <i class="bi bi-download"></i> Tải ảnh
-            </a>
-        </div>
-    `;
-                        bubble.querySelector("img").onclick = () => window.open(imageSrc, "_blank");
+                            <div class="image-wrapper-premium">
+                                <img src="${imageSrc}" alt="Generated image" onclick="window.open('${imageSrc}', '_blank')">
+                                <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                            <div class="image-caption-premium">Đây là ảnh của bạn</div>
+                        `;
                         row.appendChild(bubble);
                         chatEl.appendChild(row);
                     }
+
                 }
                 history.push({
                     role: "model",
@@ -1420,6 +1402,28 @@ window.onload = function () {
 
     }
     sendBtn = document.getElementById("send");
+
+    // Routing Logic
+    const urlParams = new URLSearchParams(window.location.search);
+    const cidFromQuery = urlParams.get('c');
+    const pathParts = window.location.pathname.split('/');
+    const cidFromPath = pathParts[1] === 'c' ? pathParts[2] : null;
+    const cidToLoad = cidFromPath || cidFromQuery;
+
+    if (cidToLoad) {
+        // Wait for history to load then switch
+        setTimeout(() => {
+            loadConversation(cidToLoad, false);
+        }, 500);
+    }
+
+    window.addEventListener('popstate', (e) => {
+        if (e.state && e.state.cid) {
+            loadConversation(e.state.cid, false);
+        } else {
+            newChat(false);
+        }
+    });
 
     chatEl.addEventListener("dragover", (e) => {
         e.preventDefault()
@@ -1606,12 +1610,16 @@ document.getElementById("fileDoc")?.addEventListener("change", (e) => {
     })
 
 })
-function newChat() {
+function newChat(updateUrl = true) {
     autoRenamed = false
     lastAIAnswer = ""
 
     conversation_id = null
+    if (updateUrl) {
+        history.pushState(null, "", "/");
+    }
     updateSidebarActive(null) // Clear active sidebar state
+
     history = []
     lastExportContent = ""
     const chatEl = document.getElementById("chat")

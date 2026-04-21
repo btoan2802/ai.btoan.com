@@ -8,6 +8,7 @@
 
   <!-- 2. Title + Icon -->
   <title>Btoan AI</title>
+  <base href="/">
   <link rel="icon" href="favicon.ico">
 
   <!-- 3. CSS Library -->
