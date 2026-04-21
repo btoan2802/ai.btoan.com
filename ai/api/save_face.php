@@ -26,6 +26,7 @@ if (!$data) {
 
 $username = trim($data["username"] ?? "");
 $image = $data["image"] ?? "";
+$descriptor = $data["descriptor"] ?? ""; // New: 128-float array as JSON string
 
 if ($username === "" || $image === "") {
     echo json_encode(["success" => false, "msg" => "missing data: username or image empty"]);
@@ -33,6 +34,9 @@ if ($username === "" || $image === "") {
 }
 
 try {
+    // 🛡️ Auto-migration: Ensure face_descriptor column exists
+    $conn->query("ALTER TABLE users ADD COLUMN IF NOT EXISTS face_descriptor TEXT AFTER face_image_url");
+
     $stmt = $conn->prepare("SELECT id, username FROM users WHERE username = ? LIMIT 1");
     if (!$stmt) {
         throw new Exception("SQL prepare failed: " . $conn->error);
@@ -86,15 +90,19 @@ try {
     // Public URL
     $publicUrl = "uploads/faces/" . $username . "/" . $fileName;
 
+    // 🔒 SECURE UPDATE: Save both image URL and the raw biometric descriptor
     $stmtUpdate = $conn->prepare("
         UPDATE users
-        SET face_image_url = ?, face_enabled = 1, face_updated_at = NOW()
+        SET face_image_url = ?, 
+            face_descriptor = ?, 
+            face_enabled = 1, 
+            face_updated_at = NOW()
         WHERE id = ?
     ");
     if (!$stmtUpdate) {
          throw new Exception("SQL prepare update failed: " . $conn->error);
     }
-    $stmtUpdate->bind_param("si", $publicUrl, $user['id']);
+    $stmtUpdate->bind_param("ssi", $publicUrl, $descriptor, $user['id']);
     $stmtUpdate->execute();
     $stmtUpdate->close();
 
