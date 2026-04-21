@@ -352,11 +352,11 @@ function addBotBubble(text, exportType = null) {
 // 📐 SMART MATH NORMALIZER
 function normalizeMathText(text) {
     if (!text) return "";
-    
+
     // 1. Remove forced line breaks between formula and its condition (với, khi, n != ...)
     // Detect patterns like: $$...$$ \n (với...)
     let cleaned = text.replace(/(\$\$[\s\S]*?\$\$)\s*\n\s*(\(với|\(khi|với|khi|dk:|đk:|n\s*[≠|!=])/gi, "$1 $2");
-    
+
     // 2. Fix multiple single newlines that should be a single paragraph
     // But keep double newlines as paragraph breaks
     // (This makes it look more like ChatGPT)
@@ -367,7 +367,7 @@ function normalizeMathText(text) {
 
 function streamBot(text, exportType = null) {
     const normalizedText = normalizeMathText(text);
-    
+
     const row = document.createElement("div")
     row.className = "msgrow bot"
 
@@ -376,7 +376,7 @@ function streamBot(text, exportType = null) {
 
     const content = document.createElement("div")
     content.className = "message-content"
-    
+
     bubble.appendChild(content)
     bubble.appendChild(createMessageActions({ text, exportType }))
 
@@ -653,7 +653,7 @@ async function send() {
 
     // ✅ FIXED: Only collect from imgInput because addImages consolidated everything there
     const allImages = Array.from(imgInput.files)
-    
+
     if (allImages.length > 0) {
         for (const file of allImages) {
 
@@ -803,12 +803,12 @@ async function send() {
         if (reply.includes("[GENIMAGE]")) {
             const tag = "[GENIMAGE]";
             const index = reply.indexOf(tag);
-            
+
             // Extract the pure text (combine content before and after the prompt if any)
             let textBefore = reply.substring(0, index).trim();
             // We assume the prompt is after the tag, but we stop at the next newline if the bot keeps talking
             let remainder = reply.substring(index + tag.length).trim();
-            
+
             // Split remainder into prompt and potential further text
             // If the bot follows instructions, this is just the prompt. 
             // If not, we take the first line as prompt and rest as text.
@@ -875,7 +875,7 @@ async function send() {
                 } else {
                     const errMsg = imgData?.error || "Lỗi không xác định";
                     const isQuota = errMsg.toLowerCase().includes("quota") || rawText.includes("429");
-                    
+
                     const errorBubble = document.createElement("div");
                     errorBubble.className = "msgrow bot";
                     errorBubble.innerHTML = `
@@ -1170,7 +1170,7 @@ async function deleteChat(id) {
 }
 
 async function loadConversation(id, updateUrl = true) {
-    if (conversation_id === id && chatEl.innerHTML !== "" && !updateUrl) return; 
+    if (conversation_id === id && chatEl.innerHTML !== "" && !updateUrl) return;
 
     conversation_id = id;
     if (updateUrl) {
@@ -1178,7 +1178,7 @@ async function loadConversation(id, updateUrl = true) {
     }
 
 
-    
+
     // Immediate UI Feedback
     updateSidebarActive(id);
     chatEl.innerHTML = `
@@ -1366,7 +1366,7 @@ window.onload = function () {
         }, 200);
     } else if (window.location.pathname === "/" || window.location.pathname.endsWith("index.php") || window.location.pathname === "") {
         console.log("🚀 BtoanAI: Starting new chat");
-        newChat(false); 
+        newChat(false);
     }
 
 
@@ -1586,20 +1586,18 @@ function newChat(updateUrl = true) {
 }
 
 document.addEventListener("click", function (e) {
+    const sidebar = document.getElementById("sidebar");
+    const menuBtn = document.querySelector(".menu-btn");
 
-    const sidebar = document.getElementById("sidebar")
-    const menuBtn = document.querySelector(".menu-btn")
-
-    // đóng sidebar
     if (sidebar && sidebar.classList.contains("open")) {
-        if (!sidebar.contains(e.target) && !menuBtn.contains(e.target)) {
-            sidebar.classList.remove("open")
+        const clickedInsideSidebar = sidebar.contains(e.target);
+        const clickedMenuBtn = menuBtn ? menuBtn.contains(e.target) : false;
+
+        if (!clickedInsideSidebar && !clickedMenuBtn) {
+            sidebar.classList.remove("open");
         }
     }
-
-
-
-})
+});
 
 
 function scrollToBottom() {
@@ -2369,7 +2367,7 @@ function viewImage(src) {
     const modal = document.getElementById("image-preview-modal");
     const img = document.getElementById("preview-img");
     if (!modal || !img) return;
-    
+
     img.src = src;
     modal.style.display = "flex";
 }
