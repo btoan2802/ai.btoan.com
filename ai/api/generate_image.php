@@ -1,86 +1,65 @@
 <?php
 declare(strict_types=1);
 
-/**
- * BToan AI - Gemini Image Generation Endpoint
- * File: /ai/api/generate_image.php
- */
-
-// =========================
-// 1. HEADERS
-// =========================
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json; charset=utf-8");
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(200);
-    echo json_encode(["success" => true, "message" => "OK"]);
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+    echo json_encode(["success" => true]);
     exit;
 }
 
-// =========================
-// 2. PHP ERROR SETTINGS
-// =========================
 ini_set('display_errors', '0');
 ini_set('log_errors', '1');
-error_reporting(E_ALL);
+error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
+set_time_limit(180);
 
-// Nếu muốn chỉ định file log riêng thì mở dòng dưới:
-// ini_set('error_log', __DIR__ . '/generate_image_error.log');
+require "db.php";
 
-// =========================
-// 3. HELPERS
-// =========================
+set_error_handler(function ($severity, $message, $file, $line) {
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 function sendJson(array $data, int $statusCode = 200): void
 {
     http_response_code($statusCode);
-    header('Content-Type: application/json; charset=utf-8');
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;
 }
 
-function sendJsonError(string $message, $debug = null, int $statusCode = 200): void
-{
-    sendJson([
-        'success' => false,
-        'error' => $message
-    ], $statusCode);
-}
-
-// Bắt fatal error cuối script
-register_shutdown_function(function () {
-    $error = error_get_last();
-    if ($error !== null) {
-        // Chỉ xử lý fatal parse/runtime nghiêm trọng
-        $fatalTypes = [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR];
-        if (in_array($error['type'], $fatalTypes, true)) {
-            if (!headers_sent()) {
-                header("Content-Type: application/json; charset=utf-8");
-            }
-            echo json_encode([
-                'success' => false,
-                'error' => 'PHP Fatal Error',
-                'debug_info' => $error['message'] . ' in ' . $error['file'] . ' on line ' . $error['line']
-            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        }
-    }
-});
-
-// =========================
-// 4. MAIN
-// =========================
 try {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        sendJsonError("Only POST method is allowed");
+    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
+        sendJson(['success' => false, 'error' => 'Only POST allowed'], 405);
     }
 
     if (!function_exists('curl_init')) {
-        sendJsonError("PHP cURL extension is not enabled");
+        sendJson(['success' => false, 'error' => 'PHP cURL extension is not enabled'], 500);
     }
 
-    // ==== ĐIỀN API KEY THẬT CỦA BẠN Ở ĐÂY ====
+    $raw = file_get_contents("php://input");
+    $input = json_decode((string) $raw, true);
+
+    if (!is_array($input)) {
+        sendJson(['success' => false, 'error' => 'Invalid JSON body'], 400);
+    }
+
+    $prompt = trim((string) ($input['prompt'] ?? ''));
+    $conversation_id = (int) ($input['conversation_id'] ?? 0);
+    $user_id = (int) ($input['user_id'] ?? 0);
+    $assistant_text = trim((string) ($input['assistant_text'] ?? 'Đây là ảnh của bạn:'));
+    $aspectRatio = trim((string) ($input['aspect_ratio'] ?? '1:1'));
+
+    if ($prompt === '') {
+        sendJson(['success' => false, 'error' => 'Prompt is required'], 400);
+    }
+
+    $allowedAspectRatios = ['1:1', '16:9', '9:16', '4:3', '3:4'];
+    if (!in_array($aspectRatio, $allowedAspectRatios, true)) {
+        $aspectRatio = '1:1';
+    }
+
     $API_KEYS = [
         "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
         "AIzaSyDFHm1sOBGnCeWIThcCo-hB7wWNjz5QdSU",
@@ -92,64 +71,45 @@ try {
         "AIzaSyBdwrghehTW22SuWH0Yq2jBbv6H5OZ4Ce8"
     ];
 
-    if (empty($API_KEYS)) {
-        sendJsonError("No API key configured");
-    }
-
-    // Đọc input JSON
-    $inputRaw = file_get_contents("php://input");
-    if ($inputRaw === false || trim($inputRaw) === '') {
-        sendJsonError("Empty request body");
-    }
-
-    $input = json_decode($inputRaw, true);
-    if (!is_array($input)) {
-        sendJsonError("Invalid JSON body", $inputRaw);
-    }
-
-    $prompt = trim((string) ($input['prompt'] ?? ''));
-    if ($prompt === '') {
-        sendJsonError("Prompt is required");
-    }
-
-    $model = "gemini-2.5-flash-image";
-
     shuffle($API_KEYS);
 
-    $lastAttemptError = "Unknown Gemini API error";
+    $model = "gemini-2.5-flash-image";
+    $lastError = "Unknown Gemini API error";
     $lastHttpCode = 0;
-    $lastRawResponse = null;
+    $lastRaw = "";
 
     foreach ($API_KEYS as $API_KEY) {
-        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . urlencode($API_KEY);
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . rawurlencode($API_KEY);
 
         $payload = [
             "contents" => [
                 [
-                    "role" => "user",
                     "parts" => [
-                        [
-                            "text" => $prompt
-                        ]
+                        ["text" => $prompt]
                     ]
                 ]
             ],
             "generationConfig" => [
-                "responseModalities" => ["TEXT", "IMAGE"]
+                "imageConfig" => [
+                    "aspectRatio" => $aspectRatio
+                ]
             ]
         ];
+
+        $payloadJson = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_POST => true,
             CURLOPT_HTTPHEADER => [
-                "Content-Type: application/json"
+                "Content-Type: application/json",
+                "Accept: application/json"
             ],
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-            CURLOPT_CONNECTTIMEOUT => 30,
+            CURLOPT_POSTFIELDS => $payloadJson,
+            CURLOPT_CONNECTTIMEOUT => 20,
             CURLOPT_TIMEOUT => 90,
-            CURLOPT_SSL_VERIFYPEER => false, // tạm thời để tránh lỗi SSL trên Windows/IIS
+            CURLOPT_SSL_VERIFYPEER => false,
             CURLOPT_SSL_VERIFYHOST => false
         ]);
 
@@ -157,87 +117,92 @@ try {
         $curlErrNo = curl_errno($ch);
         $curlError = curl_error($ch);
         $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
 
         $lastHttpCode = $httpCode;
-        $lastRawResponse = $response;
-
-        error_log("Gemini HTTP Code: " . $httpCode);
-        error_log("Gemini Raw Response: " . $response);
+        $lastRaw = is_string($response) ? $response : '';
 
         if ($curlErrNo) {
-            $lastAttemptError = "cURL error ({$curlErrNo}): {$curlError}";
+            $lastError = "cURL error ({$curlErrNo}): {$curlError}";
             continue;
         }
 
-        if ($response === false || $response === null || trim($response) === '') {
-            $lastAttemptError = "Empty response from Gemini API";
+        if (!is_string($response) || trim($response) === '') {
+            $lastError = "Empty response from Gemini API";
             continue;
         }
 
         $data = json_decode($response, true);
         if (!is_array($data)) {
-            $lastAttemptError = "Gemini returned invalid JSON";
+            $lastError = "Gemini returned invalid JSON";
             continue;
         }
 
-        // Nếu Gemini trả lỗi
         if (isset($data['error'])) {
-            $apiMessage = $data['error']['message'] ?? 'Unknown Gemini API error';
-            $lastAttemptError = "Gemini API error: " . $apiMessage;
+            $lastError = "Gemini API error: " . ($data['error']['message'] ?? 'Unknown');
             continue;
         }
 
-        // Tìm ảnh trong response
         $imageBase64 = null;
-        $mimeType = null;
-        $textParts = [];
+        $mimeType = 'image/png';
 
-        if (!empty($data['candidates']) && is_array($data['candidates'])) {
-            foreach ($data['candidates'] as $candidate) {
-                if (!isset($candidate['content']['parts']) || !is_array($candidate['content']['parts'])) {
-                    continue;
+        foreach (($data['candidates'] ?? []) as $candidate) {
+            foreach (($candidate['content']['parts'] ?? []) as $part) {
+                if (isset($part['inlineData']['data'])) {
+                    $imageBase64 = $part['inlineData']['data'];
+                    $mimeType = $part['inlineData']['mimeType'] ?? 'image/png';
+                    break 2;
                 }
-
-                foreach ($candidate['content']['parts'] as $part) {
-                    if (isset($part['inlineData']['data'])) {
-                        $imageBase64 = $part['inlineData']['data'];
-                        $mimeType = $part['inlineData']['mimeType'] ?? 'image/png';
-                        break 2;
-                    }
-
-                    if (isset($part['text'])) {
-                        $textParts[] = $part['text'];
-                    }
+                if (isset($part['inline_data']['data'])) {
+                    $imageBase64 = $part['inline_data']['data'];
+                    $mimeType = $part['inline_data']['mime_type'] ?? 'image/png';
+                    break 2;
                 }
             }
         }
 
-        if ($imageBase64) {
+        if ($imageBase64 !== null) {
+            $imageSrc = "data:{$mimeType};base64,{$imageBase64}";
+
+            // cập nhật row chat assistant gần nhất của conversation hiện tại
+            if ($conversation_id > 0 && $user_id > 0) {
+                $assistant_images = json_encode([$imageSrc], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+                $stmt = $conn->prepare("
+                    UPDATE chats
+                    SET answer = ?, assistant_images = ?
+                    WHERE conversation_id = ? AND user_id = ?
+                    ORDER BY id DESC
+                    LIMIT 1
+                ");
+
+                if ($stmt) {
+                    $stmt->bind_param("ssii", $assistant_text, $assistant_images, $conversation_id, $user_id);
+                    $stmt->execute();
+                }
+            }
+
             sendJson([
                 'success' => true,
-                'mimeType' => $mimeType ?: 'image/png',
+                'mimeType' => $mimeType,
                 'imageBase64' => $imageBase64
             ]);
         }
 
-        $lastAttemptError = "Gemini did not return image data";
-        if (!empty($textParts)) {
-            $lastAttemptError .= " | Text response: " . implode(" ", $textParts);
-        }
+        $lastError = "Gemini did not return image data";
     }
 
     sendJson([
         'success' => false,
-        'error' => $lastAttemptError,
-        'marker' => 'ERR_NEW_555'
+        'error' => $lastError,
+        'httpCode' => $lastHttpCode,
+        'raw' => mb_substr($lastRaw, 0, 1000)
     ], 200);
 
 } catch (Throwable $e) {
-    error_log("Fatal Exception in generate_image.php: " . $e->getMessage());
     sendJson([
         'success' => false,
         'error' => $e->getMessage(),
-        'marker' => 'CATCH_NEW_555'
+        'file' => $e->getFile(),
+        'line' => $e->getLine()
     ], 200);
 }

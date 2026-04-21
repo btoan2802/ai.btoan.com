@@ -814,10 +814,17 @@ async function send() {
             chatEl.scrollTop = chatEl.scrollHeight;
 
             try {
+                const textToStore = textPart || "Đây là ảnh của bạn:";
+
                 const imgRes = await fetch("/ai/api/generate_image.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ prompt: imagePrompt })
+                    body: JSON.stringify({
+                        prompt: imagePrompt,
+                        conversation_id,
+                        user_id: Number(localStorage.getItem("user_id") || 0),
+                        assistant_text: textToStore
+                    })
                 });
 
                 const rawText = await imgRes.text();
@@ -1304,6 +1311,39 @@ async function loadConversation(id) {
                 }
 
                 addBotBubble(text, exportType)
+                if (Array.isArray(m.images) && m.images.length > 0) {
+                    const row = document.createElement("div");
+                    row.className = "msgrow bot";
+
+                    const bubble = document.createElement("div");
+                    bubble.className = "bubble position-relative";
+
+                    const imageSrc = m.images[0];
+
+                    bubble.innerHTML = `
+        <div class="mb-2">Đây là ảnh của bạn:</div>
+        <img
+            src="${imageSrc}"
+            alt="Generated image"
+            style="width:100%;height:auto;object-fit:contain;border-radius:10px;cursor:pointer;display:block;"
+        >
+        <div class="mt-2">
+            <a
+                href="${imageSrc}"
+                download="btoan_ai_image.png"
+                class="btn btn-sm btn-outline-light"
+                style="font-size:12px;border-color:rgba(255,255,255,0.2)"
+            >
+                <i class="bi bi-download"></i> Tải ảnh
+            </a>
+        </div>
+    `;
+
+                    bubble.querySelector("img").onclick = () => window.open(imageSrc, "_blank");
+
+                    row.appendChild(bubble);
+                    chatEl.appendChild(row);
+                }
             }
 
             history.push({

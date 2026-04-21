@@ -5,7 +5,7 @@ require "db.php";
 $conversation_id = intval($_GET["conversation_id"] ?? 0);
 
 $stmt = $conn->prepare("
-SELECT question, answer, images
+SELECT question, answer, images, assistant_images
 FROM chats
 WHERE conversation_id = ?
 ORDER BY id ASC
@@ -18,18 +18,14 @@ $result = $stmt->get_result();
 
 $data = [];
 
-while($row = $result->fetch_assoc()){
+while ($row = $result->fetch_assoc()) {
 
-    // ===== USER MESSAGE =====
-    if(!empty($row["question"])){
-
+    if (!empty($row["question"])) {
         $images = [];
 
-        if(!empty($row["images"])){
-
+        if (!empty($row["images"])) {
             $decoded = json_decode($row["images"], true);
-
-            if(json_last_error() === JSON_ERROR_NONE && is_array($decoded)){
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                 $images = $decoded;
             }
         }
@@ -41,14 +37,22 @@ while($row = $result->fetch_assoc()){
         ];
     }
 
-    // ===== AI MESSAGE =====
-    if(!empty($row["answer"])){
+    if (!empty($row["answer"]) || !empty($row["assistant_images"])) {
+        $assistantImages = [];
+
+        if (!empty($row["assistant_images"])) {
+            $decodedAssistant = json_decode($row["assistant_images"], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedAssistant)) {
+                $assistantImages = $decodedAssistant;
+            }
+        }
+
         $data[] = [
             "role" => "assistant",
-            "text" => $row["answer"]
+            "text" => $row["answer"] ?? "",
+            "images" => $assistantImages
         ];
     }
-
 }
 
-echo json_encode($data);
+echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
