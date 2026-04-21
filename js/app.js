@@ -349,17 +349,34 @@ function addBotBubble(text, exportType = null) {
 
 }
 
-function streamBot(text, exportType = null) {
+// 📐 SMART MATH NORMALIZER
+function normalizeMathText(text) {
+    if (!text) return "";
+    
+    // 1. Remove forced line breaks between formula and its condition (với, khi, n != ...)
+    // Detect patterns like: $$...$$ \n (với...)
+    let cleaned = text.replace(/(\$\$[\s\S]*?\$\$)\s*\n\s*(\(với|\(khi|với|khi|dk:|đk:|n\s*[≠|!=])/gi, "$1 $2");
+    
+    // 2. Fix multiple single newlines that should be a single paragraph
+    // But keep double newlines as paragraph breaks
+    // (This makes it look more like ChatGPT)
+    cleaned = cleaned.replace(/([^\n])\n([^\n\*\[\-\d])/g, "$1 $2");
 
+    return cleaned;
+}
+
+function streamBot(text, exportType = null) {
+    const normalizedText = normalizeMathText(text);
+    
     const row = document.createElement("div")
     row.className = "msgrow bot"
 
     const bubble = document.createElement("div")
     bubble.className = "bubble position-relative"
 
-    // 🔥 tách content riêng (KHÔNG bị reset)
     const content = document.createElement("div")
-
+    content.className = "message-content"
+    
     bubble.appendChild(content)
     bubble.appendChild(createMessageActions({ text, exportType }))
 
@@ -367,12 +384,12 @@ function streamBot(text, exportType = null) {
     chatEl.appendChild(row)
 
     let i = 0
-
     const timer = setInterval(() => {
-
-        // ❗ CHỈ render content → KHÔNG đụng footer
-        content.innerHTML = marked.parse(text.substring(0, i))
+        // Use normalized text for rendering
+        const currentText = normalizedText.substring(0, i);
+        content.innerHTML = marked.parse(currentText)
             .replace(/language-j\b/g, "language-java")
+
 
         /* highlight realtime */
         content.querySelectorAll("pre code").forEach(el => {
