@@ -70,27 +70,88 @@ body {
 }
 
 .chat-history-item {
-  padding: 10px 15px;
+  padding: 8px 12px;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   color: #334155;
-  transition: all 0.25s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 12px;
-  margin: 2px 12px;
+  margin: 4px 12px;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  position: relative;
 }
 .chat-history-item:hover {
-  background: #f8fafc;
+  background: #f1f5f9;
   color: #2b7cff;
-  transform: translateX(3px);
 }
 .chat-history-item.active {
   background: #eff6ff;
   color: #2b7cff;
+  border: 1px solid rgba(43, 124, 255, 0.1);
 }
+
+.chat-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.history-action-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  transition: all 0.2s;
+  padding: 0;
+  opacity: 0;
+  transform: translateX(5px);
+}
+
+.chat-history-item:hover .history-action-btn {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.history-action-btn:hover {
+  background: #fff;
+  color: #2b7cff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.history-action-btn:active {
+  transform: scale(0.92);
+}
+
+.dropdown-menu {
+  border: none;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.dropdown-item {
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-weight: 500;
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dropdown-item:hover {
+  background: #f8fafc;
+}
+
 
 .new-chat-btn {
   padding: 14px;

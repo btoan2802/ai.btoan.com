@@ -986,17 +986,8 @@ transform:translateX(0);
 
 
 
-.chat-history-item button{
+/* Removed redundant button style to use main_style.css */
 
-border:none;
-
-background:none;
-
-font-size:18px;
-
-z-index:2;
-
-}
 
 .chat-title{
 
@@ -1388,15 +1379,8 @@ color:white;
 
 }
 
-.chat-history-item button{
+/* Removed redundant button style */
 
-  border:none;
-
-  background:none;
-
-  font-size:18px;
-
-}
 
 .p-2.border-top{
 

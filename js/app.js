@@ -1156,28 +1156,26 @@ async function loadHistory() {
         div.className = "chat-history-item d-flex justify-content-between align-items-center"
 
         div.innerHTML = `
-    <div class="chat-title flex-grow-1">${c.title}</div>
-
-    <div class="dropdown">
-    <button class="btn btn-sm" data-bs-toggle="dropdown">⋮</button>
-
-    <ul class="dropdown-menu dropdown-menu-end">
-
-    <li>
-    <button class="dropdown-item"
-    onclick="renameChat(${c.id}, '${c.title}')">
-    ✏️ Đổi tên
-    </button>
-    </li>
-
-    <li>
-    <button class="dropdown-item text-danger"
-    onclick="deleteChat(${c.id})">
-    🗑️ Xoá
-    </button>
-    </li>
-
-    </ul>
+    <div class="chat-title">${c.title}</div>
+    <div class="dropdown" onclick="event.stopPropagation()">
+        <button class="history-action-btn" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-pencil-square"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+                <button class="dropdown-item" onclick="renameChat(${c.id}, '${c.title.replace(/'/g, "\\'")}')">
+                    <i class="bi bi-pencil"></i> Đổi tên
+                </button>
+            </li>
+            <li>
+                <hr class="dropdown-divider opacity-50">
+            </li>
+            <li>
+                <button class="dropdown-item text-danger" onclick="deleteChat(${c.id})">
+                    <i class="bi bi-trash3"></i> Xoá
+                </button>
+            </li>
+        </ul>
     </div>
     `
 
