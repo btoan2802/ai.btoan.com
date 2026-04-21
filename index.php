@@ -145,10 +145,14 @@
 
         <div class="sidebar-title">Lịch sử chat</div>
         <div id="historyList" style="flex:1; overflow-y:auto;"></div>
-        <div style="padding:15px; margin-top:auto;">
-          <button class="btn btn-danger w-100" onclick="logout()">🚪 Đăng xuất</button>
+        <div class="sidebar-footer">
+          <div class="logout-wrapper" onclick="logout()" title="Đăng xuất">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Đăng xuất</span>
+          </div>
         </div>
       </div>
+
       <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
       <div class="flex-grow-1 d-flex flex-column">
@@ -167,10 +171,21 @@
                 <div id="userName" class="user-name">User</div>
                 <div class="arrow">▾</div>
               </div>
-              <div id="userMenu" class="user-menu">
-                <div class="menu-item" onclick="openProfile()">👤 Hồ sơ</div>
-                <div class="menu-item" onclick="logout()">🚪 Đăng xuất</div>
-              </div>
+               <div id="userMenu" class="user-menu">
+                 <div class="menu-item-premium" onclick="openProfile()">
+                   <div class="menu-item-icon">
+                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                   </div>
+                   <span>Hồ sơ cá nhân</span>
+                 </div>
+                 <div class="menu-item-premium text-danger" onclick="logout()">
+                   <div class="menu-item-icon">
+                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                   </div>
+                   <span>Đăng xuất</span>
+                 </div>
+               </div>
+
             </div>
           </div>
         </div>
