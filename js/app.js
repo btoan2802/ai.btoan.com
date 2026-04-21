@@ -1416,8 +1416,11 @@ window.onload = function () {
         // Wait for history to load then switch
         setTimeout(() => {
             loadConversation(cidToLoad, false);
-        }, 500);
+        }, 300);
+    } else if (window.location.pathname === "/" || window.location.pathname.endsWith("index.php")) {
+        newChat(false); 
     }
+
 
     window.addEventListener('popstate', (e) => {
         if (e.state && e.state.cid) {
@@ -2296,7 +2299,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         checkProfile(uid)
         loadHistory()
-        newChat()
+        // newChat() // Moved to startup routing in window.onload
+
 
     } else {
 
