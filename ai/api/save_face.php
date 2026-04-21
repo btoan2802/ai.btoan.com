@@ -16,6 +16,7 @@ set_exception_handler(function($e) {
 header('Content-Type: application/json');
 
 require "db.php";
+require "r2_uploader.php";
 
 // Get JSON input
 $data = json_decode(file_get_contents("php://input"), true);
@@ -26,7 +27,7 @@ if (!$data) {
 
 $username = trim($data["username"] ?? "");
 $image = $data["image"] ?? "";
-$descriptor = $data["descriptor"] ?? ""; // New: 128-float array as JSON string
+$descriptor = $data["descriptor"] ?? ""; 
 
 if ($username === "" || $image === "") {
     echo json_encode(["success" => false, "msg" => "missing data: username or image empty"]);
@@ -38,9 +39,7 @@ try {
     $conn->query("ALTER TABLE users ADD COLUMN IF NOT EXISTS face_descriptor TEXT AFTER face_image_url");
 
     $stmt = $conn->prepare("SELECT id, username FROM users WHERE username = ? LIMIT 1");
-    if (!$stmt) {
-        throw new Exception("SQL prepare failed: " . $conn->error);
-    }
+    if (!$stmt) throw new Exception("SQL prepare failed: " . $conn->error);
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -52,45 +51,11 @@ try {
         exit;
     }
 
-    if (!preg_match('/^data:image\/(jpeg|jpg|png|webp);base64,/', $image)) {
-        echo json_encode(["success" => false, "msg" => "invalid image format: " . substr($image, 0, 50)]);
-        exit;
-    }
+    // ☁️ CLOUD UPLOAD (Using Refactored Architecture)
+    $uploader = new R2Uploader();
+    $publicUrl = $uploader->upload($image, 'faces', 'jpg');
 
-    $imageType = 'jpg';
-    if (strpos($image, 'data:image/png') === 0) {
-        $imageType = 'png';
-    } elseif (strpos($image, 'data:image/webp') === 0) {
-        $imageType = 'webp';
-    }
-
-    $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $image);
-    $binary = base64_decode($base64Data);
-
-    if ($binary === false) {
-        echo json_encode(["success" => false, "msg" => "decode failed"]);
-        exit;
-    }
-
-    // Save locally
-    $dir = "../../uploads/faces/" . $username . "/";
-    if (!is_dir($dir)) {
-        if (!mkdir($dir, 0777, true)) {
-             throw new Exception("Could not create directory $dir");
-        }
-    }
-
-    $fileName = "1." . $imageType;
-    $filePath = $dir . $fileName;
-    
-    if (file_put_contents($filePath, $binary) === false) {
-        throw new Exception("Could not save image to disk at $filePath");
-    }
-
-    // Public URL
-    $publicUrl = "uploads/faces/" . $username . "/" . $fileName;
-
-    // 🔒 SECURE UPDATE: Save both image URL and the raw biometric descriptor
+    // 🔒 SECURE UPDATE: Save Cloud URL + Biometric Descriptor
     $stmtUpdate = $conn->prepare("
         UPDATE users
         SET face_image_url = ?, 
@@ -99,9 +64,8 @@ try {
             face_updated_at = NOW()
         WHERE id = ?
     ");
-    if (!$stmtUpdate) {
-         throw new Exception("SQL prepare update failed: " . $conn->error);
-    }
+    if (!$stmtUpdate) throw new Exception("SQL prepare update failed: " . $conn->error);
+    
     $stmtUpdate->bind_param("ssi", $publicUrl, $descriptor, $user['id']);
     $stmtUpdate->execute();
     $stmtUpdate->close();
@@ -115,4 +79,4 @@ try {
         "success" => false,
         "msg" => "Server error: " . $e->getMessage()
     ]);
-}
+}

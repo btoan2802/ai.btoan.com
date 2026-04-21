@@ -381,32 +381,8 @@ async function loginWithFace() {
     if (scanLine) scanLine.style.display = "block";
 
     setFaceEnrollMessage("🔍 Đang xác minh danh tính...");
-
-    // 1. Fetch reference image/profile
-    const res = await fetch("ai/api/get_face_profile.php?username=" + encodeURIComponent(username));
-    const data = await res.json();
-
-    if (!data.success || !data.user || !data.user.face_image_url) {
-      setFaceEnrollMessage("Tài khoản chưa có dữ liệu FaceID", true);
-      setTimeout(() => closeFaceEnrollModal(), 2000);
-      isFaceLoginActive = false;
-      return;
-    }
-
-    // 2. Load Reference Face
-    const refImg = await faceapi.fetchImage(data.user.face_image_url);
-    const refDetection = await faceapi.detectSingleFace(refImg, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-
-    if (!refDetection) {
-      setFaceEnrollMessage("❌ Dữ liệu mẫu bị lỗi, hãy thiết lập lại", true);
-      setTimeout(() => closeFaceEnrollModal(), 2000);
-      isFaceLoginActive = false;
-      return;
-    }
-
-    const faceMatcher = new faceapi.FaceMatcher(refDetection);
-
-    // 3. Compare with Live Stream
+    
+    // 🔒 NEW ARCHITECTURE: No client-side image fetching. Final matching on Server.
     const loop = setInterval(async () => {
         if (!isFaceLoginActive) { clearInterval(loop); return; }
 
@@ -415,9 +391,9 @@ async function loginWithFace() {
                                        .withFaceDescriptor();
         
         if (liveDetection) {
-            setFaceEnrollMessage("🔍 Đang truyền dữ liệu xác thực...");
+            setFaceEnrollMessage("🛰️ Đang đối soát với máy chủ...");
             
-            // 🔒 BACKEND VERIFICATION ONLY
+            // Send live data to backend
             const formData = new FormData();
             formData.append("username", username);
             formData.append("descriptor", JSON.stringify(Array.from(liveDetection.descriptor)));
@@ -434,17 +410,17 @@ async function loginWithFace() {
                     localStorage.setItem("last_logged_in_username", loginData.username);
                     setTimeout(() => window.location.reload(), 800);
                 } else {
-                    // Fail from server (Distance too high or user not found)
-                    setFaceEnrollMessage("❌ " + loginData.message, true);
+                    setFaceEnrollMessage("❌ " + (loginData.message || "Không khớp khuôn mặt"), true);
                 }
             } catch (e) {
                 console.error("Auth error:", e);
-                setFaceEnrollMessage("Lỗi kết nối xác thực", true);
+                setFaceEnrollMessage("Lỗi kết nối máy chủ", true);
             }
         } else {
-            setFaceEnrollMessage("Đưa khuôn mặt vào giữa khung");
+            setFaceEnrollMessage("Hãy nhìn thẳng vào camera");
         }
-    }, 1000); // 1s sync interval
+    }, 1000); 
+
 
 
     // Timeout after 20s

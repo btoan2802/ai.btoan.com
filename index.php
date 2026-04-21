@@ -212,16 +212,35 @@
               <span id="modeStatus" class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">⚡ Fast</span>
 
 
-              <ul class="dropdown-menu">
-                <li><button id="pickImage" class="dropdown-item">🖼️ Gửi ảnh</button></li>
-                <li><button id="pickCamera" class="dropdown-item">📷 Chụp ảnh</button></li>
-                <li><button id="pickFile" class="dropdown-item">📄 Gửi tệp</button></li>
+              <ul class="dropdown-menu shadow-md border-0 profile-menu-premium">
                 <li>
-                  <hr>
+                  <button id="pickImage" class="dropdown-item d-flex align-items-center py-2">
+                    <i class="bi bi-image me-2 text-primary"></i> <span>Gửi ảnh</span>
+                  </button>
                 </li>
-                <li><button class="dropdown-item" onclick="setMode('fast')">⚡ Fast</button></li>
-                <li><button class="dropdown-item" onclick="setMode('thinking')">🧠 Thinking</button></li>
+                <li>
+                  <button id="pickCamera" class="dropdown-item d-flex align-items-center py-2">
+                    <i class="bi bi-camera me-2 text-success"></i> <span>Chụp ảnh</span>
+                  </button>
+                </li>
+                <li>
+                  <button id="pickFile" class="dropdown-item d-flex align-items-center py-2">
+                    <i class="bi bi-file-earmark-text me-2 text-info"></i> <span>Gửi tệp</span>
+                  </button>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
+                    <i class="bi bi-lightning-charge-fill me-2 text-warning"></i> <span>Fast (Mặc định)</span>
+                  </button>
+                </li>
+                <li>
+                  <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
+                    <i class="bi bi-brain me-2 text-purp"></i> <span>Thinking (Chuyên sâu)</span>
+                  </button>
+                </li>
               </ul>
+
             </div>
 
             <textarea id="msg" class="form-control mx-2" placeholder="nhập tin nhắn..." rows="1"></textarea>
