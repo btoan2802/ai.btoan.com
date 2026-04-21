@@ -56,11 +56,6 @@ QUY TẮC XUẤT FILE:
   Ví dụ: [GENIMAGE] A realistic cat wearing a space helmet, cinematic lighting.
   KHÔNG giải thích thêm, chỉ trả về tag này.
 
-Nếu đã có thông tin về người dùng, hãy sử dụng nó khi trả lời.
-
-Nếu có nhiều thông tin về cùng một dữ kiện,
-hãy luôn dùng thông tin mới nhất và bỏ qua thông tin cũ.
-
 Khi viết công thức toán:
 - dùng $ ... $
 - tránh xuống dòng không cần thiết.
@@ -447,47 +442,7 @@ function streamBot(text, exportType = null) {
 // ====== Gemini ======
 async function callGemini(userText, images, files) {
 
-    let memoryData = []
     let detectedIntent = "chat";
-
-    // 🧠 Step 1: Semantic Intent Routing (Classifier)
-    try {
-        const cRes = await fetch("/ai/api/classify_intent.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text: userText })
-        });
-        const cData = await cRes.json();
-        detectedIntent = cData.intent || "chat";
-        console.log("🎯 Semantic Route:", detectedIntent);
-    } catch (e) {
-        console.warn("Intent routing failed, defaulting to chat", e);
-    }
-
-    const isVisualMode = detectedIntent.startsWith("visual_exact_");
-
-    // 📚 Step 2: Memory Load (Skip in Visual Mode)
-    if (!isVisualMode) {
-        try {
-            const mem = await fetch("/ai/api/get_memory.php?user_id=" + localStorage.getItem("user_id"))
-            let text = await mem.text()
-            if (text.trim() !== "") memoryData = JSON.parse(text);
-        } catch (e) {
-            console.log("memory load error", e)
-        }
-    } else {
-        console.log("🛡️ Visual Mode: Bypassing user memory to prevent contamination");
-    }
-
-    let extraKnowledge = ""
-    let userMemory = ""
-
-    if (memoryData.length) {
-        userMemory = `
-    Thông tin mới nhất về người dùng:
-    ${memoryData[0].memory_value}
-    `
-    }
 
     const isThinking =
         mode === "thinking" ||
@@ -510,7 +465,7 @@ async function callGemini(userText, images, files) {
             {
                 role: "user",
                 parts: [
-                    { text: systemInstruction + thinkingPrompt + toolInstruction + "\n" + userMemory }
+                    { text: systemInstruction + thinkingPrompt + toolInstruction }
                 ]
             },
 
@@ -642,7 +597,6 @@ async function send() {
     if (!userText.toLowerCase().includes("tìm trên mạng") && !userText.startsWith("/search")) {
         lastUserMessage = userText
     }
-    detectMemory(userText)
 
     const imgInput = document.getElementById("fileImg")
     const camInput = document.getElementById("fileCam")
@@ -1634,78 +1588,6 @@ function showLogin() {
 
 }
 
-async function detectCorrection(userText) {
-
-    const keywords = [
-        "sai",
-        "không đúng",
-        "phải là",
-        "đáp án là",
-        "correct",
-        "actually"
-    ]
-
-    let isCorrection = false
-
-    keywords.forEach(k => {
-        if (userText.toLowerCase().includes(k)) {
-            isCorrection = true
-        }
-    })
-
-    if (!isCorrection) return
-
-    await fetch("/ai/api/save_training.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            question: lastUserMessage,
-            ai_answer: lastAIAnswer,
-            correct_answer: userText,
-            user_id: localStorage.getItem("user_id")
-        })
-    })
-
-    console.log("AI learned correction")
-
-}
-async function detectMemory(userText) {
-
-    const keywords = [
-        "tôi là",
-        "tên tôi",
-        "tôi tên",
-        "tôi năm nay",
-        "tuổi",
-        "tôi sống ở"
-    ]
-
-    let save = false
-
-    keywords.forEach(k => {
-        if (userText.toLowerCase().includes(k)) {
-            save = true
-        }
-    })
-
-    if (!save) return
-
-    await fetch("/ai/api/save_memory.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            user_id: localStorage.getItem("user_id"),
-            memory: userText
-        })
-    })
-
-    console.log("memory saved")
-
-}
 function togglePassword(id, el) {
 
     const input = document.getElementById(id);
