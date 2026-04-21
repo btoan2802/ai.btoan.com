@@ -233,7 +233,6 @@ try {
         'http_code' => $lastHttpCode,
         'raw_response' => $lastRawResponse
     ]);
-    s
 
 } catch (Throwable $e) {
     error_log("Fatal Exception in generate_image.php: " . $e->getMessage());
