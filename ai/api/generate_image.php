@@ -217,8 +217,7 @@ try {
             sendJson([
                 'success' => true,
                 'mimeType' => $mimeType ?: 'image/png',
-                'imageBase64' => $imageBase64,
-                'text' => implode("\n", $textParts)
+                'imageBase64' => $imageBase64
             ]);
         }
 

@@ -894,23 +894,23 @@ async function send() {
                 bubble.className = "bubble position-relative";
 
                 bubble.innerHTML = `
-                <div class="mb-2">Đây là ảnh của bạn:</div>
-                <img 
-                    src="${imageSrc}" 
-                    alt="Generated image"
-                    style="max-width:100%;border-radius:10px;cursor:pointer;display:block;"
-                >
-                <div class="mt-2">
-                    <a 
-                        href="${imageSrc}" 
-                        download="btoan_ai_image.png" 
-                        class="btn btn-sm btn-outline-light"
-                        style="font-size:12px;border-color:rgba(255,255,255,0.2)"
+                    <div class="mb-2">Đây là ảnh của bạn:</div>
+                    <img 
+                        src="${imageSrc}" 
+                        alt="Generated image"
+                        style="max-width:100%;border-radius:10px;cursor:pointer;display:block;"
                     >
-                        <i class="bi bi-download"></i> Tải ảnh
-                    </a>
-                </div>
-            `;
+                    <div class="mt-2">
+                        <a 
+                            href="${imageSrc}" 
+                            download="btoan_ai_image.png" 
+                            class="btn btn-sm btn-outline-light"
+                            style="font-size:12px;border-color:rgba(255,255,255,0.2)"
+                        >
+                            <i class="bi bi-download"></i> Tải ảnh
+                        </a>
+                    </div>
+                `;
 
                 const imgEl = bubble.querySelector("img");
                 imgEl.onclick = () => window.open(imageSrc, "_blank");
@@ -922,196 +922,191 @@ async function send() {
                 addBotBubble("❌ Lỗi mạng/kết nối: " + e.message);
             }
 
-            isSending = false;
-            chatEl.scrollTop = chatEl.scrollHeight;
-            return;
-        }
+            // 🔥 AUTO SEARCH
+            if (reply.startsWith("[SEARCH]")) {
 
-        // 🔥 AUTO SEARCH
-        if (reply.startsWith("[SEARCH]")) {
+                const query = reply.replace("[SEARCH]", "").trim()
 
-            const query = reply.replace("[SEARCH]", "").trim()
+                typing.remove()
+
+                addBotBubble("🔎 Đang tìm: " + query)
+
+                await runSearch(query, userText)
+
+                isSending = false   // 🔥 THÊM
+                return
+            }
+
+            if (!reply.startsWith("[SEARCH]") && !reply.startsWith("[EXPORT]")) {
+                if (isValidForExport(reply)) {
+                    lastExportContent = reply
+                    localStorage.setItem("lastExportContent", reply)
+                }
+            }
+
+            detectCorrection(userText)
 
             typing.remove()
+            streamBot(reply, exportType)
 
-            addBotBubble("🔎 Đang tìm: " + query)
+            // ❗ KHÔNG enable ở đây (vì stream chưa xong)
 
-            await runSearch(query, userText)
+            setTimeout(() => {
+                if (window.MathJax) {
+                    MathJax.typeset()
+                }
+            }, 100)
 
-            isSending = false   // 🔥 THÊM
-            return
+        } catch (e) {
+
+            typing.remove()
+            addBotBubble("lỗi: " + e.message)
+
+            isSending = false // 🔥 BẮT BUỘC
+
         }
-
-        if (!reply.startsWith("[SEARCH]") && !reply.startsWith("[EXPORT]")) {
-            if (isValidForExport(reply)) {
-                lastExportContent = reply
-                localStorage.setItem("lastExportContent", reply)
-            }
-        }
-
-        detectCorrection(userText)
-
-        typing.remove()
-        streamBot(reply, exportType)
-
-        // ❗ KHÔNG enable ở đây (vì stream chưa xong)
-
-        setTimeout(() => {
-            if (window.MathJax) {
-                MathJax.typeset()
-            }
-        }, 100)
-
-    } catch (e) {
-
-        typing.remove()
-        addBotBubble("lỗi: " + e.message)
-
-        isSending = false // 🔥 BẮT BUỘC
 
     }
-
-}
 
 // ====== LOGIN ======
 async function login() {
 
 
 
-    const username = document.getElementById("login_username").value;
-    const password = document.getElementById("login_password").value;
+        const username = document.getElementById("login_username").value;
+        const password = document.getElementById("login_password").value;
 
-    const res = await fetch("/ai/api/login.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            username,
-            password
-        })
-    });
+        const res = await fetch("/ai/api/login.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
+        });
 
-    const raw = await res.text();
-    console.log("RAW LOGIN:", raw);
+        const raw = await res.text();
+        console.log("RAW LOGIN:", raw);
 
-    let data;
-    try {
-        data = JSON.parse(raw);
-    } catch (e) {
-        console.error("JSON lỗi:", raw);
-        return;
+        let data;
+        try {
+            data = JSON.parse(raw);
+        } catch (e) {
+            console.error("JSON lỗi:", raw);
+            return;
+        }
+
+        console.log("PARSED:", data);
+
+        // 🔥 FORCE SAVE luôn (bỏ if)
+        if (data.user_id) {
+
+            console.log("SAVE user_id =", data.user_id);
+
+            localStorage.setItem("user_id", String(data.user_id));
+            localStorage.setItem("username", data.username)
+
+
+            console.log("AFTER SAVE:", localStorage.getItem("user_id"));
+
+            document.getElementById("loginBox").remove();
+
+            await checkProfile(data.user_id)  // 🔥 QUAN TRỌNG
+
+            loadHistory()
+            newChat()
+
+        } else {
+            document.getElementById("loginMsg").innerText = "Sai tài khoản hoặc mật khẩu";
+        }
+
     }
+    // ====== REGISTER ======
+    async function register() {
 
-    console.log("PARSED:", data);
+        const msgBox = document.getElementById("registerMsg")
+        msgBox.innerHTML = ""
 
-    // 🔥 FORCE SAVE luôn (bỏ if)
-    if (data.user_id) {
+        const username = document.getElementById("reg_username").value
+        const password = document.getElementById("reg_password").value
+        const password2 = document.getElementById("reg_password2").value
 
-        console.log("SAVE user_id =", data.user_id);
+        if (password !== password2) {
 
-        localStorage.setItem("user_id", String(data.user_id));
-        localStorage.setItem("username", data.username)
-
-
-        console.log("AFTER SAVE:", localStorage.getItem("user_id"));
-
-        document.getElementById("loginBox").remove();
-
-        await checkProfile(data.user_id)  // 🔥 QUAN TRỌNG
-
-        loadHistory()
-        newChat()
-
-    } else {
-        document.getElementById("loginMsg").innerText = "Sai tài khoản hoặc mật khẩu";
-    }
-
-}
-// ====== REGISTER ======
-async function register() {
-
-    const msgBox = document.getElementById("registerMsg")
-    msgBox.innerHTML = ""
-
-    const username = document.getElementById("reg_username").value
-    const password = document.getElementById("reg_password").value
-    const password2 = document.getElementById("reg_password2").value
-
-    if (password !== password2) {
-
-        msgBox.innerHTML = `<div class="text-danger">
+            msgBox.innerHTML = `<div class="text-danger">
     Mật khẩu nhập lại không khớp
     </div>`
 
-        return
-    }
+            return
+        }
 
-    const res = await fetch("/ai/api/register.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            username,
-            password
+        const res = await fetch("/ai/api/register.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                username,
+                password
+            })
         })
-    })
 
-    const data = await res.json()
+        const data = await res.json()
 
-    if (data.status === "ok") {
+        if (data.status === "ok") {
 
-        msgBox.innerHTML = `<div class="text-success">
+            msgBox.innerHTML = `<div class="text-success">
     Đăng ký thành công ✔
     </div>`
 
-        setTimeout(() => {
-            showLogin()
-        }, 1500)
+            setTimeout(() => {
+                showLogin()
+            }, 1500)
 
-    } else {
+        } else {
 
-        msgBox.innerHTML = `<div class="text-danger">
+            msgBox.innerHTML = `<div class="text-danger">
     ${data.msg}
     </div>`
 
+        }
+        document.getElementById("reg_username").value = ""
+        document.getElementById("reg_password").value = ""
+        document.getElementById("reg_password2").value = ""
+
     }
-    document.getElementById("reg_username").value = ""
-    document.getElementById("reg_password").value = ""
-    document.getElementById("reg_password2").value = ""
 
-}
+    // ====== LOGOUT ======
+    function logout() {
 
-// ====== LOGOUT ======
-function logout() {
+        localStorage.clear();
+        location.reload();
 
-    localStorage.clear();
-    location.reload();
+    }
 
-}
+    // ====== HISTORY ======
+    async function loadHistory() {
 
-// ====== HISTORY ======
-async function loadHistory() {
+        const user_id = localStorage.getItem("user_id");
 
-    const user_id = localStorage.getItem("user_id");
+        const res = await fetch("/ai/api/get_conversations.php?user_id=" + user_id);
+        const data = await res.json();
 
-    const res = await fetch("/ai/api/get_conversations.php?user_id=" + user_id);
-    const data = await res.json();
+        const list = document.getElementById("historyList");
+        if (!list) return;
 
-    const list = document.getElementById("historyList");
-    if (!list) return;
+        list.innerHTML = "";
 
-    list.innerHTML = "";
+        if (data.length === 0) return;
 
-    if (data.length === 0) return;
+        data.forEach((c, i) => {
 
-    data.forEach((c, i) => {
+            const div = document.createElement("div")
+            div.className = "chat-history-item d-flex justify-content-between align-items-center"
 
-        const div = document.createElement("div")
-        div.className = "chat-history-item d-flex justify-content-between align-items-center"
-
-        div.innerHTML = `
+            div.innerHTML = `
     <div class="chat-title flex-grow-1">${c.title}</div>
 
     <div class="dropdown">
@@ -1138,704 +1133,704 @@ async function loadHistory() {
     `
 
 
-        div.onclick = () => loadConversation(c.id)
-        div.style.cursor = "pointer"
+            div.onclick = () => loadConversation(c.id)
+            div.style.cursor = "pointer"
 
 
-        list.appendChild(div)
+            list.appendChild(div)
 
 
-    });
+        });
 
-}
-
-//rename
-
-async function renameChat(id, oldTitle) {
-
-    const title = prompt("Nhập tên mới", oldTitle)
-
-    if (!title) return
-
-    await fetch("/ai/api/rename_conversation.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            id: id,
-            title: title
-        })
-    })
-
-    loadHistory()
-
-}
-
-//delete chat
-async function deleteChat(id) {
-
-    if (!confirm("Xoá cuộc trò chuyện này?")) return
-
-    const res = await fetch("/ai/api/delete_conversation.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            id: id
-        })
-    })
-
-    const text = await res.text()
-
-    let data
-    try {
-        data = JSON.parse(text)
-    } catch {
-        console.log("SERVER ERROR:", text)
-        addBotBubble("❌ server lỗi")
-        return
     }
-    console.log(data)
-    loadHistory()
 
-    chatEl.innerHTML = ""
+    //rename
 
-}
+    async function renameChat(id, oldTitle) {
 
-async function loadConversation(id) {
+        const title = prompt("Nhập tên mới", oldTitle)
 
-    conversation_id = id
+        if (!title) return
 
-    const res = await fetch("/ai/api/get_messages.php?conversation_id=" + id)
-    const data = await res.json()
-
-    chatEl.innerHTML = "";
-    attachments.innerHTML = "";
-    history = []
-    lastExportContent = ""
-
-    data.forEach(m => {
-
-        if (m.role === "user") {
-
-            addUserBubble(m.text, m.images || [])
-
-            history.push({
-                role: "user",
-                parts: [{ text: m.text }]
+        await fetch("/ai/api/rename_conversation.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                id: id,
+                title: title
             })
+        })
 
-        } else {
+        loadHistory()
 
-            if (m.text.startsWith("[EXPORT_FILE]||")) {
+    }
 
-                const base64Data = m.text.split("||")[1]
-                const content = atob(base64Data)
+    //delete chat
+    async function deleteChat(id) {
 
-                const clean = fixLatex(cleanExportContent(content))
+        if (!confirm("Xoá cuộc trò chuyện này?")) return
 
-                const base64Encoded = btoa(unescape(encodeURIComponent(clean)))
-                const url = "data:text/plain;base64," + base64Encoded
+        const res = await fetch("/ai/api/delete_conversation.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                id: id
+            })
+        })
 
-                addBotBubble(`
+        const text = await res.text()
+
+        let data
+        try {
+            data = JSON.parse(text)
+        } catch {
+            console.log("SERVER ERROR:", text)
+            addBotBubble("❌ server lỗi")
+            return
+        }
+        console.log(data)
+        loadHistory()
+
+        chatEl.innerHTML = ""
+
+    }
+
+    async function loadConversation(id) {
+
+        conversation_id = id
+
+        const res = await fetch("/ai/api/get_messages.php?conversation_id=" + id)
+        const data = await res.json()
+
+        chatEl.innerHTML = "";
+        attachments.innerHTML = "";
+        history = []
+        lastExportContent = ""
+
+        data.forEach(m => {
+
+            if (m.role === "user") {
+
+                addUserBubble(m.text, m.images || [])
+
+                history.push({
+                    role: "user",
+                    parts: [{ text: m.text }]
+                })
+
+            } else {
+
+                if (m.text.startsWith("[EXPORT_FILE]||")) {
+
+                    const base64Data = m.text.split("||")[1]
+                    const content = atob(base64Data)
+
+                    const clean = fixLatex(cleanExportContent(content))
+
+                    const base64Encoded = btoa(unescape(encodeURIComponent(clean)))
+                    const url = "data:text/plain;base64," + base64Encoded
+
+                    addBotBubble(`
     📄 File đã xuất trước đó:
 
     👉 <a href="${url}" target="_blank">Mở lại</a>
     `)
-            } else {
+                } else {
 
-                let text = m.text
-                let exportType = null
+                    let text = m.text
+                    let exportType = null
 
-                if (text.includes("[EXPORT]")) {
-                    const parts = text.split("[EXPORT]")
-                    text = parts[0].trim()
-                    exportType = parts[1].trim().toLowerCase()
+                    if (text.includes("[EXPORT]")) {
+                        const parts = text.split("[EXPORT]")
+                        text = parts[0].trim()
+                        exportType = parts[1].trim().toLowerCase()
+                    }
+
+                    // nếu nội dung đủ tốt để export thì lưu lại
+                    if (
+                        isValidForExport(text) &&
+                        !text.includes("📄 File đã xuất trước đó") &&
+                        !text.includes("📄 File DOCX đã sẵn sàng") &&
+                        !text.includes("📄 File đã sẵn sàng")
+                    ) {
+                        lastExportContent = text
+                        localStorage.setItem("lastExportContent", text)
+                    }
+
+                    addBotBubble(text, exportType)
                 }
 
-                // nếu nội dung đủ tốt để export thì lưu lại
-                if (
-                    isValidForExport(text) &&
-                    !text.includes("📄 File đã xuất trước đó") &&
-                    !text.includes("📄 File DOCX đã sẵn sàng") &&
-                    !text.includes("📄 File đã sẵn sàng")
-                ) {
-                    lastExportContent = text
-                    localStorage.setItem("lastExportContent", text)
-                }
+                history.push({
+                    role: "model",
+                    parts: [{ text: m.text }]
+                })
 
-                addBotBubble(text, exportType)
             }
 
-            history.push({
-                role: "model",
-                parts: [{ text: m.text }]
+        })
+
+        scrollToBottom()
+
+    }
+
+    function getLastBotMessageText() {
+        const botMessages = [...document.querySelectorAll(".msgrow.bot .bubble")]
+        if (!botMessages.length) return ""
+
+        for (let i = botMessages.length - 1; i >= 0; i--) {
+            const content = botMessages[i].querySelector(".message-content")
+            if (!content) continue
+
+            const text = (content.innerText || "").trim()
+
+            if (!text) continue
+            if (text.includes("đang trả lời")) continue
+            if (text.includes("❌")) continue
+            if (text.includes("📄 File DOCX đã sẵn sàng")) continue
+            if (text.includes("📄 File đã sẵn sàng")) continue
+
+            return text
+        }
+
+        return ""
+    }
+
+    // ====== PAGE LOAD ======
+    document.addEventListener("paste", async (e) => {
+
+        const items = e.clipboardData.items
+
+        for (const item of items) {
+            if (item.type.indexOf("image") !== -1) {
+
+                e.preventDefault()
+
+                const file = item.getAsFile()
+
+                // ✅ dùng hàm chung
+                addImages([file])
+
+                return
+            }
+        }
+
+    })
+
+
+
+
+    window.onload = function () {
+
+        chatEl = document.getElementById("chat") || null;
+        msgEl = document.getElementById("msg") || null;
+
+        chatEl = document.getElementById("chat");
+        statusEl = document.getElementById("status");
+        msgEl = document.getElementById("msg");
+
+
+        lastExportContent = localStorage.getItem("lastExportContent") || ""
+
+        // 🔥 đặt SAU khi có msgEl
+        if (msgEl) {
+
+            msgEl.addEventListener("focus", () => {
+
+                // ❌ CHẶN MOBILE
+                if (window.innerWidth <= 768) return
+
+                setTimeout(() => {
+                    msgEl.scrollIntoView({ block: "center" });
+                }, 300)
+
+            })
+
+
+
+
+            // auto resize
+            msgEl.addEventListener("input", () => {
+                msgEl.style.height = "auto";
+                msgEl.style.height = msgEl.scrollHeight + "px";
+            })
+
+        }
+        sendBtn = document.getElementById("send");
+
+        chatEl.addEventListener("dragover", (e) => {
+            e.preventDefault()
+        })
+
+        chatEl.addEventListener("drop", (e) => {
+
+            e.preventDefault()
+
+            // ✅ chỉ 1 dòng
+            addImages(e.dataTransfer.files)
+
+        })
+
+        attachments = document.getElementById("attachments");
+        // camera preview
+        document.getElementById("fileCam")?.addEventListener("change", (e) => {
+            addImages(e.target.files)
+        })
+
+        document.getElementById("send")?.addEventListener("click", send)
+
+        msgEl?.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                send()
+            }
+        })
+
+        // ===== auto format dd/mm/yyyy =====
+        const dobInput = document.getElementById("pf_dob")
+
+        if (dobInput) {
+            dobInput.addEventListener("input", (e) => {
+                let v = e.target.value.replace(/\D/g, "")
+
+                if (v.length >= 2) v = v.slice(0, 2) + "/" + v.slice(2)
+                if (v.length >= 5) v = v.slice(0, 5) + "/" + v.slice(5, 9)
+
+                e.target.value = v
+            })
+        }
+        const avatarInput = document.getElementById("avatarInput")
+
+        if (avatarInput) {
+
+            avatarInput.addEventListener("change", async function () {
+
+                const file = this.files[0]
+                if (!file) return
+
+                console.log("🔥 FILE SELECTED:", file)
+
+                const formData = new FormData()
+                formData.append("avatar", file)
+                formData.append("user_id", localStorage.getItem("user_id"))
+
+                try {
+
+                    const res = await fetch("/ai/api/upload_avatar.php", {
+                        method: "POST",
+                        body: formData
+                    })
+
+                    const text = await res.text()
+                    console.log("🔥 RAW RESPONSE:", text)
+
+                    let data
+                    try {
+                        data = JSON.parse(text)
+                    } catch {
+                        alert("API lỗi không phải JSON")
+                        return
+                    }
+
+                    console.log("🔥 PARSED:", data)
+
+                    if (!data.success) {
+                        alert("Upload thất bại")
+                        return
+                    }
+
+                    const url = data.avatar + "?t=" + Date.now()
+
+                    document.getElementById("avatarPreview").innerHTML =
+                        `<img src="${url}" style="width:100%;height:100%;border-radius:50%">`
+
+                    document.getElementById("userAvatar").innerHTML =
+                        `<img src="${url}" style="width:100%;height:100%;border-radius:50%">`
+
+                } catch (e) {
+                    console.error("UPLOAD ERROR:", e)
+                    alert("Server lỗi")
+                }
+
             })
 
         }
 
-    })
+    }
+    function toggleSidebar() {
 
-    scrollToBottom()
+        const sb = document.getElementById("sidebar")
 
-}
+        if (!sb) return
 
-function getLastBotMessageText() {
-    const botMessages = [...document.querySelectorAll(".msgrow.bot .bubble")]
-    if (!botMessages.length) return ""
+        sb.classList.toggle("open")
 
-    for (let i = botMessages.length - 1; i >= 0; i--) {
-        const content = botMessages[i].querySelector(".message-content")
-        if (!content) continue
-
-        const text = (content.innerText || "").trim()
-
-        if (!text) continue
-        if (text.includes("đang trả lời")) continue
-        if (text.includes("❌")) continue
-        if (text.includes("📄 File DOCX đã sẵn sàng")) continue
-        if (text.includes("📄 File đã sẵn sàng")) continue
-
-        return text
     }
 
-    return ""
-}
+    function setMode(m) {
 
-// ====== PAGE LOAD ======
-document.addEventListener("paste", async (e) => {
+        mode = m
 
-    const items = e.clipboardData.items
+        const btn = document.getElementById("modeBtn")
 
-    for (const item of items) {
-        if (item.type.indexOf("image") !== -1) {
-
-            e.preventDefault()
-
-            const file = item.getAsFile()
-
-            // ✅ dùng hàm chung
-            addImages([file])
-
-            return
+        if (m === "thinking") {
+            btn.innerText = "🧠 Thinking"
+        } else {
+            btn.innerText = "⚡ Fast"
         }
-    }
-
-})
-
-
-
-
-window.onload = function () {
-
-    chatEl = document.getElementById("chat") || null;
-    msgEl = document.getElementById("msg") || null;
-
-    chatEl = document.getElementById("chat");
-    statusEl = document.getElementById("status");
-    msgEl = document.getElementById("msg");
-
-
-    lastExportContent = localStorage.getItem("lastExportContent") || ""
-
-    // 🔥 đặt SAU khi có msgEl
-    if (msgEl) {
-
-        msgEl.addEventListener("focus", () => {
-
-            // ❌ CHẶN MOBILE
-            if (window.innerWidth <= 768) return
-
-            setTimeout(() => {
-                msgEl.scrollIntoView({ block: "center" });
-            }, 300)
-
-        })
-
-
-
-
-        // auto resize
-        msgEl.addEventListener("input", () => {
-            msgEl.style.height = "auto";
-            msgEl.style.height = msgEl.scrollHeight + "px";
-        })
 
     }
-    sendBtn = document.getElementById("send");
 
-    chatEl.addEventListener("dragover", (e) => {
-        e.preventDefault()
+    document.getElementById("pickImage")?.addEventListener("click", () => {
+        document.getElementById("fileImg").click()
     })
 
-    chatEl.addEventListener("drop", (e) => {
+    document.getElementById("pickCamera")?.addEventListener("click", async () => {
 
-        e.preventDefault()
+        // nếu đang chạy trong Flutter
+        if (window.flutter_inappwebview) {
 
-        // ✅ chỉ 1 dòng
-        addImages(e.dataTransfer.files)
+            const base64 = await window.flutter_inappwebview.callHandler('openCamera')
+
+            if (base64) {
+
+                const res = await fetch(base64)
+                const blob = await res.blob()
+
+                const file = new File([blob], "camera.jpg", { type: "image/jpeg" })
+
+                addImages([file])
+            }
+
+
+        } else {
+            // fallback cho trình duyệt
+            document.getElementById("fileCam").click()
+        }
 
     })
 
-    attachments = document.getElementById("attachments");
-    // camera preview
-    document.getElementById("fileCam")?.addEventListener("change", (e) => {
+    document.getElementById("pickFile")?.addEventListener("click", () => {
+        document.getElementById("fileDoc").click()
+    })
+
+
+    document.getElementById("fileImg")?.addEventListener("change", (e) => {
         addImages(e.target.files)
     })
 
-    document.getElementById("send")?.addEventListener("click", send)
+    document.getElementById("fileDoc")?.addEventListener("change", (e) => {
 
-    msgEl?.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault()
-            send()
-        }
-    })
+        Array.from(e.target.files).forEach(file => {
 
-    // ===== auto format dd/mm/yyyy =====
-    const dobInput = document.getElementById("pf_dob")
+            const div = document.createElement("div")
+            div.className = "atchip"
 
-    if (dobInput) {
-        dobInput.addEventListener("input", (e) => {
-            let v = e.target.value.replace(/\D/g, "")
-
-            if (v.length >= 2) v = v.slice(0, 2) + "/" + v.slice(2)
-            if (v.length >= 5) v = v.slice(0, 5) + "/" + v.slice(5, 9)
-
-            e.target.value = v
-        })
-    }
-    const avatarInput = document.getElementById("avatarInput")
-
-    if (avatarInput) {
-
-        avatarInput.addEventListener("change", async function () {
-
-            const file = this.files[0]
-            if (!file) return
-
-            console.log("🔥 FILE SELECTED:", file)
-
-            const formData = new FormData()
-            formData.append("avatar", file)
-            formData.append("user_id", localStorage.getItem("user_id"))
-
-            try {
-
-                const res = await fetch("/ai/api/upload_avatar.php", {
-                    method: "POST",
-                    body: formData
-                })
-
-                const text = await res.text()
-                console.log("🔥 RAW RESPONSE:", text)
-
-                let data
-                try {
-                    data = JSON.parse(text)
-                } catch {
-                    alert("API lỗi không phải JSON")
-                    return
-                }
-
-                console.log("🔥 PARSED:", data)
-
-                if (!data.success) {
-                    alert("Upload thất bại")
-                    return
-                }
-
-                const url = data.avatar + "?t=" + Date.now()
-
-                document.getElementById("avatarPreview").innerHTML =
-                    `<img src="${url}" style="width:100%;height:100%;border-radius:50%">`
-
-                document.getElementById("userAvatar").innerHTML =
-                    `<img src="${url}" style="width:100%;height:100%;border-radius:50%">`
-
-            } catch (e) {
-                console.error("UPLOAD ERROR:", e)
-                alert("Server lỗi")
-            }
-
-        })
-
-    }
-
-}
-function toggleSidebar() {
-
-    const sb = document.getElementById("sidebar")
-
-    if (!sb) return
-
-    sb.classList.toggle("open")
-
-}
-
-function setMode(m) {
-
-    mode = m
-
-    const btn = document.getElementById("modeBtn")
-
-    if (m === "thinking") {
-        btn.innerText = "🧠 Thinking"
-    } else {
-        btn.innerText = "⚡ Fast"
-    }
-
-}
-
-document.getElementById("pickImage")?.addEventListener("click", () => {
-    document.getElementById("fileImg").click()
-})
-
-document.getElementById("pickCamera")?.addEventListener("click", async () => {
-
-    // nếu đang chạy trong Flutter
-    if (window.flutter_inappwebview) {
-
-        const base64 = await window.flutter_inappwebview.callHandler('openCamera')
-
-        if (base64) {
-
-            const res = await fetch(base64)
-            const blob = await res.blob()
-
-            const file = new File([blob], "camera.jpg", { type: "image/jpeg" })
-
-            addImages([file])
-        }
-
-
-    } else {
-        // fallback cho trình duyệt
-        document.getElementById("fileCam").click()
-    }
-
-})
-
-document.getElementById("pickFile")?.addEventListener("click", () => {
-    document.getElementById("fileDoc").click()
-})
-
-
-document.getElementById("fileImg")?.addEventListener("change", (e) => {
-    addImages(e.target.files)
-})
-
-document.getElementById("fileDoc")?.addEventListener("change", (e) => {
-
-    Array.from(e.target.files).forEach(file => {
-
-        const div = document.createElement("div")
-        div.className = "atchip"
-
-        div.innerHTML = `
+            div.innerHTML = `
     📄 ${file.name}
     <button class="atremove">×</button>
     `
 
-        div.querySelector(".atremove").onclick = () => {
-            div.remove()
+            div.querySelector(".atremove").onclick = () => {
+                div.remove()
+            }
+
+            attachments.appendChild(div)
+
+        })
+
+    })
+    function newChat() {
+        autoRenamed = false  // 🔥 THÊM DÒNG NÀY
+        lastAIAnswer = ""
+
+        conversation_id = null
+        history = []
+        lastExportContent = ""
+        const chatEl = document.getElementById("chat")
+
+        if (chatEl) {
+            chatEl.innerHTML = ""
         }
 
-        attachments.appendChild(div)
+        addBotBubble("chào bạn 😄 tôi là Btoan AI.")
+
+    }
+    document.addEventListener("click", function (e) {
+
+        const sidebar = document.getElementById("sidebar")
+        const menuBtn = document.querySelector(".menu-btn")
+
+        // đóng sidebar
+        if (sidebar && sidebar.classList.contains("open")) {
+            if (!sidebar.contains(e.target) && !menuBtn.contains(e.target)) {
+                sidebar.classList.remove("open")
+            }
+        }
+
+
 
     })
 
-})
-function newChat() {
-    autoRenamed = false  // 🔥 THÊM DÒNG NÀY
-    lastAIAnswer = ""
 
-    conversation_id = null
-    history = []
-    lastExportContent = ""
-    const chatEl = document.getElementById("chat")
+    function scrollToBottom() {
+        if (!chatEl) return
 
-    if (chatEl) {
-        chatEl.innerHTML = ""
+        // ❌ chặn mobile
+        if (window.innerWidth < 768) return
+
+        chatEl.scrollTop = chatEl.scrollHeight
     }
+    window.visualViewport?.addEventListener("resize", () => {
 
-    addBotBubble("chào bạn 😄 tôi là Btoan AI.")
-
-}
-document.addEventListener("click", function (e) {
-
-    const sidebar = document.getElementById("sidebar")
-    const menuBtn = document.querySelector(".menu-btn")
-
-    // đóng sidebar
-    if (sidebar && sidebar.classList.contains("open")) {
-        if (!sidebar.contains(e.target) && !menuBtn.contains(e.target)) {
-            sidebar.classList.remove("open")
+        // 🔥 CHẶN nếu đang focus input
+        if (document.activeElement !== msgEl) {
+            setTimeout(() => {
+                scrollToBottom()
+            }, 200)
         }
+
+    })
+    function showRegister() {
+
+        document.getElementById("loginForm").style.display = "none"
+        document.getElementById("registerForm").style.display = "block"
+
     }
 
+    function showLogin() {
 
+        document.getElementById("loginForm").style.display = "block"
+        document.getElementById("registerForm").style.display = "none"
 
-})
+    }
 
+    async function detectCorrection(userText) {
 
-function scrollToBottom() {
-    if (!chatEl) return
+        const keywords = [
+            "sai",
+            "không đúng",
+            "phải là",
+            "đáp án là",
+            "correct",
+            "actually"
+        ]
 
-    // ❌ chặn mobile
-    if (window.innerWidth < 768) return
+        let isCorrection = false
 
-    chatEl.scrollTop = chatEl.scrollHeight
-}
-window.visualViewport?.addEventListener("resize", () => {
+        keywords.forEach(k => {
+            if (userText.toLowerCase().includes(k)) {
+                isCorrection = true
+            }
+        })
 
-    // 🔥 CHẶN nếu đang focus input
-    if (document.activeElement !== msgEl) {
-        setTimeout(() => {
+        if (!isCorrection) return
+
+        await fetch("/ai/api/save_training.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                question: lastUserMessage,
+                ai_answer: lastAIAnswer,
+                correct_answer: userText,
+                user_id: localStorage.getItem("user_id")
+            })
+        })
+
+        console.log("AI learned correction")
+
+    }
+    async function detectMemory(userText) {
+
+        const keywords = [
+            "tôi là",
+            "tên tôi",
+            "tôi tên",
+            "tôi năm nay",
+            "tuổi",
+            "tôi sống ở"
+        ]
+
+        let save = false
+
+        keywords.forEach(k => {
+            if (userText.toLowerCase().includes(k)) {
+                save = true
+            }
+        })
+
+        if (!save) return
+
+        await fetch("/ai/api/save_memory.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                user_id: localStorage.getItem("user_id"),
+                memory: userText
+            })
+        })
+
+        console.log("memory saved")
+
+    }
+    function togglePassword(id, el) {
+
+        const input = document.getElementById(id);
+
+        if (input.type === "password") {
+            input.type = "text";
+            el.classList.remove("bi-eye");
+            el.classList.add("bi-eye-slash");
+        } else {
+            input.type = "password";
+            el.classList.remove("bi-eye-slash");
+            el.classList.add("bi-eye");
+        }
+
+    }
+    document.addEventListener("visibilitychange", () => {
+
+        if (!document.hidden) {
             scrollToBottom()
-        }, 200)
-    }
-
-})
-function showRegister() {
-
-    document.getElementById("loginForm").style.display = "none"
-    document.getElementById("registerForm").style.display = "block"
-
-}
-
-function showLogin() {
-
-    document.getElementById("loginForm").style.display = "block"
-    document.getElementById("registerForm").style.display = "none"
-
-}
-
-async function detectCorrection(userText) {
-
-    const keywords = [
-        "sai",
-        "không đúng",
-        "phải là",
-        "đáp án là",
-        "correct",
-        "actually"
-    ]
-
-    let isCorrection = false
-
-    keywords.forEach(k => {
-        if (userText.toLowerCase().includes(k)) {
-            isCorrection = true
         }
+
     })
+    async function runSearch(query, originalText) {
 
-    if (!isCorrection) return
+        const loading = document.createElement("div")
+        loading.className = "msgrow bot"
+        loading.innerHTML = `<div class="bubble">🔎 đang tìm kiếm...</div>`
+        chatEl.appendChild(loading)
 
-    await fetch("/ai/api/save_training.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            question: lastUserMessage,
-            ai_answer: lastAIAnswer,
-            correct_answer: userText,
-            user_id: localStorage.getItem("user_id")
-        })
-    })
+        try {
 
-    console.log("AI learned correction")
+            const res = await fetch("/ai/api/search.php?q=" + encodeURIComponent(query))
+            const data = await res.json()
 
-}
-async function detectMemory(userText) {
+            let text = ""
 
-    const keywords = [
-        "tôi là",
-        "tên tôi",
-        "tôi tên",
-        "tôi năm nay",
-        "tuổi",
-        "tôi sống ở"
-    ]
+            data.results.forEach(r => {
+                text += `- ${r.title}\n${r.snippet}\n\n`
+            })
 
-    let save = false
+            // 🔥 xoá loading
+            loading.remove()
 
-    keywords.forEach(k => {
-        if (userText.toLowerCase().includes(k)) {
-            save = true
-        }
-    })
-
-    if (!save) return
-
-    await fetch("/ai/api/save_memory.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            user_id: localStorage.getItem("user_id"),
-            memory: userText
-        })
-    })
-
-    console.log("memory saved")
-
-}
-function togglePassword(id, el) {
-
-    const input = document.getElementById(id);
-
-    if (input.type === "password") {
-        input.type = "text";
-        el.classList.remove("bi-eye");
-        el.classList.add("bi-eye-slash");
-    } else {
-        input.type = "password";
-        el.classList.remove("bi-eye-slash");
-        el.classList.add("bi-eye");
-    }
-
-}
-document.addEventListener("visibilitychange", () => {
-
-    if (!document.hidden) {
-        scrollToBottom()
-    }
-
-})
-async function runSearch(query, originalText) {
-
-    const loading = document.createElement("div")
-    loading.className = "msgrow bot"
-    loading.innerHTML = `<div class="bubble">🔎 đang tìm kiếm...</div>`
-    chatEl.appendChild(loading)
-
-    try {
-
-        const res = await fetch("/ai/api/search.php?q=" + encodeURIComponent(query))
-        const data = await res.json()
-
-        let text = ""
-
-        data.results.forEach(r => {
-            text += `- ${r.title}\n${r.snippet}\n\n`
-        })
-
-        // 🔥 xoá loading
-        loading.remove()
-
-        const reply = await callGemini(
-            `Câu hỏi: ${originalText}
+            const reply = await callGemini(
+                `Câu hỏi: ${originalText}
 
     Dựa vào thông tin sau:
     ${text}
 
     Hãy trả lời.`,
-            [], []
-        )
-        lastAIAnswer = reply
-        streamBot(reply, null)
+                [], []
+            )
+            lastAIAnswer = reply
+            streamBot(reply, null)
 
-    } catch (e) {
+        } catch (e) {
 
-        loading.remove()
-        addBotBubble("❌ lỗi search")
+            loading.remove()
+            addBotBubble("❌ lỗi search")
 
+        }
     }
-}
-async function exportFile(content) {
+    async function exportFile(content) {
 
-    if (!content.trim()) {
-        addBotBubble("❌ chưa có nội dung")
-        return
-    }
+        if (!content.trim()) {
+            addBotBubble("❌ chưa có nội dung")
+            return
+        }
 
-    localStorage.setItem("lastExportContent", content)
+        localStorage.setItem("lastExportContent", content)
 
-    // 🔥 gọi API upload
-    const res = await fetch("/ai/api/upload.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            content: content,
-            ext: "txt"
+        // 🔥 gọi API upload
+        const res = await fetch("/ai/api/upload.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                content: content,
+                ext: "txt"
+            })
         })
-    })
 
-    const text = await res.text()
+        const text = await res.text()
 
-    let data
-    try {
-        data = JSON.parse(text)
-    } catch {
-        console.log("SERVER ERROR:", text)
-        addBotBubble("❌ server lỗi")
-        return
-    }
+        let data
+        try {
+            data = JSON.parse(text)
+        } catch {
+            console.log("SERVER ERROR:", text)
+            addBotBubble("❌ server lỗi")
+            return
+        }
 
-    if (!data.url) {
-        addBotBubble("❌ upload lỗi")
-        return
-    }
+        if (!data.url) {
+            addBotBubble("❌ upload lỗi")
+            return
+        }
 
-    // 🔥 render link chuẩn
-    addBotBubble(`
+        // 🔥 render link chuẩn
+        addBotBubble(`
     📄 File đã sẵn sàng:
 
     👉 <a href="${data.url}" target="_blank">
     Mở bằng trình duyệt
     </a>
     `)
-}
-async function exportDOCX(content) {
-
-    if (!content.trim()) {
-        addBotBubble("❌ chưa có nội dung")
-        return
     }
+    async function exportDOCX(content) {
 
-    localStorage.setItem("lastExportContent", content)
+        if (!content.trim()) {
+            addBotBubble("❌ chưa có nội dung")
+            return
+        }
 
-    const res = await fetch("/ai/api/upload.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            content: content,
-            ext: "docx"
+        localStorage.setItem("lastExportContent", content)
+
+        const res = await fetch("/ai/api/upload.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                content: content,
+                ext: "docx"
+            })
         })
-    })
 
-    const text = await res.text()
+        const text = await res.text()
 
-    let data
-    try {
-        data = JSON.parse(text)
-    } catch {
-        console.log("SERVER ERROR:", text)
-        addBotBubble("❌ server lỗi")
-        return
-    }
+        let data
+        try {
+            data = JSON.parse(text)
+        } catch {
+            console.log("SERVER ERROR:", text)
+            addBotBubble("❌ server lỗi")
+            return
+        }
 
-    if (!data.url) {
-        addBotBubble("❌ upload lỗi")
-        return
-    }
+        if (!data.url) {
+            addBotBubble("❌ upload lỗi")
+            return
+        }
 
-    const row = document.createElement("div")
-    row.className = "msgrow bot"
+        const row = document.createElement("div")
+        row.className = "msgrow bot"
 
-    const bubble = document.createElement("div")
-    bubble.className = "bubble"
+        const bubble = document.createElement("div")
+        bubble.className = "bubble"
 
-    bubble.innerHTML = `
+        bubble.innerHTML = `
         <div class="message-content">
             <div>📄 File DOCX đã sẵn sàng:</div>
             <div class="mt-2">
@@ -1844,54 +1839,54 @@ async function exportDOCX(content) {
         </div>
     `
 
-    row.appendChild(bubble)
-    chatEl.appendChild(row)
-    scrollToBottom()
-}
-
-async function exportPDF(content) {
-
-    if (!content.trim()) {
-        addBotBubble("❌ chưa có nội dung")
-        return
+        row.appendChild(bubble)
+        chatEl.appendChild(row)
+        scrollToBottom()
     }
 
-    localStorage.setItem("lastExportContent", content)
+    async function exportPDF(content) {
 
-    const res = await fetch("/ai/api/upload.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            content: content,
-            ext: "pdf"
+        if (!content.trim()) {
+            addBotBubble("❌ chưa có nội dung")
+            return
+        }
+
+        localStorage.setItem("lastExportContent", content)
+
+        const res = await fetch("/ai/api/upload.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                content: content,
+                ext: "pdf"
+            })
         })
-    })
 
-    const text = await res.text()
+        const text = await res.text()
 
-    let data
-    try {
-        data = JSON.parse(text)
-    } catch {
-        console.log("SERVER ERROR:", text)
-        addBotBubble("❌ server lỗi")
-        return
-    }
+        let data
+        try {
+            data = JSON.parse(text)
+        } catch {
+            console.log("SERVER ERROR:", text)
+            addBotBubble("❌ server lỗi")
+            return
+        }
 
-    if (!data.url) {
-        addBotBubble("❌ upload lỗi")
-        return
-    }
+        if (!data.url) {
+            addBotBubble("❌ upload lỗi")
+            return
+        }
 
-    const row = document.createElement("div")
-    row.className = "msgrow bot"
+        const row = document.createElement("div")
+        row.className = "msgrow bot"
 
-    const bubble = document.createElement("div")
-    bubble.className = "bubble"
+        const bubble = document.createElement("div")
+        bubble.className = "bubble"
 
-    bubble.innerHTML = `
+        bubble.innerHTML = `
         <div class="message-content">
             <div>📄 File PDF đã sẵn sàng:</div>
             <div class="mt-2">
@@ -1900,444 +1895,444 @@ async function exportPDF(content) {
         </div>
     `
 
-    row.appendChild(bubble)
-    chatEl.appendChild(row)
-    scrollToBottom()
+        row.appendChild(bubble)
+        chatEl.appendChild(row)
+        scrollToBottom()
 
-}
+    }
 
 
-function extractExportContent(text) {
-    let clean = String(text || "")
-        .replace(/\r\n/g, "\n")
-        .replace(/\r/g, "\n")
-        .trim()
+    function extractExportContent(text) {
+        let clean = String(text || "")
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "\n")
+            .trim()
 
-    const lines = clean.split("\n").map(x => x.trim())
+        const lines = clean.split("\n").map(x => x.trim())
 
-    const filtered = lines.filter(line => {
-        if (!line) return true
+        const filtered = lines.filter(line => {
+            if (!line) return true
 
-        const lower = line.toLowerCase()
+            const lower = line.toLowerCase()
 
-        if (lower.startsWith("tuyệt vời")) return false
-        if (lower.startsWith("đây là nội dung")) return false
-        if (lower.startsWith("dưới đây là")) return false
-        if (lower.startsWith("tôi sẽ xuất")) return false
-        if (lower.startsWith("tôi hiểu rằng")) return false
-        if (lower.startsWith("chào bạn")) return false
-        if (lower.includes("thành file word cho bạn")) return false
-        if (lower.includes("nội dung đầy đủ mà bạn yêu cầu")) return false
+            if (lower.startsWith("tuyệt vời")) return false
+            if (lower.startsWith("đây là nội dung")) return false
+            if (lower.startsWith("dưới đây là")) return false
+            if (lower.startsWith("tôi sẽ xuất")) return false
+            if (lower.startsWith("tôi hiểu rằng")) return false
+            if (lower.startsWith("chào bạn")) return false
+            if (lower.includes("thành file word cho bạn")) return false
+            if (lower.includes("nội dung đầy đủ mà bạn yêu cầu")) return false
+
+            return true
+        })
+
+        return filtered.join("\n").trim()
+    }
+
+    async function searchHistory(q) {
+
+        const res = await fetch("/ai/api/search_history.php?q=" + encodeURIComponent(q) + "&user_id=" + localStorage.getItem("user_id"))
+
+        const data = await res.json()
+
+        const list = document.getElementById("historyList")
+        list.innerHTML = ""
+
+        data.forEach(c => {
+            const div = document.createElement("div")
+            div.innerText = c.title
+            div.onclick = () => loadConversation(c.id)
+            list.appendChild(div)
+        })
+    }
+    let startY = 0
+
+    document.addEventListener("touchstart", (e) => {
+        startY = e.touches[0].clientY
+    })
+
+    document.addEventListener("touchmove", (e) => {
+        const y = e.touches[0].clientY
+
+        if (y - startY > 120 && window.scrollY === 0) {
+            location.reload()
+        }
+    })
+    function fixLatex(text) {
+
+        return text
+            .replace(/\$(.*?)\$/g, "$1") // bỏ dấu $
+            .replace(/\\times/g, "×")
+            .replace(/\\cdot/g, "·")
+            .replace(/\\frac{(.*?)}{(.*?)}/g, "($1/$2)")
+            .replace(/\\text{(.*?)}/g, "$1")
+            .replace(/\\sqrt{(.*?)}/g, "√($1)")
+            .replace(/\\left|\\right/g, "")
+            .replace(/\\,/g, "")
+            .replace(/\\\\/g, "\n")
+
+    }
+    function isValidForExport(text) {
+
+        if (text.length < 50) return false
+
+        if (/ủa|ok|ừ|ờ|hello|hi/i.test(text)) return false
+
+        if (text.includes("?")) return false
 
         return true
-    })
-
-    return filtered.join("\n").trim()
-}
-
-async function searchHistory(q) {
-
-    const res = await fetch("/ai/api/search_history.php?q=" + encodeURIComponent(q) + "&user_id=" + localStorage.getItem("user_id"))
-
-    const data = await res.json()
-
-    const list = document.getElementById("historyList")
-    list.innerHTML = ""
-
-    data.forEach(c => {
-        const div = document.createElement("div")
-        div.innerText = c.title
-        div.onclick = () => loadConversation(c.id)
-        list.appendChild(div)
-    })
-}
-let startY = 0
-
-document.addEventListener("touchstart", (e) => {
-    startY = e.touches[0].clientY
-})
-
-document.addEventListener("touchmove", (e) => {
-    const y = e.touches[0].clientY
-
-    if (y - startY > 120 && window.scrollY === 0) {
-        location.reload()
     }
-})
-function fixLatex(text) {
+    function cleanExportContent(text) {
+        return String(text || "")
+            .replace(/\r\n/g, "\n")
+            .replace(/\r/g, "\n")
+            .replace(/👉|📄|🔎/g, "")
+            .trim()
+    }
+    async function checkProfile(user_id) {
 
-    return text
-        .replace(/\$(.*?)\$/g, "$1") // bỏ dấu $
-        .replace(/\\times/g, "×")
-        .replace(/\\cdot/g, "·")
-        .replace(/\\frac{(.*?)}{(.*?)}/g, "($1/$2)")
-        .replace(/\\text{(.*?)}/g, "$1")
-        .replace(/\\sqrt{(.*?)}/g, "√($1)")
-        .replace(/\\left|\\right/g, "")
-        .replace(/\\,/g, "")
-        .replace(/\\\\/g, "\n")
+        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+        const data = await res.json()
 
-}
-function isValidForExport(text) {
+        const fullName = data.full_name?.trim()
 
-    if (text.length < 50) return false
+        const name =
+            fullName ||
+            localStorage.getItem("full_name") ||
+            localStorage.getItem("username") ||
+            "User"
 
-    if (/ủa|ok|ừ|ờ|hello|hi/i.test(text)) return false
+        // ✅ set tên
+        document.getElementById("userName").innerText = name
 
-    if (text.includes("?")) return false
+        // ✅ avatar chữ cái đầu
+        const avatarEl = document.getElementById("userAvatar")
 
-    return true
-}
-function cleanExportContent(text) {
-    return String(text || "")
-        .replace(/\r\n/g, "\n")
-        .replace(/\r/g, "\n")
-        .replace(/👉|📄|🔎/g, "")
-        .trim()
-}
-async function checkProfile(user_id) {
+        // reset
+        avatarEl.innerHTML = ""
+        avatarEl.style.background = "none"
 
-    const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-    const data = await res.json()
+        if (data.avatar) {
 
-    const fullName = data.full_name?.trim()
+            const url = data.avatar + "?t=" + Date.now()
 
-    const name =
-        fullName ||
-        localStorage.getItem("full_name") ||
-        localStorage.getItem("username") ||
-        "User"
-
-    // ✅ set tên
-    document.getElementById("userName").innerText = name
-
-    // ✅ avatar chữ cái đầu
-    const avatarEl = document.getElementById("userAvatar")
-
-    // reset
-    avatarEl.innerHTML = ""
-    avatarEl.style.background = "none"
-
-    if (data.avatar) {
-
-        const url = data.avatar + "?t=" + Date.now()
-
-        avatarEl.innerHTML = `
+            avatarEl.innerHTML = `
                 <img src="${url}" 
                     style="width:100%;height:100%;border-radius:50%">
             `
 
-    } else {
+        } else {
 
-        avatarEl.innerText = name.charAt(0).toUpperCase()
+            avatarEl.innerText = name.charAt(0).toUpperCase()
 
+            const colors = [
+                "linear-gradient(135deg,#6366f1,#4f46e5)",
+                "linear-gradient(135deg,#22c55e,#16a34a)",
+                "linear-gradient(135deg,#f59e0b,#d97706)",
+                "linear-gradient(135deg,#ef4444,#dc2626)"
+            ]
+
+            avatarEl.style.background = colors[name.length % colors.length]
+        }
+
+        // 🎨 màu avatar
         const colors = [
             "linear-gradient(135deg,#6366f1,#4f46e5)",
             "linear-gradient(135deg,#22c55e,#16a34a)",
             "linear-gradient(135deg,#f59e0b,#d97706)",
             "linear-gradient(135deg,#ef4444,#dc2626)"
         ]
-
         avatarEl.style.background = colors[name.length % colors.length]
+
+        // 💾 lưu lại full_name để dùng sau
+        if (fullName) {
+            localStorage.setItem("full_name", fullName)
+        }
+
+        // =========================
+        // 🔥 LOGIC MỚI (QUAN TRỌNG)
+        // =========================
+
+        // 👉 LUÔN show chat (không dùng profileBox nữa)
+        document.getElementById("chatApp").style.display = "flex"
+
+        // 👉 nếu CHƯA có profile → bật popup
+        if (!data.has_profile) {
+
+            document.getElementById("profileModal").style.display = "flex"
+
+            localStorage.setItem("has_profile", "0")
+
+        } else {
+
+            // 👉 có profile → đóng popup
+            document.getElementById("profileModal").style.display = "none"
+
+            localStorage.setItem("has_profile", "1")
+        }
+
     }
+    async function saveProfile() {
 
-    // 🎨 màu avatar
-    const colors = [
-        "linear-gradient(135deg,#6366f1,#4f46e5)",
-        "linear-gradient(135deg,#22c55e,#16a34a)",
-        "linear-gradient(135deg,#f59e0b,#d97706)",
-        "linear-gradient(135deg,#ef4444,#dc2626)"
-    ]
-    avatarEl.style.background = colors[name.length % colors.length]
+        const user_id = localStorage.getItem("user_id")
 
-    // 💾 lưu lại full_name để dùng sau
-    if (fullName) {
-        localStorage.setItem("full_name", fullName)
-    }
-
-    // =========================
-    // 🔥 LOGIC MỚI (QUAN TRỌNG)
-    // =========================
-
-    // 👉 LUÔN show chat (không dùng profileBox nữa)
-    document.getElementById("chatApp").style.display = "flex"
-
-    // 👉 nếu CHƯA có profile → bật popup
-    if (!data.has_profile) {
-
-        document.getElementById("profileModal").style.display = "flex"
-
-        localStorage.setItem("has_profile", "0")
-
-    } else {
-
-        // 👉 có profile → đóng popup
-        document.getElementById("profileModal").style.display = "none"
-
-        localStorage.setItem("has_profile", "1")
-    }
-
-}
-async function saveProfile() {
-
-    const user_id = localStorage.getItem("user_id")
-
-    if (!user_id) {
-        alert("Lỗi: chưa đăng nhập")
-        return
-    }
-
-    const nameInput = document.getElementById("pf_name")
-    const dobInput = document.getElementById("pf_dob")
-    const msg = document.getElementById("profileMsg")
-
-    if (!nameInput || !dobInput || !msg) return
-
-    const full_name = nameInput.value.trim()
-    let dob = dobInput.value.trim()
-
-    console.log("📌 INPUT:", { full_name, dob })
-
-    // ===== validate =====
-    if (!full_name || !dob) {
-        msg.innerText = "Vui lòng nhập đầy đủ"
-        return
-    }
-
-    // ===== validate dd/mm/yyyy =====
-    if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
-        msg.innerText = "Ngày sinh phải dạng dd/mm/yyyy"
-        return
-    }
-
-    const [day, month, year] = dob.split("/").map(Number)
-
-    if (
-        day < 1 || day > 31 ||
-        month < 1 || month > 12 ||
-        year < 1900 || year > 2100
-    ) {
-        msg.innerText = "Ngày không hợp lệ"
-        return
-    }
-
-    // ===== convert sang yyyy-mm-dd =====
-    dob = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
-
-    try {
-
-        const res = await fetch("/ai/api/update_name.php", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                user_id,
-                full_name,
-                dob
-            })
-        })
-
-        const data = await res.json()
-        console.log("🔥 RESPONSE:", data)
-
-        if (!data.success) {
-            msg.innerText = "Lưu thất bại"
+        if (!user_id) {
+            alert("Lỗi: chưa đăng nhập")
             return
         }
 
-        // ===== SAVE LOCAL =====
-        localStorage.setItem("full_name", full_name)
-        localStorage.setItem("has_profile", "1")
-
-        // ===== UPDATE UI NGAY =====
-        const userName = document.getElementById("userName")
-        const avatar = document.getElementById("userAvatar")
-
-        if (userName) userName.innerText = full_name
-        if (avatar) avatar.innerText = full_name.charAt(0).toUpperCase()
-
-        // ===== ĐÓNG MODAL =====
-        const modal = document.getElementById("profileModal")
-        if (modal) modal.style.display = "none"
-
-        // ===== SYNC LẠI TOÀN BỘ =====
-        checkProfile(user_id)
-
-    } catch (err) {
-        console.error("❌ saveProfile error:", err)
-        msg.innerText = "Server lỗi"
-    }
-}
-function isMobile() {
-    return window.innerWidth <= 768;
-}
-
-// ❌ chặn mọi auto focus
-document.addEventListener("focusin", (e) => {
-    if (isMobile() && e.target === msgEl) {
-        if (!e.isTrusted) {
-            msgEl.blur();
-        }
-    }
-});
-function handleGoogleLogin(response) {
-    const id_token = response.credential;
-
-    fetch("ai/api/google-login.php", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ token: id_token })
-    })
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-
-                const user_id = data.user.id;
-
-                // ✅ lưu đúng hệ thống bạn đang dùng
-                localStorage.setItem("user_id", user_id);
-                localStorage.setItem("username", data.user.username);
-                // ✅ ẩn login
-                document.getElementById("loginBox").style.display = "none";
-
-                // ✅ auto fill tên (xịn hơn)
-                document.getElementById("pf_name").value = data.user.name || "";
-
-                // ✅ check profile NGAY (KHÔNG reload)
-                checkProfile(user_id);
-
-                // // 👉 nếu đã có profile → load app luôn
-                // loadHistory();
-                // newChat();
-
-            } else {
-                alert("Login Google thất bại");
-            }
-        });
-}
-document.addEventListener("DOMContentLoaded", () => {
-
-    const uid = localStorage.getItem("user_id");
-
-    if (uid && uid !== "undefined") {
-
-        document.getElementById("loginBox").style.display = "none";
-        document.getElementById("chatApp").style.display = "flex";
-
-        checkProfile(uid)
-        loadHistory()
-        newChat()
-
-    } else {
-
-        document.getElementById("loginBox").style.display = "flex";
-        document.getElementById("chatApp").style.display = "none";
-
-    }
-
-})
-
-function toggleUserMenu() {
-    const menu = document.getElementById("userMenu")
-    menu.style.display = menu.style.display === "block" ? "none" : "block"
-}
-
-// click ngoài → đóng
-document.addEventListener("click", function (e) {
-    const box = document.getElementById("userBox")
-    if (!box) return
-
-    if (!box.contains(e.target)) {
-        document.getElementById("userMenu").style.display = "none"
-    }
-})
-
-function openProfile() {
-
-    const modal = document.getElementById("profileModal")
-    if (!modal) {
-        console.error("❌ profileModal not found")
-        return
-    }
-
-    const hasProfile = localStorage.getItem("has_profile") === "1"
-
-    // ✅ mở modal
-    modal.style.display = "flex"
-
-    // ===== UI TEXT =====
-    const title = modal.querySelector(".profile-title")
-    const btn = modal.querySelector(".profile-save-btn") // 🔥 fix selector chuẩn
-
-    if (hasProfile) {
-        if (title) title.innerText = "Chỉnh sửa thông tin"
-        if (btn) btn.innerText = "Lưu thay đổi"
-    } else {
-        if (title) title.innerText = "Hoàn thiện thông tin"
-        if (btn) btn.innerText = "Xác nhận"
-    }
-
-    // ===== LOAD DATA =====
-    loadProfileData()
-}
-async function loadProfileData() {
-
-    const user_id = localStorage.getItem("user_id")
-    if (!user_id) return
-
-    try {
-
-        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-        const data = await res.json()
-
         const nameInput = document.getElementById("pf_name")
         const dobInput = document.getElementById("pf_dob")
-        const avatarPreview = document.getElementById("avatarPreview")
+        const msg = document.getElementById("profileMsg")
 
-        // ===== NAME =====
-        if (nameInput) {
-            nameInput.value = data.full_name || ""
+        if (!nameInput || !dobInput || !msg) return
+
+        const full_name = nameInput.value.trim()
+        let dob = dobInput.value.trim()
+
+        console.log("📌 INPUT:", { full_name, dob })
+
+        // ===== validate =====
+        if (!full_name || !dob) {
+            msg.innerText = "Vui lòng nhập đầy đủ"
+            return
         }
 
-        // ===== DOB =====
-        if (dobInput && data.dob) {
-            const parts = data.dob.split("-")
-            if (parts.length === 3) {
-                dobInput.value = `${parts[2]}/${parts[1]}/${parts[0]}`
+        // ===== validate dd/mm/yyyy =====
+        if (!/^\d{2}\/\d{2}\/\d{4}$/.test(dob)) {
+            msg.innerText = "Ngày sinh phải dạng dd/mm/yyyy"
+            return
+        }
+
+        const [day, month, year] = dob.split("/").map(Number)
+
+        if (
+            day < 1 || day > 31 ||
+            month < 1 || month > 12 ||
+            year < 1900 || year > 2100
+        ) {
+            msg.innerText = "Ngày không hợp lệ"
+            return
+        }
+
+        // ===== convert sang yyyy-mm-dd =====
+        dob = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
+
+        try {
+
+            const res = await fetch("/ai/api/update_name.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_id,
+                    full_name,
+                    dob
+                })
+            })
+
+            const data = await res.json()
+            console.log("🔥 RESPONSE:", data)
+
+            if (!data.success) {
+                msg.innerText = "Lưu thất bại"
+                return
             }
+
+            // ===== SAVE LOCAL =====
+            localStorage.setItem("full_name", full_name)
+            localStorage.setItem("has_profile", "1")
+
+            // ===== UPDATE UI NGAY =====
+            const userName = document.getElementById("userName")
+            const avatar = document.getElementById("userAvatar")
+
+            if (userName) userName.innerText = full_name
+            if (avatar) avatar.innerText = full_name.charAt(0).toUpperCase()
+
+            // ===== ĐÓNG MODAL =====
+            const modal = document.getElementById("profileModal")
+            if (modal) modal.style.display = "none"
+
+            // ===== SYNC LẠI TOÀN BỘ =====
+            checkProfile(user_id)
+
+        } catch (err) {
+            console.error("❌ saveProfile error:", err)
+            msg.innerText = "Server lỗi"
         }
-
-        // ===== AVATAR =====
-        if (avatarPreview) {
-
-            const avatar = data.avatar // ✅ FIX
-
-            if (avatar) {
-
-                const url = avatar + "?t=" + Date.now()
-
-                avatarPreview.innerHTML = `
-                    <img src="${url}" 
-                         style="width:100%;height:100%;border-radius:50%">
-                `
-
-                document.getElementById("userAvatar").innerHTML = `
-                    <img src="${url}" 
-                         style="width:100%;height:100%;border-radius:50%">
-                `
-
-            } else {
-
-                const name = data.full_name || localStorage.getItem("username") || "U"
-                avatarPreview.innerText = name.charAt(0).toUpperCase()
-
-            }
-        }
-
-    } catch (err) {
-        console.error("❌ loadProfileData error:", err)
     }
-}
+    function isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    // ❌ chặn mọi auto focus
+    document.addEventListener("focusin", (e) => {
+        if (isMobile() && e.target === msgEl) {
+            if (!e.isTrusted) {
+                msgEl.blur();
+            }
+        }
+    });
+    function handleGoogleLogin(response) {
+        const id_token = response.credential;
+
+        fetch("ai/api/google-login.php", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ token: id_token })
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+
+                    const user_id = data.user.id;
+
+                    // ✅ lưu đúng hệ thống bạn đang dùng
+                    localStorage.setItem("user_id", user_id);
+                    localStorage.setItem("username", data.user.username);
+                    // ✅ ẩn login
+                    document.getElementById("loginBox").style.display = "none";
+
+                    // ✅ auto fill tên (xịn hơn)
+                    document.getElementById("pf_name").value = data.user.name || "";
+
+                    // ✅ check profile NGAY (KHÔNG reload)
+                    checkProfile(user_id);
+
+                    // // 👉 nếu đã có profile → load app luôn
+                    // loadHistory();
+                    // newChat();
+
+                } else {
+                    alert("Login Google thất bại");
+                }
+            });
+    }
+    document.addEventListener("DOMContentLoaded", () => {
+
+        const uid = localStorage.getItem("user_id");
+
+        if (uid && uid !== "undefined") {
+
+            document.getElementById("loginBox").style.display = "none";
+            document.getElementById("chatApp").style.display = "flex";
+
+            checkProfile(uid)
+            loadHistory()
+            newChat()
+
+        } else {
+
+            document.getElementById("loginBox").style.display = "flex";
+            document.getElementById("chatApp").style.display = "none";
+
+        }
+
+    })
+
+    function toggleUserMenu() {
+        const menu = document.getElementById("userMenu")
+        menu.style.display = menu.style.display === "block" ? "none" : "block"
+    }
+
+    // click ngoài → đóng
+    document.addEventListener("click", function (e) {
+        const box = document.getElementById("userBox")
+        if (!box) return
+
+        if (!box.contains(e.target)) {
+            document.getElementById("userMenu").style.display = "none"
+        }
+    })
+
+    function openProfile() {
+
+        const modal = document.getElementById("profileModal")
+        if (!modal) {
+            console.error("❌ profileModal not found")
+            return
+        }
+
+        const hasProfile = localStorage.getItem("has_profile") === "1"
+
+        // ✅ mở modal
+        modal.style.display = "flex"
+
+        // ===== UI TEXT =====
+        const title = modal.querySelector(".profile-title")
+        const btn = modal.querySelector(".profile-save-btn") // 🔥 fix selector chuẩn
+
+        if (hasProfile) {
+            if (title) title.innerText = "Chỉnh sửa thông tin"
+            if (btn) btn.innerText = "Lưu thay đổi"
+        } else {
+            if (title) title.innerText = "Hoàn thiện thông tin"
+            if (btn) btn.innerText = "Xác nhận"
+        }
+
+        // ===== LOAD DATA =====
+        loadProfileData()
+    }
+    async function loadProfileData() {
+
+        const user_id = localStorage.getItem("user_id")
+        if (!user_id) return
+
+        try {
+
+            const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+            const data = await res.json()
+
+            const nameInput = document.getElementById("pf_name")
+            const dobInput = document.getElementById("pf_dob")
+            const avatarPreview = document.getElementById("avatarPreview")
+
+            // ===== NAME =====
+            if (nameInput) {
+                nameInput.value = data.full_name || ""
+            }
+
+            // ===== DOB =====
+            if (dobInput && data.dob) {
+                const parts = data.dob.split("-")
+                if (parts.length === 3) {
+                    dobInput.value = `${parts[2]}/${parts[1]}/${parts[0]}`
+                }
+            }
+
+            // ===== AVATAR =====
+            if (avatarPreview) {
+
+                const avatar = data.avatar // ✅ FIX
+
+                if (avatar) {
+
+                    const url = avatar + "?t=" + Date.now()
+
+                    avatarPreview.innerHTML = `
+                    <img src="${url}" 
+                         style="width:100%;height:100%;border-radius:50%">
+                `
+
+                    document.getElementById("userAvatar").innerHTML = `
+                    <img src="${url}" 
+                         style="width:100%;height:100%;border-radius:50%">
+                `
+
+                } else {
+
+                    const name = data.full_name || localStorage.getItem("username") || "U"
+                    avatarPreview.innerText = name.charAt(0).toUpperCase()
+
+                }
+            }
+
+        } catch (err) {
+            console.error("❌ loadProfileData error:", err)
+        }
+    }
 
 
