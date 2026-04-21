@@ -704,29 +704,29 @@ async function send() {
         return
     }
     // ===== TOOL DETECTION =====
-if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
+    if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
 
-    let query = userText
-    query = query.replace(/tìm trên mạng/gi, "")
-    query = query.replace(/^\/search/gi, "")
-    query = query.trim()
+        let query = userText
+        query = query.replace(/tìm trên mạng/gi, "")
+        query = query.replace(/^\/search/gi, "")
+        query = query.trim()
 
-    if (!query) {
-        addBotBubble("❌ bạn chưa nhập nội dung cần tìm")
-        isSending = false   // 🔥 THÊM
+        if (!query) {
+            addBotBubble("❌ bạn chưa nhập nội dung cần tìm")
+            isSending = false   // 🔥 THÊM
+            return
+        }
+
+        addUserBubble(userText)
+        scrollToBottom()
+
+        runSearch(query, userText)
+
+        msgEl.value = ""
+
+        isSending = false   // 🔥 QUAN TRỌNG
         return
     }
-
-    addUserBubble(userText)
-    scrollToBottom()
-
-    runSearch(query, userText)
-
-    msgEl.value = ""
-
-    isSending = false   // 🔥 QUAN TRỌNG
-    return
-}
 
     // ===== EXPORT COMMAND =====
 
@@ -797,68 +797,113 @@ if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm tr�
 
         // 🔥 AUTO GENIMAGE
         if (reply.includes("[GENIMAGE]")) {
-            const parts = reply.split("[GENIMAGE]")
-            const textPart = parts[0].trim()
-            const imagePrompt = parts[1].trim()
+            const parts = reply.split("[GENIMAGE]");
+            const textPart = parts[0].trim();
+            const imagePrompt = parts[1].trim();
 
-            typing.remove()
+            typing.remove();
+
             if (textPart) {
-                addBotBubble(textPart)
+                addBotBubble(textPart);
             }
-            
-            const imgLoading = document.createElement("div")
-            imgLoading.className = "msgrow bot"
-            imgLoading.innerHTML = `<div class="bubble">🎨 Đang vẽ ảnh: <i>${imagePrompt}</i>...</div>`
-            chatEl.appendChild(imgLoading)
-            chatEl.scrollTop = chatEl.scrollHeight
+
+            const imgLoading = document.createElement("div");
+            imgLoading.className = "msgrow bot";
+            imgLoading.innerHTML = `<div class="bubble">🎨 Đang vẽ ảnh: <i>${escapeHtml(imagePrompt)}</i>...</div>`;
+            chatEl.appendChild(imgLoading);
+            chatEl.scrollTop = chatEl.scrollHeight;
 
             try {
                 const imgRes = await fetch("/ai/api/generate_image.php", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ prompt: imagePrompt })
-                })
-                
-                const raw = await imgRes.text()
-                console.log("IMAGE GEN RAW:", raw)
+                });
 
-                imgLoading.remove()
+                const raw = await imgRes.text();
+                console.log("IMAGE GEN RAW:", raw);
 
-                let imgData
+                imgLoading.remove();
+
+                let cleanedRaw = String(raw || "").trim();
+
+                // nếu backend lỡ trả JSON dạng string: "{\"success\":true,...}"
+                if (
+                    cleanedRaw.startsWith('"') &&
+                    cleanedRaw.endsWith('"')
+                ) {
+                    try {
+                        cleanedRaw = JSON.parse(cleanedRaw);
+                    } catch (_) { }
+                }
+
+                let imgData;
                 try {
-                    imgData = JSON.parse(raw)
+                    imgData = typeof cleanedRaw === "string" ? JSON.parse(cleanedRaw) : cleanedRaw;
                 } catch (e) {
-                    addBotBubble("❌ Backend trả về định dạng lạ (không phải JSON): " + (raw.substring(0, 200) || "Empty response"))
-                    isSending = false
-                    return
+                    addBotBubble("❌ Backend trả về JSON lỗi: " + String(raw || "").substring(0, 300));
+                    isSending = false;
+                    return;
                 }
 
-                if (imgData.success) {
-                    const row = document.createElement("div")
-                    row.className = "msgrow bot"
-                    row.innerHTML = `
-                        <div class="bubble position-relative">
-                            <div class="mb-2">Đây là ảnh của bạn:</div>
-                            <img src="data:${imgData.mimeType};base64,${imgData.imageBase64}" style="max-width:100%; border-radius:10px; cursor:pointer;" onclick="window.open(this.src)">
-                            <div class="mt-2">
-                                <a href="data:${imgData.mimeType};base64,${imgData.imageBase64}" download="btoan_ai_image.png" class="btn btn-sm btn-outline-light" style="font-size:12px; border-color:rgba(255,255,255,0.2)">
-                                    <i class="bi bi-download"></i> Tải ảnh
-                                </a>
-                            </div>
-                        </div>
-                    `
-                    chatEl.appendChild(row)
-                } else {
-                    addBotBubble("❌ Lỗi tạo ảnh: " + (imgData.error || "Unknown error"))
+                if (!imgRes.ok) {
+                    addBotBubble("❌ HTTP lỗi tạo ảnh: " + imgRes.status);
+                    isSending = false;
+                    return;
                 }
+
+                if (!imgData || imgData.success !== true) {
+                    addBotBubble("❌ Lỗi tạo ảnh: " + (imgData?.error || "Unknown error"));
+                    isSending = false;
+                    return;
+                }
+
+                if (!imgData.imageBase64 || !imgData.mimeType) {
+                    addBotBubble("❌ Backend thiếu dữ liệu ảnh");
+                    isSending = false;
+                    return;
+                }
+
+                const imageSrc = `data:${imgData.mimeType};base64,${imgData.imageBase64}`;
+
+                const row = document.createElement("div");
+                row.className = "msgrow bot";
+
+                const bubble = document.createElement("div");
+                bubble.className = "bubble position-relative";
+
+                bubble.innerHTML = `
+                <div class="mb-2">Đây là ảnh của bạn:</div>
+                <img 
+                    src="${imageSrc}" 
+                    alt="Generated image"
+                    style="max-width:100%;border-radius:10px;cursor:pointer;display:block;"
+                >
+                <div class="mt-2">
+                    <a 
+                        href="${imageSrc}" 
+                        download="btoan_ai_image.png" 
+                        class="btn btn-sm btn-outline-light"
+                        style="font-size:12px;border-color:rgba(255,255,255,0.2)"
+                    >
+                        <i class="bi bi-download"></i> Tải ảnh
+                    </a>
+                </div>
+            `;
+
+                const imgEl = bubble.querySelector("img");
+                imgEl.onclick = () => window.open(imageSrc, "_blank");
+
+                row.appendChild(bubble);
+                chatEl.appendChild(row);
             } catch (e) {
-                imgLoading.remove()
-                addBotBubble("❌ Lỗi mạng/kết nối: " + e.message)
+                imgLoading.remove();
+                addBotBubble("❌ Lỗi mạng/kết nối: " + e.message);
             }
 
-            isSending = false
-            chatEl.scrollTop = chatEl.scrollHeight
-            return
+            isSending = false;
+            chatEl.scrollTop = chatEl.scrollHeight;
+            return;
         }
 
         // 🔥 AUTO SEARCH
@@ -1190,15 +1235,15 @@ async function loadConversation(id) {
                 }
 
                 // nếu nội dung đủ tốt để export thì lưu lại
-if (
-    isValidForExport(text) &&
-    !text.includes("📄 File đã xuất trước đó") &&
-    !text.includes("📄 File DOCX đã sẵn sàng") &&
-    !text.includes("📄 File đã sẵn sàng")
-) {
-    lastExportContent = text
-    localStorage.setItem("lastExportContent", text)
-}
+                if (
+                    isValidForExport(text) &&
+                    !text.includes("📄 File đã xuất trước đó") &&
+                    !text.includes("📄 File DOCX đã sẵn sàng") &&
+                    !text.includes("📄 File đã sẵn sàng")
+                ) {
+                    lastExportContent = text
+                    localStorage.setItem("lastExportContent", text)
+                }
 
                 addBotBubble(text, exportType)
             }
@@ -1929,89 +1974,89 @@ function cleanExportContent(text) {
         .replace(/👉|📄|🔎/g, "")
         .trim()
 }
-    async function checkProfile(user_id) {
+async function checkProfile(user_id) {
 
-        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-        const data = await res.json()
+    const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
+    const data = await res.json()
 
-        const fullName = data.full_name?.trim()
+    const fullName = data.full_name?.trim()
 
-        const name =
-            fullName ||
-            localStorage.getItem("full_name") ||
-            localStorage.getItem("username") ||
-            "User"
+    const name =
+        fullName ||
+        localStorage.getItem("full_name") ||
+        localStorage.getItem("username") ||
+        "User"
 
-        // ✅ set tên
-        document.getElementById("userName").innerText = name
+    // ✅ set tên
+    document.getElementById("userName").innerText = name
 
-        // ✅ avatar chữ cái đầu
-        const avatarEl = document.getElementById("userAvatar")
+    // ✅ avatar chữ cái đầu
+    const avatarEl = document.getElementById("userAvatar")
 
-        // reset
-        avatarEl.innerHTML = ""
-        avatarEl.style.background = "none"
+    // reset
+    avatarEl.innerHTML = ""
+    avatarEl.style.background = "none"
 
-        if (data.avatar) {
+    if (data.avatar) {
 
-            const url = data.avatar + "?t=" + Date.now()
+        const url = data.avatar + "?t=" + Date.now()
 
-            avatarEl.innerHTML = `
+        avatarEl.innerHTML = `
                 <img src="${url}" 
                     style="width:100%;height:100%;border-radius:50%">
             `
 
-        } else {
+    } else {
 
-            avatarEl.innerText = name.charAt(0).toUpperCase()
+        avatarEl.innerText = name.charAt(0).toUpperCase()
 
-            const colors = [
-                "linear-gradient(135deg,#6366f1,#4f46e5)",
-                "linear-gradient(135deg,#22c55e,#16a34a)",
-                "linear-gradient(135deg,#f59e0b,#d97706)",
-                "linear-gradient(135deg,#ef4444,#dc2626)"
-            ]
-
-            avatarEl.style.background = colors[name.length % colors.length]
-        }
-
-        // 🎨 màu avatar
         const colors = [
             "linear-gradient(135deg,#6366f1,#4f46e5)",
             "linear-gradient(135deg,#22c55e,#16a34a)",
             "linear-gradient(135deg,#f59e0b,#d97706)",
             "linear-gradient(135deg,#ef4444,#dc2626)"
         ]
+
         avatarEl.style.background = colors[name.length % colors.length]
-
-        // 💾 lưu lại full_name để dùng sau
-        if (fullName) {
-            localStorage.setItem("full_name", fullName)
-        }
-
-        // =========================
-        // 🔥 LOGIC MỚI (QUAN TRỌNG)
-        // =========================
-
-        // 👉 LUÔN show chat (không dùng profileBox nữa)
-        document.getElementById("chatApp").style.display = "flex"
-
-        // 👉 nếu CHƯA có profile → bật popup
-        if (!data.has_profile) {
-
-            document.getElementById("profileModal").style.display = "flex"
-
-            localStorage.setItem("has_profile", "0")
-
-        } else {
-
-            // 👉 có profile → đóng popup
-            document.getElementById("profileModal").style.display = "none"
-
-            localStorage.setItem("has_profile", "1")
-        }
-
     }
+
+    // 🎨 màu avatar
+    const colors = [
+        "linear-gradient(135deg,#6366f1,#4f46e5)",
+        "linear-gradient(135deg,#22c55e,#16a34a)",
+        "linear-gradient(135deg,#f59e0b,#d97706)",
+        "linear-gradient(135deg,#ef4444,#dc2626)"
+    ]
+    avatarEl.style.background = colors[name.length % colors.length]
+
+    // 💾 lưu lại full_name để dùng sau
+    if (fullName) {
+        localStorage.setItem("full_name", fullName)
+    }
+
+    // =========================
+    // 🔥 LOGIC MỚI (QUAN TRỌNG)
+    // =========================
+
+    // 👉 LUÔN show chat (không dùng profileBox nữa)
+    document.getElementById("chatApp").style.display = "flex"
+
+    // 👉 nếu CHƯA có profile → bật popup
+    if (!data.has_profile) {
+
+        document.getElementById("profileModal").style.display = "flex"
+
+        localStorage.setItem("has_profile", "0")
+
+    } else {
+
+        // 👉 có profile → đóng popup
+        document.getElementById("profileModal").style.display = "none"
+
+        localStorage.setItem("has_profile", "1")
+    }
+
+}
 async function saveProfile() {
 
     const user_id = localStorage.getItem("user_id")
@@ -2187,35 +2232,35 @@ document.addEventListener("click", function (e) {
     }
 })
 
-        function openProfile() {
+function openProfile() {
 
-            const modal = document.getElementById("profileModal")
-            if (!modal) {
-                console.error("❌ profileModal not found")
-                return
-            }
+    const modal = document.getElementById("profileModal")
+    if (!modal) {
+        console.error("❌ profileModal not found")
+        return
+    }
 
-            const hasProfile = localStorage.getItem("has_profile") === "1"
+    const hasProfile = localStorage.getItem("has_profile") === "1"
 
-            // ✅ mở modal
-            modal.style.display = "flex"
+    // ✅ mở modal
+    modal.style.display = "flex"
 
-            // ===== UI TEXT =====
-            const title = modal.querySelector(".profile-title")
-            const btn = modal.querySelector(".profile-save-btn") // 🔥 fix selector chuẩn
+    // ===== UI TEXT =====
+    const title = modal.querySelector(".profile-title")
+    const btn = modal.querySelector(".profile-save-btn") // 🔥 fix selector chuẩn
 
-            if (hasProfile) {
-                if (title) title.innerText = "Chỉnh sửa thông tin"
-                if (btn) btn.innerText = "Lưu thay đổi"
-            } else {
-                if (title) title.innerText = "Hoàn thiện thông tin"
-                if (btn) btn.innerText = "Xác nhận"
-            }
+    if (hasProfile) {
+        if (title) title.innerText = "Chỉnh sửa thông tin"
+        if (btn) btn.innerText = "Lưu thay đổi"
+    } else {
+        if (title) title.innerText = "Hoàn thiện thông tin"
+        if (btn) btn.innerText = "Xác nhận"
+    }
 
-            // ===== LOAD DATA =====
-            loadProfileData()
-        }
-    async function loadProfileData() {
+    // ===== LOAD DATA =====
+    loadProfileData()
+}
+async function loadProfileData() {
 
     const user_id = localStorage.getItem("user_id")
     if (!user_id) return
