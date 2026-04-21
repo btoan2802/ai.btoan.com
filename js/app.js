@@ -1586,18 +1586,20 @@ function newChat(updateUrl = true) {
 }
 
 document.addEventListener("click", function (e) {
-    const sidebar = document.getElementById("sidebar");
-    const menuBtn = document.querySelector(".menu-btn");
 
+    const sidebar = document.getElementById("sidebar")
+    const menuBtn = document.querySelector(".menu-btn")
+
+    // đóng sidebar
     if (sidebar && sidebar.classList.contains("open")) {
-        const clickedInsideSidebar = sidebar.contains(e.target);
-        const clickedMenuBtn = menuBtn ? menuBtn.contains(e.target) : false;
-
-        if (!clickedInsideSidebar && !clickedMenuBtn) {
-            sidebar.classList.remove("open");
+        if (!sidebar.contains(e.target) && !menuBtn.contains(e.target)) {
+            sidebar.classList.remove("open")
         }
     }
-});
+
+
+
+})
 
 
 function scrollToBottom() {
