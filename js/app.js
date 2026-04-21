@@ -440,13 +440,21 @@ async function callGemini(userText, images, files) {
     let trainingData = []
 
     try {
-
         const res = await fetch("/ai/api/get_training.php?q=" + encodeURIComponent(userText))
-        trainingData = await res.json()
-
+        if (res.ok) {
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                trainingData = await res.json()
+            } else {
+                console.warn("training load: server returned non-JSON content");
+            }
+        } else {
+            console.warn("training load failed with status:", res.status);
+        }
     } catch (e) {
-        console.log("training load error", e)
+        console.error("training load error:", e)
     }
+
 
     let extraKnowledge = ""
     let userMemory = ""
