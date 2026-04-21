@@ -694,9 +694,16 @@ pre code {
     }
     
     #openSidebarBtn {
-        display: flex !important; /* Luôn hiện trên mobile */
+        display: flex !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        width: 34px !important;
+        padding: 8px !important;
+        overflow: visible !important;
         margin-right: 8px;
     }
+
+
     
     .topbar {
         padding: 10px 14px;
