@@ -1140,6 +1140,11 @@ async function loadHistory() {
                 </button>
             </li>
             <li>
+                <button class="dropdown-item" onclick="copyConversationLink(${c.id})">
+                    <i class="bi bi-link-45deg"></i> Sao chép liên kết
+                </button>
+            </li>
+            <li>
                 <hr class="dropdown-divider opacity-50">
             </li>
             <li>
@@ -1231,7 +1236,12 @@ async function loadConversation(id, updateUrl = true) {
     }
 
 
-    
+    // Ensure elements are loaded
+    if (!chatEl) chatEl = document.getElementById("chat");
+    if (!attachments) attachments = document.getElementById("attachments");
+
+    if (!chatEl) return console.error("chatEl not found");
+
     // Immediate UI Feedback
     updateSidebarActive(id);
     chatEl.innerHTML = `
@@ -1369,13 +1379,11 @@ document.addEventListener("paste", async (e) => {
 
 window.onload = function () {
 
-    chatEl = document.getElementById("chat") || null;
-    msgEl = document.getElementById("msg") || null;
-
     chatEl = document.getElementById("chat");
     statusEl = document.getElementById("status");
     msgEl = document.getElementById("msg");
-
+    sendBtn = document.getElementById("send");
+    attachments = document.getElementById("attachments");
 
     lastExportContent = localStorage.getItem("lastExportContent") || ""
 
@@ -2146,6 +2154,14 @@ async function checkProfile(user_id) {
         localStorage.setItem("has_profile", "1")
     }
 
+}
+
+function copyConversationLink(id) {
+    const url = window.location.origin + '/c/' + id;
+    navigator.clipboard.writeText(url).then(() => {
+        // Subtle feedback could be better than alert, but alert is reliable for now
+        alert("Đã sao chép liên kết: " + url);
+    });
 }
 async function saveProfile() {
 
