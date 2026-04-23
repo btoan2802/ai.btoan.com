@@ -2413,14 +2413,14 @@ async function loadProfileData() {
 
 async function pollVideoStatus(job_id, containerBubble) {
     let attempts = 0;
-    const maxAttempts = 30; // 30 x 5 = 150 seconds
+    const maxAttempts = 60; // 60 x 5s = 300 seconds (5 mins)
     const interval = 5000;
 
     const timer = setInterval(async () => {
         attempts++;
         if (attempts > maxAttempts) {
             clearInterval(timer);
-            containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Quá thời gian tạo video. Bạn hãy thử lại sau.</div>`;
+            containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Quá thời gian tạo video (5 phút). Bạn hãy thử lại sau.</div>`;
             return;
         }
 
@@ -2438,16 +2438,19 @@ async function pollVideoStatus(job_id, containerBubble) {
                             <video controls class="video-player-premium">
                                 <source src="${videoUrl}" type="video/mp4">
                             </video>
-                            <div class="video-actions-premium">
-                                <span class="video-label">🎬 Video AI Hoàn tất</span>
-                                <a href="${videoUrl}" download="btoan_ai_video.mp4" class="video-download-btn">
-                                    <i class="bi bi-download"></i> Tải về
-                                </a>
-                            </div>
+                        </div>
+                        <div class="video-actions-premium">
+                            <span class="status-badge-premium"><i class="fas fa-check-circle"></i> Video AI Hoàn tất</span>
+                            <a href="${videoUrl}" download="btoan_video.mp4" class="download-btn-premium">
+                                <i class="fas fa-download"></i> Tải về
+                            </a>
                         </div>
                     </div>
                 `;
                 scrollToBottom();
+            } else if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
+                clearInterval(timer);
+                containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Lỗi: ${data.error || "Không thể tạo video."}</div>`;
             }
         } catch (e) {
             console.error("Polling error:", e);
