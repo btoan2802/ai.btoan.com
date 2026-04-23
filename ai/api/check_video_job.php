@@ -6,7 +6,12 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Content-Type: application/json; charset=utf-8");
 
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
+
 require "db.php";
+require_once "r2_uploader.php";
 
 function sendJson(array $data, int $statusCode = 200): void
 {
@@ -15,9 +20,24 @@ function sendJson(array $data, int $statusCode = 200): void
     exit;
 }
 
+// 🛡️ BỘ XỬ LÝ LỖI TOÀN CỤC
+set_exception_handler(function ($e) {
+    sendJson([
+        'success' => false,
+        'error' => 'Critical Error: ' . $e->getMessage(),
+        'type' => 'exception'
+    ], 200);
+});
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 function getAccessToken($keyFile) {
     if (!file_exists($keyFile)) return null;
     $keyData = json_decode(file_get_contents($keyFile), true);
+    
     $header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
     $payload = base64url_encode(json_encode([
         'iss' => $keyData['client_email'],
@@ -26,13 +46,18 @@ function getAccessToken($keyFile) {
         'exp' => time() + 3600,
         'iat' => time()
     ]));
+
     $signature = '';
     openssl_sign("$header.$payload", $signature, $keyData['private_key'], 'SHA256');
     $jwt = "$header.$payload." . base64url_encode($signature);
+
     $ch = curl_init('https://oauth2.googleapis.com/token');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query(['grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer', 'assertion' => $jwt]));
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        'assertion' => $jwt
+    ]));
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $res = curl_exec($ch);
     $data = json_decode((string)$res, true);
@@ -84,19 +109,35 @@ try {
 
     if ($isDone) {
         $gcsUri = $opData['response']['videos'][0]['gcsUri'] ?? null;
-        $videoUrl = $gcsUri;
+        
+        if ($gcsUri) {
+            // 📥 DOWNLOAD FROM GOOGLE CLOUD STORAGE
+            $downloadUrl = str_replace('gs://', 'https://storage.googleapis.com/', $gcsUri);
+            $tempFile = tempnam(sys_get_temp_dir(), 'veo_');
+            
+            $fp = fopen($tempFile, 'w+');
+            $ch_dl = curl_init($downloadUrl);
+            curl_setopt($ch_dl, CURLOPT_FILE, $fp);
+            curl_setopt($ch_dl, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch_dl, CURLOPT_SSL_VERIFYPEER, false);
+            curl_exec($ch_dl);
+            curl_close($ch_dl);
+            fclose($fp);
 
-        if ($videoUrl) {
-            // Convert gs:// to HTTPS link
-            if (strpos($videoUrl, 'gs://') === 0) {
-                // Hướng dẫn: Link này chỉ chạy được nếu Bucket được set quyền "Storage Object Viewer" cho "allUsers" (Public).
-                $videoUrl = str_replace('gs://', 'https://storage.googleapis.com/', $videoUrl);
-            }
+            // 📤 UPLOAD TO CLOUDFLARE R2
+            $r2 = new R2Uploader();
+            $folder = "videos/{$user_id}/{$conversation_id}";
+            $r2PublicUrl = $r2->uploadLocalFile($tempFile, $folder, 'mp4');
 
+            // 🧹 CLEANUP VPS TEMP FILE
+            if (file_exists($tempFile)) @unlink($tempFile);
+
+            // 💾 UPDATE DATABASE
             if ($conversation_id > 0 && $user_id > 0) {
+                // We use assistant_video column in chats table
                 $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
                 if ($stmt) {
-                    $stmt->bind_param("sii", $videoUrl, $conversation_id, $user_id);
+                    $stmt->bind_param("sii", $r2PublicUrl, $conversation_id, $user_id);
                     $stmt->execute();
                     $stmt->close();
                 }
@@ -105,8 +146,9 @@ try {
             sendJson(array_merge([
                 'success' => true,
                 'status' => 'completed',
-                'video_url' => $videoUrl,
-                'detected_gcs_uri' => $gcsUri,
+                'video_url' => $r2PublicUrl,
+                'r2_url' => $r2PublicUrl,
+                'gcs_uri' => $gcsUri,
                 'provider' => 'google-veo'
             ], $debugInfo));
         } else {

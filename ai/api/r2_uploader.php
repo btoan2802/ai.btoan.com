@@ -23,7 +23,7 @@ class R2Uploader {
     /**
      * Upload dynamic data to R2 Bucket
      * @param mixed  $data   Base64 string or $_FILES element
-     * @param string $folder Destination folder (e.g., 'avatars', 'faces')
+     * @param string $folder Destination folder
      * @param string $ext    File extension
      * @return string Public URL of the uploaded file
      */
@@ -33,11 +33,9 @@ class R2Uploader {
         $contentType = 'image/jpeg';
 
         if (is_array($data) && isset($data['tmp_name'])) {
-            // Handle $_FILES
             $tempPath = $data['tmp_name'];
             $contentType = mime_content_type($tempPath);
         } else {
-            // Handle Base64 String
             $base64Data = preg_replace('/^data:image\/\w+;base64,/', '', $data);
             $binary = base64_decode($base64Data);
             if (!$binary) throw new Exception("Invalid Base64 data");
@@ -55,12 +53,33 @@ class R2Uploader {
                 'ContentType' => $contentType,
             ]);
 
-            // Cleanup temp file if created from base64
             if (!is_array($data)) @unlink($tempPath);
-
             return $this->config['public_url'] . "/" . $fileName;
         } catch (Exception $e) {
             if (!is_array($data)) @unlink($tempPath);
+            throw $e;
+        }
+    }
+
+    /**
+     * Upload a local file directly to R2
+     */
+    public function uploadLocalFile($filePath, $folder = 'uploads', $ext = 'mp4') {
+        if (!file_exists($filePath)) throw new Exception("Local file not found: $filePath");
+        
+        $fileName = $folder . "/" . bin2hex(random_bytes(16)) . "." . $ext;
+        $contentType = ($ext === 'mp4') ? 'video/mp4' : mime_content_type($filePath);
+
+        try {
+            $this->s3->putObject([
+                'Bucket'      => $this->config['bucket'],
+                'Key'         => $fileName,
+                'SourceFile'  => $filePath,
+                'ContentType' => $contentType,
+            ]);
+
+            return $this->config['public_url'] . "/" . $fileName;
+        } catch (Exception $e) {
             throw $e;
         }
     }
