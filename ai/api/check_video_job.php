@@ -15,69 +15,80 @@ function sendJson(array $data, int $statusCode = 200): void
     exit;
 }
 
+function getAccessToken($keyFile) {
+    if (!file_exists($keyFile)) return null;
+    $keyData = json_decode(file_get_contents($keyFile), true);
+    
+    $header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $payload = base64url_encode(json_encode([
+        'iss' => $keyData['client_email'],
+        'scope' => 'https://www.googleapis.com/auth/cloud-platform',
+        'aud' => 'https://oauth2.googleapis.com/token',
+        'exp' => time() + 3600,
+        'iat' => time()
+    ]));
+
+    $signature = '';
+    openssl_sign("$header.$payload", $signature, $keyData['private_key'], 'SHA256');
+    $jwt = "$header.$payload." . base64url_encode($signature);
+
+    $ch = curl_init('https://oauth2.googleapis.com/token');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+        'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        'assertion' => $jwt
+    ]));
+    $res = curl_exec($ch);
+    $data = json_decode($res, true);
+    return $data['access_token'] ?? null;
+}
+
+function base64url_encode($data) {
+    return str_replace(['+', '/', '='], ['-', '_', ''], base64_encode($data));
+}
+
 try {
-    $job_id = $_GET['job_id'] ?? ''; // Đây là Operation Name (projects/.../locations/.../operations/...)
+    $job_id = $_GET['job_id'] ?? '';
     $conversation_id = (int) ($_GET['conversation_id'] ?? 0);
     $user_id = (int) ($_GET['user_id'] ?? 0);
 
-    if (empty($job_id)) sendJson(['success' => false, 'error' => 'Job ID (Operation Name) is required'], 200);
+    if (empty($job_id)) sendJson(['success' => false, 'error' => 'Job ID required'], 200);
 
-    // 🔑 API CONFIG
-    $API_KEYS = [
-        "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
-        "AIzaSyDFHm1sOBGnCeWIThcCo-hB7wWNjz5QdSU",
-        "AIzaSyDrOpKT2oRzSfpKY_VlU3rvu-YpfzauOAs",
-        "AIzaSyCZx8h9y6X78quESwB6K1MEXHRNWglaTDM",
-        "AIzaSyBr0RBLcNROl50u7kjaWPrRQIG21EZ5bpA",
-        "AIzaSyAAGonXPwa_86o1SQa1WDKG8_6GCz_CjHg",
-        "AIzaSyCYUzKmlZ1ZD-Eabl9BI-PiaJiWkccK1os",
-        "AIzaSyBdwrghehTW22SuWH0Yq2jBbv6H5OZ4Ce8"
-    ];
-    $apiKey = $API_KEYS[array_rand($API_KEYS)];
+    // 🔑 LẤY OAUTH TOKEN
+    $accessToken = getAccessToken(__DIR__ . "/google-key.json");
 
-    // 📡 GỌI API KIỂM TRA TRẠNG THÁI OPERATION
-    // URL format: https://{location}-aiplatform.googleapis.com/v1/{operationName}
+    if (!$accessToken) {
+        sendJson(['success' => false, 'error' => 'Authentication missing (google-key.json)'], 200);
+    }
+
     $location = "us-central1";
-    $url = "https://{$location}-aiplatform.googleapis.com/v1/{$job_id}?key={$apiKey}";
+    $url = "https://{$location}-aiplatform.googleapis.com/v1/{$job_id}";
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'Authorization: Bearer ' . $accessToken
+    ]);
     
     $response = curl_exec($ch);
-    $info = curl_getinfo($ch);
-    // curl_close($ch); 
-
     $opData = json_decode((string)$response, true);
 
-    // KIỂM TRA TRẠNG THÁI 'done'
     $isDone = (bool) ($opData['done'] ?? false);
     $error = $opData['error'] ?? null;
 
     if ($error) {
-        sendJson([
-            'success' => false,
-            'status' => 'failed',
-            'error' => $error['message'] ?? 'Veo generation failed.',
-            'job_id' => $job_id,
-            'provider' => 'google-veo'
-        ]);
+        sendJson(['success' => false, 'status' => 'failed', 'error' => $error['message'] ?? 'Veo failed.']);
     }
 
     if ($isDone) {
-        // Trích xuất video URL từ response của operation
-        // Cấu trúc response của Veo thường nằm trong $opData['response']['outputs'][0]['uri'] hoặc tương tự
         $videoUrl = $opData['response']['outputs'][0]['uri'] ?? null;
 
         if ($videoUrl) {
-            // Lưu vào Database
+            // Update DB...
             if ($conversation_id > 0 && $user_id > 0) {
-                $stmt = $conn->prepare("
-                    UPDATE chats 
-                    SET assistant_video = ? 
-                    WHERE conversation_id = ? AND user_id = ? 
-                    ORDER BY id DESC LIMIT 1
-                ");
+                $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
                 if ($stmt) {
                     $stmt->bind_param("sii", $videoUrl, $conversation_id, $user_id);
                     $stmt->execute();
@@ -93,24 +104,18 @@ try {
                 'provider' => 'google-veo'
             ]);
         } else {
-            sendJson([
-                'success' => false,
-                'status' => 'failed',
-                'error' => 'Job finished but no video URL was found in response.',
-                'raw_response' => $opData
-            ]);
+            sendJson(['success' => false, 'status' => 'failed', 'error' => 'No video URL found.']);
         }
     } else {
-        // Vẫn đang xử lý
+        $progress = $opData['metadata']['percentageCompleted'] ?? '0';
         sendJson([
             'success' => true,
             'status' => 'processing',
-            'msg' => 'Veo is still rendering... ' . ($opData['metadata']['percentageCompleted'] ?? '0') . '%',
-            'job_id' => $job_id,
-            'provider' => 'google-veo'
+            'msg' => "Veo is rendering... {$progress}%",
+            'job_id' => $job_id
         ]);
     }
 
 } catch (Throwable $e) {
-    sendJson(['success' => false, 'error' => $e->getMessage()], 500);
+    sendJson(['success' => false, 'error' => $e->getMessage()], 200);
 }
