@@ -56,7 +56,10 @@ QUY TẮC XUẤT FILE:
   2. Nếu người dùng GỬI KÈM ẢNH và yêu cầu thay đổi, chỉnh sửa, xóa nền, thêm đồ vật...:
      Trả về: [EDITIMAGE] <mô tả chi tiết bằng tiếng Anh về kết quả mong muốn cuối cùng dựa trên ảnh gốc>
      Ví dụ: [EDITIMAGE] The same person but wearing a black tuxedo, studio lighting.
-  3. KHÔNG giải thích thêm, chỉ trả về tag này.
+  3. Nếu người dùng yêu cầu tạo video, làm video, vẽ video:
+     Trả về: [GENVIDEO] <mô tả chi tiết bằng tiếng Anh về video mong muốn>
+     Ví dụ: [GENVIDEO] A beautiful sunset over the mountains, cinematic, high quality.
+  4. KHÔNG giải thích thêm, chỉ trả về tag này.
 
 Khi viết công thức toán:
 - dùng $ ... $
@@ -937,6 +940,63 @@ async function send() {
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi kết nối khi sửa ảnh: " + e.message);
+            }
+
+            isSending = false;
+            scrollToBottom();
+            return;
+        }
+
+        // 🔥 AUTO GENVIDEO
+        if (reply.includes("[GENVIDEO]")) {
+            const tag = "[GENVIDEO]";
+            const index = reply.indexOf(tag);
+
+            let textBefore = reply.substring(0, index).trim();
+            let remainder = reply.substring(index + tag.length).trim();
+            let promptLines = remainder.split("\n");
+            const videoPrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
+
+            const fullText = (textBefore + "\n" + textAfter).trim();
+
+            typing.remove();
+
+            if (fullText) {
+                streamBot(fullText, exportType);
+            }
+
+            const vidLoading = document.createElement("div");
+            vidLoading.className = "msgrow bot";
+            vidLoading.innerHTML = `<div class="bubble">🎬 Đang khởi tạo luồng tạo video AI...</div>`;
+            chatEl.appendChild(vidLoading);
+            scrollToBottom();
+
+            try {
+                const vidRes = await fetch("/ai/api/generate_video.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: videoPrompt,
+                        conversation_id,
+                        user_id: Number(localStorage.getItem("user_id") || 0)
+                    })
+                });
+
+                const vidData = await vidRes.json();
+                if (vidRes.ok && vidData?.success) {
+                    const job_id = vidData.job_id;
+                    vidLoading.innerHTML = `<div class="bubble">⚡ Job ID: ${job_id}<br>🎥 Đang xử lý video, vui lòng đợi trong giây lát...</div>`;
+                    
+                    // Bắt đầu Polling
+                    pollVideoStatus(job_id, vidLoading);
+                } else {
+                    vidLoading.remove();
+                    addBotBubble("❌ Lỗi tạo video: " + (vidData?.error || "Lỗi không xác định"));
+                }
+            } catch (e) {
+                vidLoading.remove();
+                addBotBubble("❌ Lỗi kết nối khi tạo video: " + e.message);
             }
 
             isSending = false;
@@ -2340,6 +2400,51 @@ async function loadProfileData() {
 
 
 // 📸 Image Preview Logic (Lightbox)
+
+async function pollVideoStatus(job_id, containerBubble) {
+    let attempts = 0;
+    const maxAttempts = 30; // 30 x 5 = 150 seconds
+    const interval = 5000;
+
+    const timer = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+            clearInterval(timer);
+            containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Quá thời gian tạo video. Bạn hãy thử lại sau.</div>`;
+            return;
+        }
+
+        try {
+            const res = await fetch(`/ai/api/check_video_job.php?job_id=${job_id}&conversation_id=${conversation_id}&user_id=${localStorage.getItem("user_id")}`);
+            const data = await res.json();
+
+            if (data.success && data.status === 'completed') {
+                clearInterval(timer);
+                const videoUrl = data.video_url;
+
+                containerBubble.innerHTML = `
+                    <div class="bubble video-bubble-premium">
+                        <div class="video-container-premium">
+                            <video controls class="video-player-premium">
+                                <source src="${videoUrl}" type="video/mp4">
+                            </video>
+                            <div class="video-actions-premium">
+                                <span class="video-label">🎬 Video AI Hoàn tất</span>
+                                <a href="${videoUrl}" download="btoan_ai_video.mp4" class="video-download-btn">
+                                    <i class="bi bi-download"></i> Tải về
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                scrollToBottom();
+            }
+        } catch (e) {
+            console.error("Polling error:", e);
+        }
+    }, interval);
+}
+
 function viewImage(src) {
     const modal = document.getElementById("image-preview-modal");
     const img = document.getElementById("preview-img");

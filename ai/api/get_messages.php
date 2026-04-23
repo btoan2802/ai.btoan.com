@@ -5,7 +5,7 @@ require "db.php";
 $conversation_id = intval($_GET["conversation_id"] ?? 0);
 
 $stmt = $conn->prepare("
-SELECT question, answer, images, assistant_images
+SELECT question, answer, images, assistant_images, assistant_video
 FROM chats
 WHERE conversation_id = ?
 ORDER BY id ASC
@@ -37,7 +37,7 @@ while ($row = $result->fetch_assoc()) {
         ];
     }
 
-    if (!empty($row["answer"]) || !empty($row["assistant_images"])) {
+    if (!empty($row["answer"]) || !empty($row["assistant_images"]) || !empty($row["assistant_video"])) {
         $assistantImages = [];
 
         if (!empty($row["assistant_images"])) {
@@ -50,7 +50,8 @@ while ($row = $result->fetch_assoc()) {
         $data[] = [
             "role" => "assistant",
             "text" => $row["answer"] ?? "",
-            "images" => $assistantImages
+            "images" => $assistantImages,
+            "video" => $row["assistant_video"] ?? null
         ];
     }
 }
