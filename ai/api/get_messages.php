@@ -4,6 +4,12 @@ require "db.php";
 
 $conversation_id = intval($_GET["conversation_id"] ?? 0);
 
+// 🔥 AUTO MIGRATE if column missing (robust check)
+$check = $conn->query("SHOW COLUMNS FROM `chats` LIKE 'assistant_video'");
+if ($check && $check->num_rows === 0) {
+    $conn->query("ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images");
+}
+
 $stmt = $conn->prepare("
 SELECT question, answer, images, assistant_images, assistant_video
 FROM chats
