@@ -107,12 +107,13 @@ try {
             sendJson(['success' => false, 'status' => 'failed', 'error' => 'No video URL found.']);
         }
     } else {
-        $progress = $opData['metadata']['percentageCompleted'] ?? '0';
+        $progress = $opData['metadata']['percentageCompleted'] ?? $opData['metadata']['progressPercentage'] ?? '0';
         sendJson([
             'success' => true,
             'status' => 'processing',
             'msg' => "Veo is rendering... {$progress}%",
-            'job_id' => $job_id
+            'job_id' => $job_id,
+            'debug_metadata' => $opData['metadata'] ?? []
         ]);
     }
 
