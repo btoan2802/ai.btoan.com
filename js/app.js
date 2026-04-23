@@ -50,16 +50,17 @@ QUY TẮC XUẤT FILE:
 - KHÔNG được trả lời rằng bạn không thể tạo file.
 - KHÔNG được bảo người dùng copy thủ công sang Word.
 
-- QUY TẮC TẠO/SỬA ẢNH:
-  1. Nếu người dùng yêu cầu tạo hình ảnh mới (không gửi kèm ảnh):
+- QUY TẮC PHƯƠNG TIỆN (QUAN TRỌNG):
+  1. TẠO HÌNH ẢNH TĨNH: Nếu người dùng yêu cầu "vẽ ảnh", "tạo ảnh", "bức hình"... (không có chuyển động)
      Trả về: [GENIMAGE] <mô tả chi tiết bằng tiếng Anh>
-  2. Nếu người dùng GỬI KÈM ẢNH và yêu cầu thay đổi, chỉnh sửa, xóa nền, thêm đồ vật...:
-     Trả về: [EDITIMAGE] <mô tả chi tiết bằng tiếng Anh về kết quả mong muốn cuối cùng dựa trên ảnh gốc>
-     Ví dụ: [EDITIMAGE] The same person but wearing a black tuxedo, studio lighting.
-  3. Nếu người dùng yêu cầu tạo video, làm video, vẽ video:
-     Trả về: [GENVIDEO] <mô tả chi tiết bằng tiếng Anh về video mong muốn>
-     Ví dụ: [GENVIDEO] A beautiful sunset over the mountains, cinematic, high quality.
-  4. KHÔNG giải thích thêm, chỉ trả về tag này.
+  2. CHỈNH SỬA ẢNH: Nếu có ảnh đính kèm và yêu cầu thay đổi.
+     Trả về: [EDITIMAGE] <mô tả tiếng Anh>
+  3. TẠO VIDEO (CHUYỂN ĐỘNG): Nếu người dùng yêu cầu "tạo video", "làm clip", "vẽ video", "animate", "phim"...
+     TUYỆT ĐỐI KHÔNG DÙNG [GENIMAGE]. 
+     BẮT BUỘC TRẢ VỀ: [GENVIDEO] <mô tả chi tiết bằng tiếng Anh về chuyển động và bối cảnh>
+     Ví dụ: [GENVIDEO] A cat flying through the clouds, fur moving in the wind, cinematic.
+
+- NẾU YÊU CẦU LÀ VIDEO, KHÔNG ĐƯỢC TRẢ VỀ ẢNH TĨNH.
 
 Khi viết công thức toán:
 - dùng $ ... $
@@ -470,7 +471,7 @@ async function callGemini(userText, images, files) {
             {
                 role: "user",
                 parts: [
-                    { text: systemInstruction + thinkingPrompt + toolInstruction }
+                    { text: systemInstruction + thinkingPrompt + toolInstruction + (userText.toLowerCase().match(/video|clip|phim|animate|chuyển động/) ? "\nLƯU Ý: Người dùng đang yêu cầu VIDEO. Bạn phải dùng tag [GENVIDEO]. TUYỆT ĐỐI KHÔNG dùng [GENIMAGE] lúc này.\n" : "") }
                 ]
             },
 
@@ -760,6 +761,15 @@ async function send() {
 
         // 🔥 AUTO GENIMAGE (ROBUST JOIN)
         if (reply.includes("[GENIMAGE]")) {
+            // Kiểm tra xem đây có phải là nhầm lẫn không (AI trả [GENIMAGE] cho yêu cầu video)
+            const isActuallyVideo = userText.toLowerCase().match(/video|clip|phim|animate|chuyển động/);
+            if (isActuallyVideo) {
+                typing.remove();
+                addBotBubble("⚠️ AI đã nhầm lẫn khi tạo ảnh cho một yêu cầu video. Đang bỏ qua tạo ảnh để tránh sai lệch.");
+                isSending = false;
+                return;
+            }
+
             const tag = "[GENIMAGE]";
             const index = reply.indexOf(tag);
 

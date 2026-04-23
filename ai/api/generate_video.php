@@ -41,26 +41,18 @@ try {
         sendJson(['success' => false, 'error' => 'Prompt is required'], 400);
     }
 
-    // 🔑 Provider Config (Placeholder for User to fill)
-    // For now, we simulate a Job ID response because video generation is async.
-    // In a real implementation, you'd call Kling/Luma/Runway here.
+    // 🔑 Provider Config
+    // PHẢI CÓ API KEY THẬT. Nếu không, báo lỗi rõ.
+    $apiKey = ""; // Người dùng hãy điền API Key (Kling/Luma/Runway) vào đây
     
-    // Example logic for a generic video API:
-    /*
-    $apiKey = "YOUR_VIDEO_API_KEY";
-    $ch = curl_init("https://api.provider.com/v1/video/generate");
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(["prompt" => $prompt]));
-    ...
-    $res = curl_exec($ch);
-    $data = json_decode($res, true);
-    $job_id = $data['job_id'];
-    */
+    if (empty($apiKey)) {
+        sendJson(['success' => false, 'error' => 'Video generation provider is not configured. Please set VIDEO_API_KEY in backend.'], 500);
+    }
 
+    // Logic gọi API thật sẽ nằm ở đây...
+    
     // For Demo/Architecture, we generate a unique Job ID
     $job_id = "vid_" . bin2hex(random_bytes(8));
-
-    // We store the job in a temp file or DB if needed for status check
-    // Here we'll just return it and the check_video_job.php will handle the "result"
     
     sendJson([
         'success' => true,
