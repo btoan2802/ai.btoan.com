@@ -68,7 +68,7 @@ try {
 
     $projectId = "airy-web-431004-v1";
     $location = "us-central1";
-    $model = "veo-001";
+    $model = "veo-3.1-generate-001";
 
     // 🔑 LẤY OAUTH TOKEN
     $accessToken = getAccessToken(__DIR__ . "/google-key.json");
@@ -113,9 +113,13 @@ try {
             'provider' => 'google-veo'
         ]);
     } else {
+        $msg = $resData['error']['message'] ?? 'Failed to start Veo job.';
+        if (strpos($msg, 'not found') !== false) {
+            $msg .= " (Có thể bạn chưa được cấp quyền dùng Veo. Hãy kiểm tra Model Garden tại: https://console.cloud.google.com/vertex-ai/model-garden)";
+        }
         sendJson([
             'success' => false,
-            'error' => $resData['error']['message'] ?? 'Failed to start Veo job.',
+            'error' => $msg,
             'raw_debug' => $resData
         ], 200);
     }
