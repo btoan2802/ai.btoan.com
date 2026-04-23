@@ -1,65 +1,107 @@
 <?php
+declare(strict_types=1);
 
-require "db.php";
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Content-Type: application/json; charset=utf-8");
 
-$conversation_id = intval($_GET["conversation_id"] ?? 0);
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
 
-// 🔥 AUTO MIGRATE if column missing (robust check)
-$check = $conn->query("SHOW COLUMNS FROM `chats` LIKE 'assistant_video'");
-if ($check && $check->num_rows === 0) {
-    $conn->query("ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images");
+function sendJson(array $data, int $statusCode = 200): void
+{
+    http_response_code($statusCode);
+    echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 
-$stmt = $conn->prepare("
-SELECT question, answer, images, assistant_images, assistant_video
-FROM chats
-WHERE conversation_id = ?
-ORDER BY id ASC
-");
+set_exception_handler(function ($e) {
+    sendJson([
+        'success' => false,
+        'error' => $e->getMessage(),
+        'type' => 'exception'
+    ], 500);
+});
 
-$stmt->bind_param("i", $conversation_id);
-$stmt->execute();
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
 
-$result = $stmt->get_result();
+try {
+    require "db.php";
 
-$data = [];
+    $conversation_id = (int) ($_GET["conversation_id"] ?? 0);
 
-while ($row = $result->fetch_assoc()) {
-
-    if (!empty($row["question"])) {
-        $images = [];
-
-        if (!empty($row["images"])) {
-            $decoded = json_decode($row["images"], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                $images = $decoded;
-            }
-        }
-
-        $data[] = [
-            "role" => "user",
-            "text" => $row["question"],
-            "images" => $images
-        ];
+    if ($conversation_id === 0) {
+        sendJson([]);
     }
 
-    if (!empty($row["answer"]) || !empty($row["assistant_images"]) || !empty($row["assistant_video"])) {
-        $assistantImages = [];
+    // 🔥 AUTO MIGRATE (Self-healing)
+    $check = $conn->query("SHOW COLUMNS FROM `chats` LIKE 'assistant_video'");
+    if ($check && $check->num_rows === 0) {
+        $conn->query("ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images");
+    }
 
-        if (!empty($row["assistant_images"])) {
-            $decodedAssistant = json_decode($row["assistant_images"], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedAssistant)) {
-                $assistantImages = $decodedAssistant;
+    $stmt = $conn->prepare("
+        SELECT question, answer, images, assistant_images, assistant_video
+        FROM chats
+        WHERE conversation_id = ?
+        ORDER BY id ASC
+    ");
+
+    if (!$stmt) {
+        throw new Exception("Prepare failed: " . $conn->error);
+    }
+
+    $stmt->bind_param("i", $conversation_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $data = [];
+
+    while ($row = $result->fetch_assoc()) {
+        if (!empty($row["question"])) {
+            $images = [];
+            if (!empty($row["images"])) {
+                $decoded = json_decode($row["images"], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $images = $decoded;
+                }
             }
+            $data[] = [
+                "role" => "user",
+                "text" => $row["question"],
+                "images" => $images
+            ];
         }
 
-        $data[] = [
-            "role" => "assistant",
-            "text" => $row["answer"] ?? "",
-            "images" => $assistantImages,
-            "video" => $row["assistant_video"] ?? null
-        ];
+        if (!empty($row["answer"]) || !empty($row["assistant_images"]) || !empty($row["assistant_video"])) {
+            $assistantImages = [];
+            if (!empty($row["assistant_images"])) {
+                $decodedAssistant = json_decode($row["assistant_images"], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decodedAssistant)) {
+                    $assistantImages = $decodedAssistant;
+                }
+            }
+
+            $data[] = [
+                "role" => "assistant",
+                "text" => $row["answer"] ?? "",
+                "images" => $assistantImages,
+                "video" => !empty($row["assistant_video"]) ? $row["assistant_video"] : null
+            ];
+        }
     }
+
+    sendJson($data);
+
+} catch (Throwable $e) {
+    sendJson([
+        'success' => false,
+        'error' => $e->getMessage(),
+        'line' => $e->getLine()
+    ], 500);
 }
-
-echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
