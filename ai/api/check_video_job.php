@@ -22,8 +22,6 @@ set_exception_handler(function ($e) {
     sendJson([
         'success' => false,
         'error' => 'Critical Error: ' . $e->getMessage(),
-        'file' => basename($e->getFile()),
-        'line' => $e->getLine(),
         'type' => 'exception'
     ], 200);
 });
@@ -36,20 +34,14 @@ set_error_handler(function ($severity, $message, $file, $line) {
 function getAccessToken($keyFile) {
     if (!file_exists($keyFile)) return null;
     $keyData = json_decode(file_get_contents($keyFile), true);
-    if (!isset($keyData['private_key'])) return null;
-
-    if (!function_exists('openssl_sign')) {
-        throw new Exception("Thư viện OpenSSL chưa được bật trên VPS. Vui lòng bỏ dấu ; trước dòng extension=openssl trong php.ini và restart server.");
-    }
-
+    
     $header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
-    $now = time();
     $payload = base64url_encode(json_encode([
         'iss' => $keyData['client_email'],
         'scope' => 'https://www.googleapis.com/auth/cloud-platform',
         'aud' => 'https://oauth2.googleapis.com/token',
-        'exp' => $now + 3600,
-        'iat' => $now
+        'exp' => time() + 3600,
+        'iat' => time()
     ]));
 
     $signature = '';
@@ -76,24 +68,33 @@ function base64url_encode($data) {
 try {
     require "db.php";
 
-    $job_id = $_GET['job_id'] ?? '';
+    $job_id = $_GET['job_id'] ?? ''; // This is the full operationName
     $conversation_id = (int) ($_GET['conversation_id'] ?? 0);
     $user_id = (int) ($_GET['user_id'] ?? 0);
 
-    if (empty($job_id)) sendJson(['success' => false, 'error' => 'Job ID required'], 200);
+    if (empty($job_id)) sendJson(['success' => false, 'error' => 'Operation Name required'], 200);
 
     $accessToken = getAccessToken(__DIR__ . "/google-key.json");
     if (!$accessToken) {
-        sendJson(['success' => false, 'error' => 'Authentication missing (key file invalid or missing)'], 200);
+        sendJson(['success' => false, 'error' => 'Authentication failed (key file issue)'], 200);
     }
 
+    // 📋 VEO FETCH PREDICT OPERATION FLOW
+    $projectId = "airy-web-431004-v1";
     $location = "us-central1";
-    $url = (strpos($job_id, 'projects/') === false)
-        ? "https://{$location}-aiplatform.googleapis.com/v1/projects/airy-web-431004-v1/locations/{$location}/operations/{$job_id}"
-        : "https://{$location}-aiplatform.googleapis.com/v1/{$job_id}";
+    $modelId = "veo-3.1-generate-001";
+    
+    // Official Endpoint for Veo polling
+    $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$modelId}:fetchPredictOperation";
+
+    $payload = [
+        "operationName" => $job_id
+    ];
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'Authorization: Bearer ' . $accessToken
@@ -103,28 +104,24 @@ try {
     $responseBody = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $curlError = curl_error($ch);
-    curl_close($ch);
+    // curl_close($ch); // Removed as requested for PHP 8.0+ compatibility
 
     $opData = json_decode((string)$responseBody, true);
 
     $debugInfo = [
         "google_http_code" => $httpCode,
-        "google_poll_url" => $url,
+        "polling_endpoint_used" => $url,
+        "operationName_used" => $job_id,
         "curl_error" => $curlError,
-        "raw_response_text" => $responseBody ?: "(empty body)",
+        "raw_response_text" => $responseBody ?: "(empty)",
         "raw_response_json" => $opData
     ];
-
-    if ($opData === null && $responseBody) {
-        $debugInfo['error'] = 'Failed to decode Google response as JSON.';
-    }
 
     if (isset($opData['error'])) {
         sendJson(array_merge([
             'success' => false,
             'status' => 'failed',
             'error' => $opData['error']['message'] ?? 'Veo job error.',
-            'job_id' => $job_id
         ], $debugInfo));
     }
 
@@ -132,17 +129,22 @@ try {
 
     if ($isDone) {
         $videoUrl = null;
-        if (isset($opData['response']['outputs'][0]['uri'])) {
+        // Official Veo output path: response.videos[0].gcsUri
+        if (isset($opData['response']['videos'][0]['gcsUri'])) {
+            $videoUrl = $opData['response']['videos'][0]['gcsUri'];
+        } elseif (isset($opData['response']['outputs'][0]['uri'])) {
             $videoUrl = $opData['response']['outputs'][0]['uri'];
-        } elseif (isset($opData['response']['videos'][0]['uri'])) {
-            $videoUrl = $opData['response']['videos'][0]['uri'];
         }
 
         if ($videoUrl) {
+            // Convert gs:// to public storage link
             if (strpos($videoUrl, 'gs://') === 0) {
+                // Note: User must ensure the bucket is public or use a proxy/signed URL.
+                // Converting to standard public HTTPS link for storage.googleapis.com
                 $videoUrl = str_replace('gs://', 'https://storage.googleapis.com/', $videoUrl);
             }
 
+            // Sync with DB
             if ($conversation_id > 0 && $user_id > 0) {
                 $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
                 if ($stmt) {
@@ -163,22 +165,20 @@ try {
             sendJson(array_merge([
                 'success' => false,
                 'status' => 'failed',
-                'error' => 'Job marked as done but no video output URI found.',
-                'job_id' => $job_id
+                'error' => 'Operation marked as done but no video URI found in response.',
             ], $debugInfo));
         }
     } else {
-        $progressValue = $opData['metadata']['percentageCompleted'] ?? 
-                         $opData['metadata']['progressPercentage'] ?? 
-                         $opData['metadata']['partialResultProgress'] ?? 
-                         '0';
+        // Still processing
+        $progress = $opData['metadata']['progressPercentage'] ?? 
+                    $opData['metadata']['percentageCompleted'] ?? 
+                    '0';
 
         sendJson(array_merge([
             'success' => true,
             'status' => 'processing',
-            'progress' => (string)$progressValue,
-            'msg' => "Veo is rendering... {$progressValue}%",
-            'job_id' => $job_id
+            'progress' => (string)$progress,
+            'msg' => "Veo đang xử lý... ({$progress}%)"
         ], $debugInfo));
     }
 
