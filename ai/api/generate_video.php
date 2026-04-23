@@ -81,8 +81,8 @@ try {
         ], 200);
     }
 
-    // 📡 GỌI VERTEX AI API
-    $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:predict";
+    // 📡 GỌI VERTEX AI API (Veo - PredictLongRunning)
+    $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:predictLongRunning";
     
     $payload = [
         "instances" => [["prompt" => $prompt]],
