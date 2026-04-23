@@ -57,7 +57,7 @@ try {
         sendJson(['success' => false, 'error' => 'Prompt is required', 'code' => 'PROMPT_REQUIRED'], 200);
     }
 
-    // 🔑 DANH SÁCH API KEYS (Lấy từ generate_image.php)
+    // 🔑 DANH SÁCH API KEYS
     $API_KEYS = [
         "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
         "AIzaSyDFHm1sOBGnCeWIThcCo-hB7wWNjz5QdSU",
@@ -70,41 +70,16 @@ try {
     ];
     shuffle($API_KEYS);
 
-    $job_id = "vid_" . bin2hex(random_bytes(8));
-    $success = false;
-    $lastError = "";
-
-    // 🤖 Model Video (Gemini 2.5 Flash Video)
-    $model = "gemini-2.5-flash-video"; 
-
-    // CHÚ Ý: Vì quá trình tạo video của Gemini có thể mất thời gian 
-    // và hiện tại chúng ta đang dùng kiến trúc Polling (Job ID).
-    // Tôi sẽ khởi tạo bản ghi trong DB để đánh dấu job bắt đầu.
+    // 📢 THÔNG BÁO QUAN TRỌNG: 
+    // Gemini 2.5 Flash hiện tại chưa có API tạo video công khai (Text-to-Video).
+    // Hệ thống sẽ báo lỗi thay vì trả về video giả.
     
-    foreach ($API_KEYS as $key) {
-        $apiKey = $key;
-        // Giả sử gọi một request "khởi động" tới API nếu cần, 
-        // hoặc đơn giản là chấp nhận Key này hợp lệ để bắt đầu Job.
-        if (!empty($apiKey)) {
-            $success = true;
-            break;
-        }
-    }
-
-    if ($success) {
-        sendJson([
-            'success' => true,
-            'job_id' => $job_id,
-            'msg' => 'Video generation started via Gemini 2.5 Flash',
-            'provider' => 'gemini-2.5-flash-video'
-        ]);
-    } else {
-        sendJson([
-            'success' => false, 
-            'error' => 'No valid API keys found for video generation.',
-            'code' => 'NO_API_KEYS'
-        ], 200);
-    }
+    sendJson([
+        'success' => false, 
+        'error' => 'Model gemini-2.5-flash does not support Text-to-Video generation yet. Please integrate a dedicated provider like Kling, Luma, or Runway for real results.',
+        'code' => 'MODEL_UNSUPPORTED_ACTION',
+        'provider' => 'gemini-2.5-flash-video'
+    ], 200);
 
 } catch (Throwable $e) {
     sendJson([

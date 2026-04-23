@@ -42,26 +42,13 @@ try {
         sendJson(['success' => false, 'error' => 'Job ID required', 'code' => 'JOB_ID_REQUIRED'], 200);
     }
 
-    // 🕒 SIMULATE REAL GENERATION TIME (Tạo cảm giác thật cho người dùng)
-    // Trong thực tế, bạn sẽ kiểm tra trạng thái từ Google Cloud / Gemini Operation
+    // 🛑 MINH BẠCH: Xoá bỏ hoàn toàn video mẫu.
+    // Hiện tại Gemini 2.5 Flash chưa hỗ trợ tạo video trực tiếp qua API này.
     
-    // Ở đây tôi dùng một logic dựa trên thời gian để giả lập quá trình render AI
-    // Video sẽ "hoàn tất" sau khoảng 10 giây kể từ khi job được tạo
-    $currentTime = time();
-    $isDone = false;
-    
-    // (Optional) Bạn có thể lưu timestamp job vào DB để kiểm tra chính xác hơn.
-    // Tạm thời, để demo kiến trúc chạy "Real", tôi sẽ trả về video mẫu cao cấp.
-    $videoUrl = "https://www.w3schools.com/html/mov_bbb.mp4"; 
+    // Nếu bạn muốn tích hợp thật, bạn cần điền logic gọi API của Kling/Luma/Runway tại đây.
+    $videoUrl = null; 
 
-    // QUAN TRỌNG: Chúng ta bật trạng thái này lên để Polling tại Frontend có thể hoàn tất
-    $is_provider_configured = true; 
-    
-    if ($is_provider_configured) {
-        $isDone = true; // Chấp nhận job hoàn tất
-    }
-
-    if ($isDone && $videoUrl) {
+    if ($videoUrl !== null) {
         if ($conversation_id > 0 && $user_id > 0) {
             $stmt = $conn->prepare("
                 UPDATE chats 
@@ -83,11 +70,12 @@ try {
             'provider' => 'gemini-2.5-flash-video'
         ]);
     } else {
+        // Thông báo trung thực rằng tính năng chưa được cấu hình Provider Video thật
         sendJson([
             'success' => false,
-            'status' => 'processing',
-            'msg' => 'AI is rendering your video... please wait.',
-            'code' => 'STILL_PROCESSING'
+            'status' => 'failed',
+            'error' => 'Video generation failed: No real video asset returned from provider. Gemini 2.5 Flash currently does not support direct video generation via this API.',
+            'code' => 'VIDEO_PROVIDER_NOT_IMPLEMENTED'
         ], 200);
     }
 
