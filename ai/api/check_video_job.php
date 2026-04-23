@@ -46,7 +46,7 @@ try {
     
     $response = curl_exec($ch);
     $info = curl_getinfo($ch);
-    curl_close($ch);
+    // curl_close($ch); 
 
     $opData = json_decode((string)$response, true);
 

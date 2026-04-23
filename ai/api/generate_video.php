@@ -87,7 +87,7 @@ try {
     
     $response = curl_exec($ch);
     $info = curl_getinfo($ch);
-    curl_close($ch);
+    // curl_close($ch); is no longer needed in PHP 8.0+ and can cause issues with strict error handlers
 
     $resData = json_decode((string)$response, true);
 
