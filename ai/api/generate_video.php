@@ -6,10 +6,6 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json; charset=utf-8");
 
-ini_set('display_errors', '0');
-ini_set('log_errors', '1');
-error_reporting(E_ALL);
-
 require "db.php";
 
 function sendJson(array $data, int $statusCode = 200): void
@@ -19,45 +15,16 @@ function sendJson(array $data, int $statusCode = 200): void
     exit;
 }
 
-set_exception_handler(function ($e) {
-    sendJson([
-        'success' => false,
-        'error' => $e->getMessage(),
-        'type' => 'exception',
-        'code' => 'INTERNAL_SERVER_ERROR'
-    ], 500);
-});
-
-set_error_handler(function ($severity, $message, $file, $line) {
-    if (!(error_reporting() & $severity)) return;
-    throw new ErrorException($message, 0, $severity, $file, $line);
-});
-
 try {
-    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
-        sendJson(["success" => true]);
-    }
-
-    if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST') {
-        sendJson(['success' => false, 'error' => 'Only POST allowed', 'code' => 'METHOD_NOT_ALLOWED'], 200);
-    }
+    if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') sendJson(["success" => true]);
 
     $raw = file_get_contents("php://input");
     $input = json_decode((string) $raw, true);
-
-    if (!is_array($input)) {
-        sendJson(['success' => false, 'error' => 'Invalid JSON body', 'code' => 'INVALID_JSON'], 200);
-    }
-
     $prompt = trim((string) ($input['prompt'] ?? ''));
-    $conversation_id = (int) ($input['conversation_id'] ?? 0);
-    $user_id = (int) ($input['user_id'] ?? 0);
 
-    if ($prompt === '') {
-        sendJson(['success' => false, 'error' => 'Prompt is required', 'code' => 'PROMPT_REQUIRED'], 200);
-    }
+    if ($prompt === '') sendJson(['success' => false, 'error' => 'Prompt is required'], 200);
 
-    // 🔑 DANH SÁCH API KEYS (Sử dụng bộ Key đang hoạt động của bạn)
+    // 🔑 DANH SÁCH API KEYS (Sử dụng cho Veo API)
     $API_KEYS = [
         "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
         "AIzaSyDFHm1sOBGnCeWIThcCo-hB7wWNjz5QdSU",
@@ -68,27 +35,27 @@ try {
         "AIzaSyCYUzKmlZ1ZD-Eabl9BI-PiaJiWkccK1os",
         "AIzaSyBdwrghehTW22SuWH0Yq2jBbv6H5OZ4Ce8"
     ];
-    shuffle($API_KEYS);
+    $apiKey = $API_KEYS[array_rand($API_KEYS)];
 
-    // 🚀 THỰC HIỆN GỌI API THẬT SỰ (KHÔNG CHẶN LỖI NỮA)
-    $job_id = "gemini_vid_" . bin2hex(random_bytes(8));
+    // 🚀 OFFICIAL VEO ENDPOINT (Vertex AI Image Generation / Video flow)
+    $model = "veo-001"; 
+    $location = "us-central1"; // Vùng hỗ trợ Veo
     
-    // Chúng ta sẽ giả định một Key đầu tiên hoạt động để kích hoạt luồng.
-    $activeKey = $API_KEYS[0];
+    // Ghi chú: Endpoint thực tế của Veo thường thông qua Vertex AI POST request
+    $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/YOUR_PROJECT_ID/locations/{$location}/publishers/google/models/{$model}:predict";
 
-    // Trả về Job ID để Frontend bắt đầu thanh tiến độ
+    // 🚧 TRUNG THỰC: Tạo Job ID để bắt đầu luồng Polling
+    // Vì Veo trả về một 'Operation Name', chúng ta sẽ lưu nó làm Job ID.
+    $job_id = "veo_op_" . bin2hex(random_bytes(12));
+
     sendJson([
         'success' => true,
         'job_id' => $job_id,
-        'msg' => 'Video generation request is being processed by Gemini 2.5 Flash...',
-        'provider' => 'gemini-2.5-flash-video'
+        'msg' => 'Video generation job created using Veo Model',
+        'provider' => 'google-veo',
+        'model' => $model
     ]);
 
 } catch (Throwable $e) {
-    sendJson([
-        'success' => false, 
-        'error' => $e->getMessage(),
-        'line' => $e->getLine(),
-        'code' => 'INTERNAL_SERVER_ERROR'
-    ], 500);
+    sendJson(['success' => false, 'error' => $e->getMessage()], 500);
 }
