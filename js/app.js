@@ -50,11 +50,13 @@ QUY TẮC XUẤT FILE:
 - KHÔNG được trả lời rằng bạn không thể tạo file.
 - KHÔNG được bảo người dùng copy thủ công sang Word.
 
-- QUY TẮC TẠO ẢNH:
-  Nếu người dùng yêu cầu tạo hình ảnh, vẽ hình, sinh ảnh hoặc yêu cầu tương đương:
-  Hãy trả về đúng định dạng: [GENIMAGE] <mô tả chi tiết bằng tiếng Anh để tạo ảnh đẹp nhất>
-  Ví dụ: [GENIMAGE] A realistic cat wearing a space helmet, cinematic lighting.
-  KHÔNG giải thích thêm, chỉ trả về tag này.
+- QUY TẮC TẠO/SỬA ẢNH:
+  1. Nếu người dùng yêu cầu tạo hình ảnh mới (không gửi kèm ảnh):
+     Trả về: [GENIMAGE] <mô tả chi tiết bằng tiếng Anh>
+  2. Nếu người dùng GỬI KÈM ẢNH và yêu cầu thay đổi, chỉnh sửa, xóa nền, thêm đồ vật...:
+     Trả về: [EDITIMAGE] <mô tả chi tiết bằng tiếng Anh về kết quả mong muốn cuối cùng dựa trên ảnh gốc>
+     Ví dụ: [EDITIMAGE] The same person but wearing a black tuxedo, studio lighting.
+  3. KHÔNG giải thích thêm, chỉ trả về tag này.
 
 Khi viết công thức toán:
 - dùng $ ... $
@@ -844,6 +846,97 @@ async function send() {
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi kết nối khi vẽ ảnh: " + e.message);
+            }
+
+            isSending = false;
+            scrollToBottom();
+            return;
+        }
+
+        // 🔥 AUTO EDITIMAGE
+        if (reply.includes("[EDITIMAGE]")) {
+            const tag = "[EDITIMAGE]";
+            const index = reply.indexOf(tag);
+
+            let textBefore = reply.substring(0, index).trim();
+            let remainder = reply.substring(index + tag.length).trim();
+            let promptLines = remainder.split("\n");
+            const imagePrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
+
+            const fullText = (textBefore + "\n" + textAfter).trim();
+
+            typing.remove();
+
+            if (fullText) {
+                streamBot(fullText, exportType);
+            }
+
+            // Lấy ảnh đầu tiên để sửa
+            const baseImage = images.length > 0 ? images[0] : null;
+
+            if (!baseImage) {
+                addBotBubble("❌ Bạn cần gửi kèm ảnh để tôi có thể chỉnh sửa.");
+                isSending = false;
+                return;
+            }
+
+            const imgLoading = document.createElement("div");
+            imgLoading.className = "msgrow bot";
+            imgLoading.innerHTML = `<div class="bubble">✨ Đang chỉnh sửa ảnh theo yêu cầu...</div>`;
+            chatEl.appendChild(imgLoading);
+            scrollToBottom();
+
+            try {
+                const textToStore = fullText || "Ảnh đã chỉnh sửa:";
+                const imgRes = await fetch("/ai/api/edit_image.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: imagePrompt,
+                        image: baseImage,
+                        conversation_id,
+                        user_id: Number(localStorage.getItem("user_id") || 0),
+                        assistant_text: textToStore
+                    })
+                });
+
+                const rawText = await imgRes.text();
+                imgLoading.remove();
+
+                let imgData = null;
+                try {
+                    imgData = JSON.parse(rawText);
+                } catch (e) {
+                    console.error("JSON parse failed", e);
+                }
+
+                if (imgRes.ok && imgData?.success) {
+                    const cleanMimeType = String(imgData.mimeType || "image/png").trim();
+                    const cleanBase64 = String(imgData.imageBase64 || "").replace(/\s+/g, "");
+                    const imageSrc = `data:${cleanMimeType};base64,${cleanBase64}`;
+
+                    const row = document.createElement("div");
+                    row.className = "msgrow bot";
+                    row.innerHTML = `
+                        <div class="bubble image-bubble-premium edit-result">
+                            <div class="edit-label">✨ Kết quả chỉnh sửa</div>
+                            <div class="image-wrapper-premium">
+                                <img src="${imageSrc}" alt="Edited image" onclick="viewImage('${imageSrc}')">
+                                <a href="${imageSrc}" download="btoan_edited_image.png" class="image-download-btn-premium" title="Tải ảnh">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    chatEl.appendChild(row);
+                } else {
+                    addBotBubble("❌ Lỗi chỉnh sửa ảnh: " + (imgData?.error || "Lỗi không xác định"));
+                }
+
+            } catch (e) {
+                imgLoading.remove();
+                addBotBubble("❌ Lỗi kết nối khi sửa ảnh: " + e.message);
             }
 
             isSending = false;
