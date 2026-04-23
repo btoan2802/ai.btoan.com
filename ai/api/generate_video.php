@@ -6,7 +6,9 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 header("Content-Type: application/json; charset=utf-8");
 
-require "db.php";
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
 
 function sendJson(array $data, int $statusCode = 200): void
 {
@@ -15,7 +17,24 @@ function sendJson(array $data, int $statusCode = 200): void
     exit;
 }
 
+// 🛡️ BỘ XỬ LÝ LỖI TOÀN CỤC - Ngăn chặn trang lỗi 500 của IIS
+set_exception_handler(function ($e) {
+    sendJson([
+        'success' => false,
+        'error' => 'Critical Error: ' . $e->getMessage(),
+        'type' => 'exception',
+        'code' => 'INTERNAL_SERVER_ERROR'
+    ], 200); // Trả về 200 để Frontend không bị lỗi JSON
+});
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 try {
+    require "db.php";
+
     if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') sendJson(["success" => true]);
 
     $raw = file_get_contents("php://input");
@@ -37,10 +56,14 @@ try {
     ];
     $apiKey = $API_KEYS[array_rand($API_KEYS)];
     
-    // THAY THẾ PROJECT_ID TẠI ĐÂY
-    $projectId = "airy-web-431004-v1"; // ID dự án của bạn
+    $projectId = "airy-web-431004-v1";
     $location = "us-central1";
     $model = "veo-001";
+
+    // 🔬 KIỂM TRA CURL TRƯỚC KHI CHẠY
+    if (!function_exists('curl_init')) {
+        throw new Exception("PHP cURL extension is NOT enabled on this VPS. Please enable php_curl.dll in php.ini.");
+    }
 
     // 📡 GỌI VERTEX AI API (Veo)
     $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:predict";
@@ -68,7 +91,6 @@ try {
 
     $resData = json_decode((string)$response, true);
 
-    // Vertex AI trả về một 'name' (Operation Name) nếu là xử lý bất đồng bộ
     $operationName = $resData['name'] ?? null;
 
     if ($operationName) {
@@ -79,7 +101,6 @@ try {
             'provider' => 'google-veo'
         ]);
     } else {
-        // Nếu API trả về lỗi trực tiếp (vd: 403, 429)
         sendJson([
             'success' => false,
             'error' => $resData['error']['message'] ?? 'Failed to start Veo job. Please check Project ID and API permissions.',
@@ -88,5 +109,10 @@ try {
     }
 
 } catch (Throwable $e) {
-    sendJson(['success' => false, 'error' => $e->getMessage()], 500);
+    sendJson([
+        'success' => false, 
+        'error' => $e->getMessage(),
+        'line' => $e->getLine(),
+        'code' => 'INTERNAL_SERVER_ERROR'
+    ], 200);
 }
