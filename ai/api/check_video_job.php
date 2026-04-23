@@ -18,14 +18,16 @@ function sendJson(array $data, int $statusCode = 200): void
 function getAccessToken($keyFile) {
     if (!file_exists($keyFile)) return null;
     $keyData = json_decode(file_get_contents($keyFile), true);
-    
+    if (!isset($keyData['private_key'])) return null;
+
     $header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
+    $now = time();
     $payload = base64url_encode(json_encode([
         'iss' => $keyData['client_email'],
         'scope' => 'https://www.googleapis.com/auth/cloud-platform',
         'aud' => 'https://oauth2.googleapis.com/token',
-        'exp' => time() + 3600,
-        'iat' => time()
+        'exp' => $now + 3600,
+        'iat' => $now
     ]));
 
     $signature = '';
@@ -39,8 +41,9 @@ function getAccessToken($keyFile) {
         'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
         'assertion' => $jwt
     ]));
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $res = curl_exec($ch);
-    $data = json_decode($res, true);
+    $data = json_decode((string)$res, true);
     return $data['access_token'] ?? null;
 }
 
@@ -55,20 +58,15 @@ try {
 
     if (empty($job_id)) sendJson(['success' => false, 'error' => 'Job ID required'], 200);
 
-    // 🔑 LẤY OAUTH TOKEN
     $accessToken = getAccessToken(__DIR__ . "/google-key.json");
     if (!$accessToken) {
-        sendJson(['success' => false, 'error' => 'Authentication missing (google-key.json)'], 200);
+        sendJson(['success' => false, 'error' => 'Authentication missing (key file invalid or missing)'], 200);
     }
 
     $location = "us-central1";
-    // Check if job_id is full path or just operation ID
-    if (strpos($job_id, 'projects/') === false) {
-        $projectId = "airy-web-431004-v1";
-        $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/operations/{$job_id}";
-    } else {
-        $url = "https://{$location}-aiplatform.googleapis.com/v1/{$job_id}";
-    }
+    $url = (strpos($job_id, 'projects/') === false)
+        ? "https://{$location}-aiplatform.googleapis.com/v1/projects/airy-web-431004-v1/locations/{$location}/operations/{$job_id}"
+        : "https://{$location}-aiplatform.googleapis.com/v1/{$job_id}";
 
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -76,29 +74,42 @@ try {
         'Content-Type: application/json',
         'Authorization: Bearer ' . $accessToken
     ]);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     
-    $response = curl_exec($ch);
-    $opData = json_decode((string)$response, true);
+    $responseBody = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
 
-    // 📝 LOG RAW RESPONSE FOR DEBUGGING
-    $logFile = __DIR__ . "/video_job_log.txt";
-    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] ID: $job_id\n" . $response . "\n\n", FILE_APPEND);
+    $opData = json_decode((string)$responseBody, true);
+
+    // Initial response structure for debug
+    $debugInfo = [
+        "google_http_code" => $httpCode,
+        "google_poll_url" => $url,
+        "curl_error" => $curlError,
+        "raw_response_text" => $responseBody ?: "(empty body)",
+        "raw_response_json" => $opData
+    ];
+
+    if ($opData === null && $responseBody) {
+        $debugInfo['error'] = 'Failed to decode Google response as JSON.';
+    }
 
     if (isset($opData['error'])) {
-        sendJson([
+        sendJson(array_merge([
             'success' => false,
             'status' => 'failed',
-            'error' => $opData['error']['message'] ?? 'Veo job error.',
-            'job_id' => $job_id,
-            'debug_raw' => $opData
-        ]);
+            'error' => $opData['error']['message'] ?? 'Veo job experienced an error.',
+            'job_id' => $job_id
+        ], $debugInfo));
     }
 
     $isDone = (bool) ($opData['done'] ?? false);
 
     if ($isDone) {
-        // Try different paths for video URL (Veo response format can vary)
         $videoUrl = null;
+        // Check multiple paths for different Google API versions/models
         if (isset($opData['response']['outputs'][0]['uri'])) {
             $videoUrl = $opData['response']['outputs'][0]['uri'];
         } elseif (isset($opData['response']['videos'][0]['uri'])) {
@@ -106,14 +117,12 @@ try {
         }
 
         if ($videoUrl) {
-            // Convert gs:// to https:// storage.googleapis.com
             if (strpos($videoUrl, 'gs://') === 0) {
-                // IMPORTANT: This assumes the bucket is public or has appropriate access.
-                // Vertex AI usually outputs to gs://bucket-name/folder/file.mp4
+                // Convert gs:// bucket format to HTTPS link
                 $videoUrl = str_replace('gs://', 'https://storage.googleapis.com/', $videoUrl);
             }
 
-            // Update DB
+            // Sync with DB if needed
             if ($conversation_id > 0 && $user_id > 0) {
                 $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
                 if ($stmt) {
@@ -123,40 +132,42 @@ try {
                 }
             }
 
-            sendJson([
+            sendJson(array_merge([
                 'success' => true,
                 'status' => 'completed',
                 'video_url' => $videoUrl,
                 'job_id' => $job_id,
-                'provider' => 'google-veo',
-                'debug_raw' => $opData
-            ]);
+                'provider' => 'google-veo'
+            ], $debugInfo));
         } else {
-            sendJson([
+            sendJson(array_merge([
                 'success' => false,
                 'status' => 'failed',
-                'error' => 'Operation finished but no video output found.',
-                'job_id' => $job_id,
-                'debug_raw' => $opData
-            ]);
+                'error' => 'Job marked as done but no video output URI was found.',
+                'job_id' => $job_id
+            ], $debugInfo));
         }
     } else {
-        // Poll logic: look for progress in metadata
-        $progress = $opData['metadata']['percentageCompleted'] ?? 
-                    $opData['metadata']['progressPercentage'] ?? 
-                    $opData['metadata']['partialResultProgress'] ?? 
-                    '0';
+        // Polling state
+        $progressValue = $opData['metadata']['percentageCompleted'] ?? 
+                         $opData['metadata']['progressPercentage'] ?? 
+                         $opData['metadata']['partialResultProgress'] ?? 
+                         '0';
 
-        sendJson([
+        sendJson(array_merge([
             'success' => true,
             'status' => 'processing',
-            'msg' => "Veo is rendering... {$progress}%",
-            'job_id' => $job_id,
-            'progress' => $progress,
-            'debug_raw' => $opData
-        ]);
+            'progress' => (string)$progressValue,
+            'msg' => "Veo is rendering... {$progressValue}%",
+            'job_id' => $job_id
+        ], $debugInfo));
     }
 
 } catch (Throwable $e) {
-    sendJson(['success' => false, 'error' => $e->getMessage()], 200);
+    sendJson([
+        'success' => false, 
+        'error' => $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine()
+    ], 200);
 }
