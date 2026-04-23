@@ -6,7 +6,9 @@ header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
 header("Content-Type: application/json; charset=utf-8");
 
-require "db.php";
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+error_reporting(E_ALL);
 
 function sendJson(array $data, int $statusCode = 200): void
 {
@@ -15,10 +17,30 @@ function sendJson(array $data, int $statusCode = 200): void
     exit;
 }
 
+// 🛡️ BỘ XỬ LÝ LỖI TOÀN CỤC
+set_exception_handler(function ($e) {
+    sendJson([
+        'success' => false,
+        'error' => 'Critical Error: ' . $e->getMessage(),
+        'file' => basename($e->getFile()),
+        'line' => $e->getLine(),
+        'type' => 'exception'
+    ], 200);
+});
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    if (!(error_reporting() & $severity)) return;
+    throw new ErrorException($message, 0, $severity, $file, $line);
+});
+
 function getAccessToken($keyFile) {
     if (!file_exists($keyFile)) return null;
     $keyData = json_decode(file_get_contents($keyFile), true);
     if (!isset($keyData['private_key'])) return null;
+
+    if (!function_exists('openssl_sign')) {
+        throw new Exception("Thư viện OpenSSL chưa được bật trên VPS. Vui lòng bỏ dấu ; trước dòng extension=openssl trong php.ini và restart server.");
+    }
 
     $header = base64url_encode(json_encode(['alg' => 'RS256', 'typ' => 'JWT']));
     $now = time();
@@ -52,6 +74,8 @@ function base64url_encode($data) {
 }
 
 try {
+    require "db.php";
+
     $job_id = $_GET['job_id'] ?? '';
     $conversation_id = (int) ($_GET['conversation_id'] ?? 0);
     $user_id = (int) ($_GET['user_id'] ?? 0);
@@ -83,7 +107,6 @@ try {
 
     $opData = json_decode((string)$responseBody, true);
 
-    // Initial response structure for debug
     $debugInfo = [
         "google_http_code" => $httpCode,
         "google_poll_url" => $url,
@@ -100,7 +123,7 @@ try {
         sendJson(array_merge([
             'success' => false,
             'status' => 'failed',
-            'error' => $opData['error']['message'] ?? 'Veo job experienced an error.',
+            'error' => $opData['error']['message'] ?? 'Veo job error.',
             'job_id' => $job_id
         ], $debugInfo));
     }
@@ -109,7 +132,6 @@ try {
 
     if ($isDone) {
         $videoUrl = null;
-        // Check multiple paths for different Google API versions/models
         if (isset($opData['response']['outputs'][0]['uri'])) {
             $videoUrl = $opData['response']['outputs'][0]['uri'];
         } elseif (isset($opData['response']['videos'][0]['uri'])) {
@@ -118,11 +140,9 @@ try {
 
         if ($videoUrl) {
             if (strpos($videoUrl, 'gs://') === 0) {
-                // Convert gs:// bucket format to HTTPS link
                 $videoUrl = str_replace('gs://', 'https://storage.googleapis.com/', $videoUrl);
             }
 
-            // Sync with DB if needed
             if ($conversation_id > 0 && $user_id > 0) {
                 $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
                 if ($stmt) {
@@ -143,12 +163,11 @@ try {
             sendJson(array_merge([
                 'success' => false,
                 'status' => 'failed',
-                'error' => 'Job marked as done but no video output URI was found.',
+                'error' => 'Job marked as done but no video output URI found.',
                 'job_id' => $job_id
             ], $debugInfo));
         }
     } else {
-        // Polling state
         $progressValue = $opData['metadata']['percentageCompleted'] ?? 
                          $opData['metadata']['progressPercentage'] ?? 
                          $opData['metadata']['partialResultProgress'] ?? 
@@ -164,10 +183,5 @@ try {
     }
 
 } catch (Throwable $e) {
-    sendJson([
-        'success' => false, 
-        'error' => $e->getMessage(),
-        'file' => basename($e->getFile()),
-        'line' => $e->getLine()
-    ], 200);
+    sendJson(['success' => false, 'error' => $e->getMessage()], 200);
 }
