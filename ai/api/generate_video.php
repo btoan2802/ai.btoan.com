@@ -38,7 +38,7 @@ try {
     $apiKey = $API_KEYS[array_rand($API_KEYS)];
     
     // THAY THẾ PROJECT_ID TẠI ĐÂY
-    $projectId = "btoan-ai-video"; // Placeholder, bạn cần điền ID thật
+    $projectId = "airy-web-431004-v1"; // ID dự án của bạn
     $location = "us-central1";
     $model = "veo-001";
 
