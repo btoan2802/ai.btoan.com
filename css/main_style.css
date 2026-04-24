@@ -14,24 +14,23 @@
 
 /* 🖱️ SCROLL TO BOTTOM BUTTON */
 .scroll-bottom-btn {
-    position: fixed;
-    bottom: 150px; /* Nâng cao lên một chút */
-    left: 50%;    /* Đưa ra chính giữa */
-    right: auto;
+    position: absolute; /* Thay đổi sang absolute để căn theo cha */
+    bottom: 150px; 
+    left: 50%;    
     width: 42px;
     height: 42px;
     border-radius: 50%;
-    background: var(--primary-color); /* Đổi sang màu xanh nổi bật */
-    color: #ffffff;                  /* Chữ trắng */
+    background: var(--primary-color); 
+    color: #ffffff;                  
     border: none;
-    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35); /* Đổ bóng màu xanh */
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35); 
     display: none; 
     align-items: center;
     justify-content: center;
     z-index: 998;
     cursor: pointer;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    transform: translateX(-50%) translateY(20px) scale(0.8); /* Căn giữa transform */
+    transform: translateX(-50%) translateY(20px) scale(0.8); 
     opacity: 0;
 }
 
@@ -55,7 +54,6 @@
     .scroll-bottom-btn {
         bottom: 110px;
         left: 50%;
-        right: auto;
         width: 38px;
         height: 38px;
     }
@@ -661,14 +659,21 @@ pre code {
     width: 0;
     padding: 0;
     overflow: hidden;
-    transition: all 0.2s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .sidebar-collapsed #openSidebarBtn {
     opacity: 1;
     visibility: visible;
-    width: 34px;
+    width: 40px;
+    height: 40px;
     padding: 8px;
-    margin-right: 8px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    border-radius: 8px;
+    color: var(--primary-color);
 }
 
 .sidebar {

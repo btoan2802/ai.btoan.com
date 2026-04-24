@@ -157,7 +157,7 @@
 
       <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-      <div class="flex-grow-1 d-flex flex-column">
+      <div class="flex-grow-1 d-flex flex-column position-relative">
         <div class="topbar">
           <div class="topbar-left">
             <button class="icon-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()" title="Mở sidebar">
