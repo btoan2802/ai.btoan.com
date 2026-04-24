@@ -1403,9 +1403,9 @@ async function loadConversation(id, updateUrl = true) {
                                         <span class="status-badge-premium">
                                             <i class='bx bx-magic-wand'></i> Btoan AI Video
                                         </span>
-                                        <a href="${vidUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
-                                            <i class='bx bx-download'></i> Tải Video
-                                        </a>
+                                        <button onclick="forceDownloadVideo('${vidUrl}', 'btoan_ai_video_${Date.now()}.mp4', this)" class="download-btn-premium">
+                                            <i class='bx bx-download'></i> <span>Tải Video</span>
+                                        </button>
                                     </div>
                                 </div>
                             `;
@@ -1426,9 +1426,9 @@ async function loadConversation(id, updateUrl = true) {
                                     <span class="status-badge-premium">
                                         <i class='bx bx-magic-wand'></i> Btoan AI Video
                                     </span>
-                                    <a href="${m.video}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
-                                        <i class='bx bx-download'></i> Tải Video
-                                    </a>
+                                    <button onclick="forceDownloadVideo('${m.video}', 'btoan_ai_video_${Date.now()}.mp4', this)" class="download-btn-premium">
+                                        <i class='bx bx-download'></i> <span>Tải Video</span>
+                                    </button>
                                 </div>
                             </div>
                         `;
@@ -1444,9 +1444,9 @@ async function loadConversation(id, updateUrl = true) {
                         bubble.innerHTML = `
                             <div class="image-wrapper-premium">
                                 <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
-                                <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
+                                <button onclick="forceDownloadVideo('${imageSrc}', 'btoan_ai_image_${Date.now()}.png', this)" class="image-download-btn-premium" title="Tải ảnh về máy">
                                     <i class="bi bi-download"></i>
-                                </a>
+                                </button>
                             </div>
                             <div class="image-caption-premium">Đây là ảnh của bạn</div>
                         `;
