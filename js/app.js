@@ -948,16 +948,18 @@ async function send() {
             }
 
             // Split prompt into words
-            const allWords = videoPrompt.split(/\s+/);
+            const allWords = videoPrompt.split(/\s+/).filter(w => w.length > 0);
             const wordCount = allWords.length;
 
-            // 🔥 TỰ ĐỘNG ƯỚC TÍNH CHUẨN: 18 từ ~ 8 giây
+            // 🔥 TỰ ĐỘNG ƯỚC TÍNH THÔNG MINH: 22 từ ~ 8 giây
             let requestedDuration = 8; 
             const durationMatch = userText.match(/(\d+)\s*(s|giây|second)/i);
+            
             if (durationMatch) {
                 requestedDuration = parseInt(durationMatch[1]);
-            } else {
-                const estimatedSecs = Math.ceil(wordCount / 18) * 8;
+            } else if (wordCount > 25) {
+                // Chỉ tự động chia nếu trên 25 từ
+                const estimatedSecs = Math.ceil(wordCount / 22) * 8;
                 requestedDuration = Math.max(8, estimatedSecs);
             }
 
