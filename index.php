@@ -24,7 +24,6 @@ include 'login/Check_LogIn.php';
 
   <!-- A. LOGIN BOX -->
   <div id="loginBox" class="login-overlay">
-    <!-- Thêm class container để JS login không bị lỗi -->
     <div class="container login-card">
       <div class="login-header">
         <img src="https://btoan.com/images/logo.png" alt="Logo" class="login-logo">
@@ -82,7 +81,17 @@ include 'login/Check_LogIn.php';
 
   <!-- B. CHAT APP -->
   <div id="chatApp" style="display:none">
-    <!-- Hand Tracking Canvas (Cần thiết cho JS) -->
+    
+    <!-- 🟢 KỸ THUẬT: HAND ENGINE & 3D ELEMENTS -->
+    <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none;">
+        <video id="hand-video" style="display:none"></video>
+        <canvas id="hand-canvas" style="position:absolute; top:10px; right:10px; width:160px; height:120px; border-radius:12px; background:rgba(0,0,0,0.5); border:1px solid var(--primary-color); transform: scaleX(-1);"></canvas>
+        <div id="cursor-left" style="position:fixed; width:24px; height:24px; background:rgba(0,255,204,0.3); border:2px solid #00ffcc; border-radius:50%; pointer-events:none; z-index:1000000; display:none;"></div>
+        <div id="cursor-right" style="position:fixed; width:24px; height:24px; background:rgba(0,255,204,0.3); border:2px solid #00ffcc; border-radius:50%; pointer-events:none; z-index:1000000; display:none;"></div>
+        <div id="hand-mode-label" style="position:absolute; top:140px; right:10px; background:var(--primary-color); color:white; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:bold;">HAND_MODE</div>
+    </div>
+    
+    <div id="shape-container" style="position:fixed; inset:0; pointer-events:none; z-index:9998;"></div>
     <div id="hand-tracking-container" style="position:fixed; inset:0; pointer-events:none; z-index:9999;">
         <canvas id="hand-canvas-overlay" style="width:100%; height:100%;"></canvas>
     </div>
@@ -228,7 +237,7 @@ include 'login/Check_LogIn.php';
     </div>
   </div>
 
-  <!-- D. FACE ENROLL MODAL (Cần cho face login) -->
+  <!-- D. FACE ENROLL MODAL -->
   <div id="face-enroll-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
     <div style="background:var(--bg-main); padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
       <h3 style="margin-top:0; font-weight:700; color:var(--text-main); margin-bottom:10px;">Face ID</h3>
@@ -255,6 +264,11 @@ include 'login/Check_LogIn.php';
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
+  <!-- MediaPipe / Camera for Hand Tracking (Cần thiết cho JS) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
   <script src="/facelib/face-api.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <script src="/login/SignUp_LogIn_Form.js?v=20"></script>
