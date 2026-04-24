@@ -50,11 +50,17 @@ QUY TẮC XUẤT FILE:
 - KHÔNG được trả lời rằng bạn không thể tạo file.
 - KHÔNG được bảo người dùng copy thủ công sang Word.
 
-- QUY TẮC TẠO ẢNH:
-  Nếu người dùng yêu cầu tạo hình ảnh, vẽ hình, sinh ảnh hoặc yêu cầu tương đương:
-  Hãy trả về đúng định dạng: [GENIMAGE] <mô tả chi tiết bằng tiếng Anh để tạo ảnh đẹp nhất>
-  Ví dụ: [GENIMAGE] A realistic cat wearing a space helmet, cinematic lighting.
-  KHÔNG giải thích thêm, chỉ trả về tag này.
+- QUY TẮC PHƯƠNG TIỆN (QUAN TRỌNG):
+  1. TẠO HÌNH ẢNH TĨNH: Nếu người dùng yêu cầu "vẽ ảnh", "tạo ảnh", "bức hình"... (không có chuyển động)
+     Trả về: [GENIMAGE] <mô tả chi tiết bằng tiếng Anh>
+  2. CHỈNH SỬA ẢNH: Nếu có ảnh đính kèm và yêu cầu thay đổi.
+     Trả về: [EDITIMAGE] <mô tả tiếng Anh>
+  3. TẠO VIDEO (CHUYỂN ĐỘNG): Nếu người dùng yêu cầu "tạo video", "làm clip", "vẽ video", "animate", "phim"...
+     TUYỆT ĐỐI KHÔNG DÙNG [GENIMAGE]. 
+     BẮT BUỘC TRẢ VỀ: [GENVIDEO] <mô tả chi tiết bằng tiếng Anh về chuyển động và bối cảnh>
+     Ví dụ: [GENVIDEO] A cat flying through the clouds, fur moving in the wind, cinematic.
+
+- NẾU YÊU CẦU LÀ VIDEO, KHÔNG ĐƯỢC TRẢ VỀ ẢNH TĨNH.
 
 Khi viết công thức toán:
 - dùng $ ... $
@@ -465,7 +471,7 @@ async function callGemini(userText, images, files) {
             {
                 role: "user",
                 parts: [
-                    { text: systemInstruction + thinkingPrompt + toolInstruction }
+                    { text: systemInstruction + thinkingPrompt + toolInstruction + (userText.toLowerCase().match(/video|clip|phim|animate|chuyển động/) ? "\nLƯU Ý: Người dùng đang yêu cầu VIDEO. Bạn phải dùng tag [GENVIDEO]. TUYỆT ĐỐI KHÔNG dùng [GENIMAGE] lúc này.\n" : "") }
                 ]
             },
 
@@ -755,6 +761,15 @@ async function send() {
 
         // 🔥 AUTO GENIMAGE (ROBUST JOIN)
         if (reply.includes("[GENIMAGE]")) {
+            // Kiểm tra xem đây có phải là nhầm lẫn không (AI trả [GENIMAGE] cho yêu cầu video)
+            const isActuallyVideo = userText.toLowerCase().match(/video|clip|phim|animate|chuyển động/);
+            if (isActuallyVideo) {
+                typing.remove();
+                addBotBubble("⚠️ AI đã nhầm lẫn khi tạo ảnh cho một yêu cầu video. Đang bỏ qua tạo ảnh để tránh sai lệch.");
+                isSending = false;
+                return;
+            }
+
             const tag = "[GENIMAGE]";
             const index = reply.indexOf(tag);
 
@@ -844,6 +859,154 @@ async function send() {
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi kết nối khi vẽ ảnh: " + e.message);
+            }
+
+            isSending = false;
+            scrollToBottom();
+            return;
+        }
+
+        // 🔥 AUTO EDITIMAGE
+        if (reply.includes("[EDITIMAGE]")) {
+            const tag = "[EDITIMAGE]";
+            const index = reply.indexOf(tag);
+
+            let textBefore = reply.substring(0, index).trim();
+            let remainder = reply.substring(index + tag.length).trim();
+            let promptLines = remainder.split("\n");
+            const imagePrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
+
+            const fullText = (textBefore + "\n" + textAfter).trim();
+
+            typing.remove();
+
+            if (fullText) {
+                streamBot(fullText, exportType);
+            }
+
+            // Lấy ảnh đầu tiên để sửa
+            const baseImage = images.length > 0 ? images[0] : null;
+
+            if (!baseImage) {
+                addBotBubble("❌ Bạn cần gửi kèm ảnh để tôi có thể chỉnh sửa.");
+                isSending = false;
+                return;
+            }
+
+            const imgLoading = document.createElement("div");
+            imgLoading.className = "msgrow bot";
+            imgLoading.innerHTML = `<div class="bubble">✨ Đang chỉnh sửa ảnh theo yêu cầu...</div>`;
+            chatEl.appendChild(imgLoading);
+            scrollToBottom();
+
+            try {
+                const textToStore = fullText || "Ảnh đã chỉnh sửa:";
+                const imgRes = await fetch("/ai/api/edit_image.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: imagePrompt,
+                        image: baseImage,
+                        conversation_id,
+                        user_id: Number(localStorage.getItem("user_id") || 0),
+                        assistant_text: textToStore
+                    })
+                });
+
+                const rawText = await imgRes.text();
+                imgLoading.remove();
+
+                let imgData = null;
+                try {
+                    imgData = JSON.parse(rawText);
+                } catch (e) {
+                    console.error("JSON parse failed", e);
+                }
+
+                if (imgRes.ok && imgData?.success) {
+                    const cleanMimeType = String(imgData.mimeType || "image/png").trim();
+                    const cleanBase64 = String(imgData.imageBase64 || "").replace(/\s+/g, "");
+                    const imageSrc = `data:${cleanMimeType};base64,${cleanBase64}`;
+
+                    const row = document.createElement("div");
+                    row.className = "msgrow bot";
+                    row.innerHTML = `
+                        <div class="bubble image-bubble-premium edit-result">
+                            <div class="edit-label">✨ Kết quả chỉnh sửa</div>
+                            <div class="image-wrapper-premium">
+                                <img src="${imageSrc}" alt="Edited image" onclick="viewImage('${imageSrc}')">
+                                <a href="${imageSrc}" download="btoan_edited_image.png" class="image-download-btn-premium" title="Tải ảnh">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    chatEl.appendChild(row);
+                } else {
+                    addBotBubble("❌ Lỗi chỉnh sửa ảnh: " + (imgData?.error || "Lỗi không xác định"));
+                }
+
+            } catch (e) {
+                imgLoading.remove();
+                addBotBubble("❌ Lỗi kết nối khi sửa ảnh: " + e.message);
+            }
+
+            isSending = false;
+            scrollToBottom();
+            return;
+        }
+
+        // 🔥 AUTO GENVIDEO
+        if (reply.includes("[GENVIDEO]")) {
+            const tag = "[GENVIDEO]";
+            const index = reply.indexOf(tag);
+
+            let textBefore = reply.substring(0, index).trim();
+            let remainder = reply.substring(index + tag.length).trim();
+            let promptLines = remainder.split("\n");
+            const videoPrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
+
+            const fullText = (textBefore + "\n" + textAfter).trim();
+
+            typing.remove();
+
+            if (fullText) {
+                streamBot(fullText, exportType);
+            }
+
+            const vidLoading = document.createElement("div");
+            vidLoading.className = "msgrow bot";
+            vidLoading.innerHTML = `<div class="bubble">🎬 Đang khởi tạo luồng tạo video AI...</div>`;
+            chatEl.appendChild(vidLoading);
+            scrollToBottom();
+
+            try {
+                const vidRes = await fetch("/ai/api/generate_video.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: videoPrompt,
+                        conversation_id,
+                        user_id: Number(localStorage.getItem("user_id") || 0)
+                    })
+                });
+
+                const vidData = await vidRes.json();
+                if (vidRes.ok && vidData?.success) {
+                    const job_id = vidData.job_id;
+                    vidLoading.innerHTML = `<div class="bubble">⚡ Job ID: ${job_id}<br>🎥 Đang xử lý video, vui lòng đợi trong giây lát...</div>`;
+                    
+                    // Bắt đầu Polling
+                    pollVideoStatus(job_id, vidLoading);
+                } else {
+                    vidLoading.remove();
+                    addBotBubble("❌ Lỗi tạo video: " + (vidData?.error || "Lỗi không xác định"));
+                }
+            } catch (e) {
+                vidLoading.remove();
+                addBotBubble("❌ Lỗi kết nối khi tạo video: " + e.message);
             }
 
             isSending = false;
@@ -2247,6 +2410,54 @@ async function loadProfileData() {
 
 
 // 📸 Image Preview Logic (Lightbox)
+
+async function pollVideoStatus(job_id, containerBubble) {
+    let attempts = 0;
+    const maxAttempts = 60; // 60 x 5s = 300 seconds (5 mins)
+    const interval = 5000;
+
+    const timer = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+            clearInterval(timer);
+            containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Quá thời gian tạo video (5 phút). Bạn hãy thử lại sau.</div>`;
+            return;
+        }
+
+        try {
+            const res = await fetch(`/ai/api/check_video_job.php?job_id=${job_id}&conversation_id=${conversation_id}&user_id=${localStorage.getItem("user_id")}`);
+            const data = await res.json();
+
+            if (data.success && data.status === 'completed') {
+                clearInterval(timer);
+                const videoUrl = data.video_url;
+
+                containerBubble.innerHTML = `
+                    <div class="bubble video-bubble-premium">
+                        <div class="video-container-premium">
+                            <video controls class="video-player-premium">
+                                <source src="${videoUrl}" type="video/mp4">
+                            </video>
+                        </div>
+                        <div class="video-actions-premium">
+                            <span class="status-badge-premium"><i class="fas fa-check-circle"></i> Video AI Hoàn tất</span>
+                            <a href="${videoUrl}" download="btoan_video.mp4" class="download-btn-premium">
+                                <i class="fas fa-download"></i> Tải về
+                            </a>
+                        </div>
+                    </div>
+                `;
+                scrollToBottom();
+            } else if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
+                clearInterval(timer);
+                containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Lỗi: ${data.error || "Không thể tạo video."}</div>`;
+            }
+        } catch (e) {
+            console.error("Polling error:", e);
+        }
+    }, interval);
+}
+
 function viewImage(src) {
     const modal = document.getElementById("image-preview-modal");
     const img = document.getElementById("preview-img");
