@@ -957,9 +957,9 @@ async function send() {
             
             if (durationMatch) {
                 requestedDuration = parseInt(durationMatch[1]);
-            } else if (wordCount > 60) {
-                // Chỉ tự động chia thành chuỗi nếu cực kỳ dài (> 60 từ)
-                const estimatedSecs = Math.ceil(wordCount / 25) * 8;
+            } else if (wordCount > 100) {
+                // Chỉ tự động chia thành chuỗi nếu thực sự RẤT DÀI (> 100 từ)
+                const estimatedSecs = Math.ceil(wordCount / 30) * 8;
                 // Giới hạn mặc định không quá 24s (3 clip) để tránh "ngu"
                 requestedDuration = Math.min(24, estimatedSecs);
             } else {
