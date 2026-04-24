@@ -2421,46 +2421,33 @@ async function loadProfileData() {
 
 async function pollVideoStatus(job_id, containerBubble, chat_id) {
     let attempts = 0;
-    const maxAttempts = 60; // 60 x 5s = 300 seconds (5 mins)
+    const maxAttempts = 120; // 120 x 5s = 600 seconds (10 mins)
     const interval = 5000;
+    let simulatedProgress = 0;
+    let isInitialized = false;
 
     const timer = setInterval(async () => {
         attempts++;
+
+        // 🛡️ CHẶN QUÁ TẢI
         if (attempts > maxAttempts) {
             clearInterval(timer);
-            containerBubble.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Quá thời gian tạo video (5 phút). Bạn hãy thử lại sau.</div>`;
+            containerBubble.innerHTML = `<div class="bubble assistant border-danger text-danger"><i class='bx bx-time-five'></i> Quá thời gian tạo video. Vui lòng kiểm tra lại sau.</div>`;
             return;
+        }
+
+        // 🧠 GIẢ LẬP TIẾN ĐỘ (Cho người dùng thấy nó đang chạy)
+        if (simulatedProgress < 95) {
+            const increment = simulatedProgress < 30 ? 4 : (simulatedProgress < 70 ? 1.5 : 0.4);
+            simulatedProgress = Math.min(95, simulatedProgress + increment);
         }
 
         try {
             const res = await fetch(`/ai/api/check_video_job.php?job_id=${job_id}&conversation_id=${conversation_id}&user_id=${localStorage.getItem("user_id")}&chat_id=${chat_id}`);
             const data = await res.json();
 
-            if (data.success && data.status === 'completed') {
-                clearInterval(timer);
-                const videoUrl = data.video_url;
-
-                containerBubble.innerHTML = `
-                    <div class="video-bubble-premium assistant">
-                        <div class="video-container-premium">
-                            <video controls class="video-player-premium">
-                                <source src="${videoUrl}" type="video/mp4">
-                                Your browser does not support the video tag.
-                            </video>
-                        </div>
-                        <div class="video-actions-premium">
-                            <span class="status-badge-premium">
-                                <i class='bx bx-magic-wand'></i> AI Video Cinematic
-                            </span>
-                            <a href="${videoUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
-                                <i class='bx bx-download'></i> Tải Video
-                            </a>
-                        </div>
-                    </div>
-                `;
-                scrollToBottom();
-            } else if (data.status === 'processing') {
-                const progress = data.progress || "0";
+            // 1️⃣ KHỞI TẠO UI LẦN ĐẦU
+            if (!isInitialized) {
                 containerBubble.innerHTML = `
                     <div class="bubble assistant video-processing-card">
                         <div class="processing-glow"></div>
@@ -2470,17 +2457,69 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
                                 <div class="fw-bold mb-1">Veo 3.1 đang sáng tạo...</div>
                                 <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                         role="progressbar" style="width: ${progress}%"></div>
+                                         role="progressbar" style="width: 0%; transition: width 0.5s ease-in-out;"></div>
                                 </div>
-                                <div class="text-muted mt-1" style="font-size: 11px;">Tiến độ: ${progress}% - Vui lòng đợi trong giây lát</div>
+                                <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Tiến độ: 0% - Vui lòng đợi trong giây lát</div>
                             </div>
                         </div>
                     </div>
                 `;
-            } else if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
+                isInitialized = true;
+                scrollToBottom();
+            }
+
+            // 2️⃣ XỬ LÝ KHI HOÀN THÀNH
+            if (data.success && data.status === 'completed') {
+                clearInterval(timer);
+                const videoUrl = data.video_url;
+
+                // Nhảy lên 100% trước khi hiện video
+                const bar = containerBubble.querySelector('.progress-bar');
+                const text = containerBubble.querySelector('.progress-text');
+                if (bar) bar.style.width = '100%';
+                if (text) text.innerText = 'Hoàn tất! Đang chuẩn bị video...';
+
+                setTimeout(() => {
+                    containerBubble.innerHTML = `
+                        <div class="video-bubble-premium assistant">
+                            <div class="video-container-premium">
+                                <video controls class="video-player-premium">
+                                    <source src="${videoUrl}" type="video/mp4">
+                                </video>
+                            </div>
+                            <div class="video-actions-premium">
+                                <span class="status-badge-premium">
+                                    <i class='bx bx-magic-wand'></i> AI Video Cinematic
+                                </span>
+                                <a href="${videoUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
+                                    <i class='bx bx-download'></i> Tải Video
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                    scrollToBottom();
+                }, 800);
+                return;
+            }
+
+            // 3️⃣ CẬP NHẬT TIẾN ĐỘ ĐANG CHẠY (PROCESSING)
+            if (data.status === 'processing' || data.success) {
+                // Ưu tiên progress thật từ API nếu nó > 0
+                const realProgress = parseFloat(data.progress || 0);
+                const displayProgress = Math.max(simulatedProgress, realProgress);
+                
+                const bar = containerBubble.querySelector('.progress-bar');
+                const text = containerBubble.querySelector('.progress-text');
+                if (bar) bar.style.width = displayProgress + '%';
+                if (text) text.innerText = `Tiến độ: ${Math.floor(displayProgress)}% - Vui lòng đợi trong giây lát`;
+            } 
+            
+            // 4️⃣ XỬ LÝ LỖI
+            if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
                 clearInterval(timer);
                 containerBubble.innerHTML = `<div class="bubble assistant border-danger text-danger"><i class='bx bx-error' ></i> Lỗi: ${data.error || "Không thể tạo video."}</div>`;
             }
+
         } catch (e) {
             console.error("Polling error:", e);
         }
