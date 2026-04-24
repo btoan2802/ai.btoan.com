@@ -1639,6 +1639,14 @@ window.onload = function () {
         });
     }
 
+    // 🌗 THEME INITIALIZATION
+    const savedTheme = localStorage.getItem("theme") || "light";
+    if (savedTheme === "dark") {
+        document.body.classList.add("dark-mode");
+        const themeBtn = document.getElementById("themeToggleBtn");
+        if (themeBtn) themeBtn.innerHTML = '<i class="bi bi-sun"></i>';
+    }
+
     // ===== auto format dd/mm/yyyy =====
     const dobInput = document.getElementById("pf_dob")
 
@@ -2646,3 +2654,16 @@ function closeImagePreview() {
 document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") closeImagePreview();
 });
+
+function toggleTheme() {
+    const isDark = document.body.classList.toggle("dark-mode");
+    const btn = document.getElementById("themeToggleBtn");
+    
+    if (isDark) {
+        localStorage.setItem("theme", "dark");
+        if (btn) btn.innerHTML = '<i class="bi bi-sun"></i>';
+    } else {
+        localStorage.setItem("theme", "light");
+        if (btn) btn.innerHTML = '<i class="bi bi-moon-stars"></i>';
+    }
+}

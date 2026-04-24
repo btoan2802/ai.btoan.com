@@ -157,8 +157,8 @@
 
       <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-      <div class="flex-grow-1 d-flex flex-column">
-        <div class="topbar">
+        <div class="flex-grow-1 d-flex flex-column">
+        <div class="topbar" style="background: var(--bg-topbar); border-bottom: 1px solid var(--border-color);">
           <div class="topbar-left">
             <button class="icon-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()" title="Mở sidebar">
               <i class="bi bi-layout-sidebar"></i>
@@ -166,6 +166,11 @@
             <div class="brand-text">Btoan AI</div>
           </div>
           <div class="ms-auto d-flex align-items-center">
+            
+            <!-- Theme Toggle Button -->
+            <button class="icon-toggle-btn me-2" id="themeToggleBtn" onclick="toggleTheme()" title="Đổi chế độ sáng/tối">
+              <i class="bi bi-moon-stars"></i>
+            </button>
 
             <div id="userBox" class="user-box">
               <div class="user-info" onclick="toggleUserMenu()">
@@ -203,7 +208,7 @@
 
         <div id="status" class="p-2 text-muted" style="display:none"></div>
 
-        <div class="p-2 border-top">
+        <div class="p-2 border-top" style="border-color: var(--border-color) !important; background: var(--bg-main);">
           <div class="d-flex align-items-center">
             <input id="fileImg" type="file" accept="image/*" multiple hidden>
             <input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
@@ -249,7 +254,7 @@
 
             </div>
 
-            <textarea id="msg" class="form-control mx-2" placeholder="nhập tin nhắn..." rows="1"></textarea>
+            <textarea id="msg" class="form-control mx-2" style="background: var(--input-bg); color: var(--text-main); border-color: var(--border-color);" placeholder="nhập tin nhắn..." rows="1"></textarea>
             <button id="send" class="btn btn-primary send-btn"><i class="bi bi-send"></i></button>
           </div>
         </div>
@@ -285,23 +290,23 @@
 
   <!-- D. FACE ENROLL MODAL -->
   <div id="face-enroll-modal"
-    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+    style="display:none; position:fixed; inset:0; background:var(--bg-overlay); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
     <div
-      style="background:#fff; padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-      <h3 style="margin-top:0; font-weight:700; color:#1e293b; margin-bottom:10px;">Thiết lập FaceID</h3>
-      <p style="color:#64748b; font-size:14px; margin-bottom:20px;">Giữ điện thoại thẳng mặt và đảm bảo đủ ánh sáng</p>
+      style="background:var(--bg-main); padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text-main); margin-bottom:10px;">Thiết lập FaceID</h3>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">Giữ điện thoại thẳng mặt và đảm bảo đủ ánh sáng</p>
       <div
-        style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:50%; border:4px solid #7494ec; background:#000; margin-bottom:20px;">
+        style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:50%; border:4px solid var(--accent-color); background:var(--bg-black); margin-bottom:20px;">
         <video id="face-video" autoplay playsinline
           style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
         <div id="scan-line"
-          style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(to right, transparent, #7494ec, transparent); box-shadow: 0 0 15px #7494ec; animation: scanAnim 2s infinite linear; display:none;">
+          style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(to right, transparent, var(--accent-color), transparent); box-shadow: 0 0 15px var(--accent-color); animation: scanAnim 2s infinite linear; display:none;">
         </div>
       </div>
       <canvas id="face-canvas" style="display:none;"></canvas>
       <div id="face-enroll-status" style="min-height:20px; margin-bottom:15px;"></div>
       <button type="button" id="face-close-btn" class="btn btn-danger"
-        style="background:#ef4444; height:44px; font-size:14px;">Hủy bỏ</button>
+        style="background:var(--bg-danger); height:44px; font-size:14px;">Hủy bỏ</button>
     </div>
   </div>
 
@@ -316,40 +321,40 @@
       <div
         style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:center;">
         <div id="hand-mode-label"
-          style="font-size:14px; font-weight:900; color:#00ffcc; background:rgba(0,0,0,0.8); padding:6px 15px; border:1px solid #00ffcc; letter-spacing:2px; pointer-events:auto;">
+          style="font-size:14px; font-weight:900; color:var(--accent-color); background:var(--bg-black); padding:6px 15px; border:1px solid var(--accent-color); letter-spacing:2px; pointer-events:auto;">
           3D SPATIAL</div>
         <button onclick="window.shapeManager.reset()"
-          style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:6px 15px; font-size:11px; cursor:pointer; pointer-events:auto;">RESET
+          style="background:var(--bg-accent-light); border:1px solid var(--accent-color); color:var(--accent-color); padding:6px 15px; font-size:11px; cursor:pointer; pointer-events:auto;">RESET
           SCENE</button>
       </div>
     </div>
     <div id="cursor-left" class="hand-cursor"
       style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
       <div
-        style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);">
+        style="position:absolute; inset:25px; border:2px solid var(--accent-color); border-radius:50%; box-shadow:0 0 15px var(--accent-glow);">
       </div>
     </div>
     <div id="cursor-right" class="hand-cursor"
       style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
       <div
-        style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);">
+        style="position:absolute; inset:25px; border:2px solid var(--accent-color); border-radius:50%; box-shadow:0 0 15px var(--accent-glow);">
       </div>
     </div>
     <div id="hand-camera-container"
-      style="position:absolute; bottom:30px; left:30px; width:220px; aspect-ratio:4/3; background:#000; border-radius:15px; border:1px solid rgba(0, 255, 204, 0.4); overflow:hidden; pointer-events:auto;">
+      style="position:absolute; bottom:30px; left:30px; width:220px; aspect-ratio:4/3; background:var(--bg-black); border-radius:15px; border:1px solid var(--border-accent); overflow:hidden; pointer-events:auto;">
       <video id="hand-video" autoplay playsinline
         style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1); opacity:0.8;"></video>
       <canvas id="hand-canvas"
         style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
       <button onclick="window.handEngine.stop()"
-        style="position:absolute; top:10px; right:10px; background:none; border:none; color:#00ffcc; cursor:pointer;"><i
+        style="position:absolute; top:10px; right:10px; background:none; border:none; color:var(--accent-color); cursor:pointer;"><i
           class="bi bi-x-circle"></i></button>
     </div>
   </div>
 
   <!-- F. NARUTO OVERLAY -->
   <div id="naruto-overlay"
-    style="display:none; position:fixed; inset:0; z-index:9999999; background:#000; overflow:hidden;">
+    style="display:none; position:fixed; inset:0; z-index:9999999; background:var(--bg-black); overflow:hidden;">
     <video id="naruto-camera" autoplay playsinline muted
       style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); opacity:0.85;"></video>
     <div id="naruto-fx-layer" style="position:absolute; inset:0; pointer-events:none;"></div>
