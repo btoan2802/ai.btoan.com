@@ -947,14 +947,17 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
-            // Detect duration from prompt
+            // Split prompt into words
+            const allWords = videoPrompt.split(/\s+/);
+            const wordCount = allWords.length;
+
+            // 🔥 TỰ ĐỘNG ƯỚC TÍNH CHUẨN: 18 từ ~ 8 giây
             let requestedDuration = 8; 
             const durationMatch = userText.match(/(\d+)\s*(s|giây|second)/i);
             if (durationMatch) {
                 requestedDuration = parseInt(durationMatch[1]);
             } else {
-                // 🔥 TỰ ĐỘNG ƯỚC TÍNH SIÊU DÀI: 150 ký tự ~ 8 giây
-                const estimatedSecs = Math.ceil(videoPrompt.length / 150) * 8;
+                const estimatedSecs = Math.ceil(wordCount / 18) * 8;
                 requestedDuration = Math.max(8, estimatedSecs);
             }
 
@@ -962,16 +965,11 @@ async function send() {
             const numSegments = Math.ceil(requestedDuration / 8);
             const segmentDuration = 8; 
 
-            // ✂️ CHIA NHỎ VĂN BẢN THEO PHÂN ĐOẠN
+            // ✂️ CHIA NHỎ VĂN BẢN THEO SỐ TỪ (Đảm bảo AI nói kịp)
             const promptParts = [];
-            if (numSegments > 1) {
-                const words = videoPrompt.split(/\s+/);
-                const wordsPerSegment = Math.ceil(words.length / numSegments);
-                for (let i = 0; i < numSegments; i++) {
-                    promptParts.push(words.slice(i * wordsPerSegment, (i + 1) * wordsPerSegment).join(" "));
-                }
-            } else {
-                promptParts.push(videoPrompt);
+            const wordsPerSegment = Math.ceil(wordCount / numSegments);
+            for (let i = 0; i < numSegments; i++) {
+                promptParts.push(allWords.slice(i * wordsPerSegment, (i + 1) * wordsPerSegment).join(" "));
             }
 
             // Get reference image (first one)
