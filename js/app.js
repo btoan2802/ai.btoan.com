@@ -949,7 +949,7 @@ async function send() {
 
             // LUÔN LUÔN CHỈ 1 VIDEO (8S) - Theo yêu cầu người dùng
             const segmentDuration = 8;
-            
+
             // 🛡️ HÀM LÀM SẠCH VĂN BẢN (Né bộ lọc Google)
             const sanitizePrompt = (text) => {
                 const map = {
@@ -1401,7 +1401,7 @@ async function loadConversation(id, updateUrl = true) {
                                     </div>
                                     <div class="video-actions-premium">
                                         <span class="status-badge-premium">
-                                            <i class='bx bx-magic-wand'></i> AI Video Cinematic
+                                            <i class='bx bx-magic-wand'></i> Btoan AI Video
                                         </span>
                                         <a href="${vidUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
                                             <i class='bx bx-download'></i> Tải Video
@@ -2593,14 +2593,14 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
                                 <span class="status-badge-premium">
                                     <i class='bx bx-magic-wand'></i> Btoan AI Video
                                 </span>
-                                <a href="${videoUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
-                                    <i class='bx bx-download'></i> Tải Video
-                                </a>
+                                <button onclick="forceDownloadVideo('${videoUrl}', 'btoan_ai_video_${Date.now()}.mp4', this)" class="download-btn-premium">
+                                    <i class='bx bx-download'></i> <span>Tải Video</span>
+                                </button>
                             </div>
                         </div>
                     `;
                     scrollToBottom();
-                }, 1200); // Tăng thời gian chờ một chút để nhìn rõ 100%
+                }, 1200); 
                 return;
             }
 
@@ -2646,3 +2646,41 @@ function closeImagePreview() {
 document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") closeImagePreview();
 });
+
+// 📥 FORCE DOWNLOAD VIDEO (CROSS-ORIGIN)
+async function forceDownloadVideo(url, filename, btn) {
+    if (!url) return;
+    
+    const originalContent = btn.innerHTML;
+    try {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> <span>Đang xử lý...</span>`;
+
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+
+        btn.innerHTML = `<i class='bx bx-check'></i> <span>Xong!</span>`;
+    } catch (err) {
+        console.error("❌ Download error:", err);
+        btn.innerHTML = `<i class='bx bx-error'></i> <span>Lỗi rồi!</span>`;
+        // Fallback to direct link if fetch fails
+        window.open(url, '_blank');
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }, 3000);
+    }
+}
