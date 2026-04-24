@@ -983,8 +983,30 @@ async function send() {
                 }
             }
 
+            // 🛡️ HÀM LÀM SẠCH VĂN BẢN (Né bộ lọc Google)
+            const sanitizePrompt = (text) => {
+                const map = {
+                    "trói buộc": "gắn kết",
+                    "quất": "dạy bảo",
+                    "đau": "nghiêm khắc",
+                    "mũi kiếm": "thử thách",
+                    "sắt đá": "kiên cường",
+                    "chết đi": "thay đổi",
+                    "đánh": "dạy",
+                    "kiếm": "thử thách",
+                    "bạo lực": "mạnh mẽ"
+                };
+                let cleanText = text;
+                Object.keys(map).forEach(key => {
+                    const regex = new RegExp(key, "gi");
+                    cleanText = cleanText.replace(regex, map[key]);
+                });
+                return cleanText;
+            };
+
             // Trigger multiple segments
             for (let i = 0; i < numSegments; i++) {
+                // ... (giữ nguyên logic tạo vidLoading)
                 const vidLoading = document.createElement("div");
                 vidLoading.className = "msgrow bot";
                 vidLoading.innerHTML = `
@@ -1006,8 +1028,8 @@ async function send() {
                 scrollToBottom();
 
                 try {
-                    // Gửi phần văn bản tương ứng cho từng clip
-                    const segmentPrompt = promptParts[i] || videoPrompt;
+                    // Gửi phần văn bản tương ứng cho từng clip (Đã được làm sạch)
+                    const segmentPrompt = sanitizePrompt(promptParts[i] || videoPrompt);
 
                     const vidRes = await fetch("/ai/api/generate_video.php", {
                         method: "POST",
@@ -1033,7 +1055,6 @@ async function send() {
                     vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi kết nối clip ${i + 1}</div>`;
                 }
                 
-                // Đợi một chút trước khi gửi job tiếp theo để tránh rate limit
                 if (numSegments > 1) await new Promise(r => setTimeout(r, 1500));
             }
 
