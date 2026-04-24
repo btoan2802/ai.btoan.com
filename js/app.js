@@ -1607,6 +1607,38 @@ window.onload = function () {
         }
     })
 
+    // 🖱️ SCROLL TO BOTTOM BUTTON LOGIC
+    const scrollBtn = document.getElementById("scrollToBottomBtn");
+    if (chatEl && scrollBtn) {
+        chatEl.addEventListener("scroll", () => {
+            // Hiển thị nút nếu cách đáy hơn 300px
+            const threshold = 300;
+            const isAtBottom = (chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight) < threshold;
+
+            if (isAtBottom) {
+                if (scrollBtn.classList.contains("show")) {
+                    scrollBtn.classList.remove("show");
+                    setTimeout(() => {
+                        if (!scrollBtn.classList.contains("show")) scrollBtn.style.display = "none";
+                    }, 400);
+                }
+            } else {
+                if (!scrollBtn.classList.contains("show")) {
+                    scrollBtn.style.display = "flex";
+                    // Small delay to trigger CSS transition
+                    setTimeout(() => scrollBtn.classList.add("show"), 10);
+                }
+            }
+        });
+
+        scrollBtn.addEventListener("click", () => {
+            chatEl.scrollTo({
+                top: chatEl.scrollHeight,
+                behavior: "smooth"
+            });
+        });
+    }
+
     // ===== auto format dd/mm/yyyy =====
     const dobInput = document.getElementById("pf_dob")
 

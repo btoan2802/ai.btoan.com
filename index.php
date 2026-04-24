@@ -195,6 +195,12 @@
         </div>
 
         <main id="chat" class="flex-grow-1 p-3"></main>
+        
+        <!-- Scroll to Bottom Button -->
+        <button id="scrollToBottomBtn" class="scroll-bottom-btn" title="Cuộn xuống dưới">
+            <i class='bx bx-chevron-down'></i>
+        </button>
+
         <div id="status" class="p-2 text-muted" style="display:none"></div>
 
         <div class="p-2 border-top">
