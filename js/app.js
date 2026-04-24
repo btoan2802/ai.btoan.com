@@ -985,9 +985,22 @@ async function send() {
             // Get reference image (first one)
             let refImage = images.length > 0 ? images[0] : null;
 
-            // 🔥 TỰ ĐỘNG TÌM ẢNH CŨ NẾU TIN NHẮN NÀY KHÔNG CÓ ẢNH
+            // 🔥 TỰ ĐỘNG TÌM ẢNH CŨ (BỀN VỮNG: Gọi Backend)
+            if (!refImage && conversation_id) {
+                try {
+                    const lastImgRes = await fetch(`/ai/api/get_last_image.php?conversation_id=${conversation_id}`);
+                    const lastImgData = await lastImgRes.json();
+                    if (lastImgData.success && lastImgData.image_url) {
+                        refImage = lastImgData.image_url;
+                    }
+                } catch (e) {
+                    console.log("History image fetch error:", e);
+                }
+            }
+
+            // Fallback: Tìm trong DOM nếu backend fail
             if (!refImage) {
-                const allUserImages = Array.from(document.querySelectorAll('.msgrow.user .img-preview img')).reverse();
+                const allUserImages = Array.from(document.querySelectorAll('.msgrow.me .usertxt img, .msgrow.me .img-preview img')).reverse();
                 if (allUserImages.length > 0) {
                     refImage = allUserImages[0].src;
                 }
