@@ -972,6 +972,14 @@ async function send() {
             };
 
             const segmentPrompt = sanitizePrompt(videoPrompt);
+            
+            // 🔥 TỐI ƯU CHO TIẾNG VIỆT (Gửi thêm chỉ dẫn tiếng Anh cho Google Veo)
+            const hasVietnamese = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(segmentPrompt);
+            let finalVideoPrompt = segmentPrompt;
+            if (hasVietnamese) {
+                // Thêm chỉ dẫn Lip-sync tiếng Việt bằng tiếng Anh để Google dễ hiểu
+                finalVideoPrompt += `. Lip-sync accurately to the Vietnamese words: "${segmentPrompt}". The person is speaking Vietnamese fluently with clear articulation.`;
+            }
 
             // Get reference image (first one)
             let refImage = images.length > 0 ? images[0] : null;
@@ -1023,7 +1031,7 @@ async function send() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        prompt: segmentPrompt,
+                        prompt: finalVideoPrompt,
                         conversation_id,
                         user_id: Number(localStorage.getItem("user_id") || 0),
                         chat_id: current_chat_id,
