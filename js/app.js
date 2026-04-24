@@ -947,32 +947,31 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
-            // Split prompt into words
-            const allWords = videoPrompt.trim().split(/\s+/).filter(w => w.length > 0);
-            const wordCount = allWords.length;
-
-            // 🔥 LUÔN MẶC ĐỊNH 8 GIÂY (1 CLIP) - CHỈ CHIA KHI USER YÊU CẦU RÕ SỐ GIÂY
-            let requestedDuration = 8; 
-            const durationMatch = userText.match(/(\d+)\s*(s|giây|second)/i);
+            // LUÔN LUÔN CHỈ 1 VIDEO (8S) - Theo yêu cầu người dùng
+            const segmentDuration = 8;
             
-            if (durationMatch) {
-                requestedDuration = parseInt(durationMatch[1]);
-            }
+            // 🛡️ HÀM LÀM SẠCH VĂN BẢN (Né bộ lọc Google)
+            const sanitizePrompt = (text) => {
+                const map = {
+                    "trói buộc": "gắn kết",
+                    "quất": "dạy bảo",
+                    "đau": "nghiêm khắc",
+                    "mũi kiếm": "thử thách",
+                    "sắt đá": "kiên cường",
+                    "chết đi": "thay đổi",
+                    "đánh": "dạy",
+                    "kiếm": "thử thách",
+                    "bạo lực": "mạnh mẽ"
+                };
+                let cleanText = text;
+                Object.keys(map).forEach(key => {
+                    const regex = new RegExp(key, "gi");
+                    cleanText = cleanText.replace(regex, map[key]);
+                });
+                return cleanText;
+            };
 
-            // Calculate segments (max 8s per segment)
-            let numSegments = Math.max(1, Math.ceil(requestedDuration / 8));
-            
-            // 🛡️ CHỐNG TRÀN: Không bao giờ tự động tạo quá 5 clip nếu không có yêu cầu giây cụ thể
-            if (!durationMatch && numSegments > 3) numSegments = 3;
-
-            const segmentDuration = 8; 
-
-            // ✂️ CHIA NHỎ VĂN BẢN THEO SỐ TỪ (Đảm bảo AI nói kịp)
-            const promptParts = [];
-            const wordsPerSegment = Math.ceil(wordCount / numSegments);
-            for (let i = 0; i < numSegments; i++) {
-                promptParts.push(allWords.slice(i * wordsPerSegment, (i + 1) * wordsPerSegment).join(" "));
-            }
+            const segmentPrompt = sanitizePrompt(videoPrompt);
 
             // Get reference image (first one)
             let refImage = images.length > 0 ? images[0] : null;
@@ -998,79 +997,49 @@ async function send() {
                 }
             }
 
-            // 🛡️ HÀM LÀM SẠCH VĂN BẢN (Né bộ lọc Google)
-            const sanitizePrompt = (text) => {
-                const map = {
-                    "trói buộc": "gắn kết",
-                    "quất": "dạy bảo",
-                    "đau": "nghiêm khắc",
-                    "mũi kiếm": "thử thách",
-                    "sắt đá": "kiên cường",
-                    "chết đi": "thay đổi",
-                    "đánh": "dạy",
-                    "kiếm": "thử thách",
-                    "bạo lực": "mạnh mẽ"
-                };
-                let cleanText = text;
-                Object.keys(map).forEach(key => {
-                    const regex = new RegExp(key, "gi");
-                    cleanText = cleanText.replace(regex, map[key]);
-                });
-                return cleanText;
-            };
-
-            // Trigger multiple segments
-            for (let i = 0; i < numSegments; i++) {
-                // ... (giữ nguyên logic tạo vidLoading)
-                const vidLoading = document.createElement("div");
-                vidLoading.className = "msgrow bot";
-                vidLoading.innerHTML = `
-                    <div class="bubble assistant video-processing-card">
-                        <div class="processing-glow"></div>
-                        <div class="d-flex align-items-center gap-3">
-                            <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
-                            <div class="flex-grow-1">
-                                <div class="fw-bold mb-1">Đang tạo clip ${i + 1}/${numSegments}...</div>
-                                <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-                                </div>
-                                <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Đang chuẩn bị nội dung phần ${i + 1}...</div>
+            // Create loading bubble
+            const vidLoading = document.createElement("div");
+            vidLoading.className = "msgrow bot";
+            vidLoading.innerHTML = `
+                <div class="bubble assistant video-processing-card">
+                    <div class="processing-glow"></div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold mb-1">Đang tạo video cho bạn...</div>
+                            <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                             </div>
+                            <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Đang chuẩn bị nội dung...</div>
                         </div>
                     </div>
-                `;
-                chatEl.appendChild(vidLoading);
-                scrollToBottom();
+                </div>
+            `;
+            chatEl.appendChild(vidLoading);
+            scrollToBottom();
 
-                try {
-                    // Gửi phần văn bản tương ứng cho từng clip (Đã được làm sạch)
-                    const segmentPrompt = sanitizePrompt(promptParts[i] || videoPrompt);
+            try {
+                const vidRes = await fetch("/ai/api/generate_video.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        prompt: segmentPrompt,
+                        conversation_id,
+                        user_id: Number(localStorage.getItem("user_id") || 0),
+                        chat_id: current_chat_id,
+                        image: refImage,
+                        duration: segmentDuration
+                    })
+                });
 
-                    const vidRes = await fetch("/ai/api/generate_video.php", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            prompt: segmentPrompt,
-                            conversation_id,
-                            user_id: Number(localStorage.getItem("user_id") || 0),
-                            chat_id: current_chat_id,
-                            image: refImage,
-                            duration: segmentDuration
-                        })
-                    });
-
-                    const vidData = await vidRes.json();
-                    if (vidRes.ok && vidData?.success) {
-                        const job_id = vidData.job_id;
-                        pollVideoStatus(job_id, vidLoading, current_chat_id);
-                    } else {
-                        vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi clip ${i + 1}: ${vidData?.error || "Lỗi không xác định"}</div>`;
-                    }
-                } catch (e) {
-                    vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi kết nối clip ${i + 1}</div>`;
+                const vidData = await vidRes.json();
+                if (vidRes.ok && vidData?.success) {
+                    pollVideoStatus(vidData.job_id, vidLoading, current_chat_id);
+                } else {
+                    vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi: ${vidData?.error || "Lỗi không xác định"}</div>`;
                 }
-                
-                if (numSegments > 1) await new Promise(r => setTimeout(r, 1500));
+            } catch (e) {
+                vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi kết nối video</div>`;
             }
 
             isSending = false;
