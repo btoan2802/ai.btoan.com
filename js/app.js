@@ -951,23 +951,28 @@ async function send() {
             const allWords = videoPrompt.trim().split(/\s+/).filter(w => w.length > 0);
             const wordCount = allWords.length;
 
-            // 🔥 TỰ ĐỘNG ƯỚC TÍNH THÔNG MINH: 22 từ ~ 8 giây
+            // 🔥 TỰ ĐỘNG ƯỚC TÍNH "KHÔN" HƠN
             let requestedDuration = 8; 
             const durationMatch = userText.match(/(\d+)\s*(s|giây|second)/i);
             
             if (durationMatch) {
                 requestedDuration = parseInt(durationMatch[1]);
-            } else if (wordCount > 25) {
-                // Chỉ tự động chia nếu trên 25 từ
-                const estimatedSecs = Math.ceil(wordCount / 22) * 8;
-                requestedDuration = estimatedSecs;
+            } else if (wordCount > 60) {
+                // Chỉ tự động chia thành chuỗi nếu cực kỳ dài (> 60 từ)
+                const estimatedSecs = Math.ceil(wordCount / 25) * 8;
+                // Giới hạn mặc định không quá 24s (3 clip) để tránh "ngu"
+                requestedDuration = Math.min(24, estimatedSecs);
             } else {
-                // MẶC ĐỊNH LUÔN LÀ 8S CHO CÂU NGẮN
+                // Các trường hợp còn lại (ngắn hoặc vừa) -> CHỈ 1 CLIP 8S
                 requestedDuration = 8;
             }
 
             // Calculate segments (max 8s per segment)
-            const numSegments = Math.max(1, Math.ceil(requestedDuration / 8));
+            let numSegments = Math.max(1, Math.ceil(requestedDuration / 8));
+            
+            // 🛡️ CHỐNG TRÀN: Không bao giờ tự động tạo quá 5 clip nếu không có yêu cầu giây cụ thể
+            if (!durationMatch && numSegments > 3) numSegments = 3;
+
             const segmentDuration = 8; 
 
             // ✂️ CHIA NHỎ VĂN BẢN THEO SỐ TỪ (Đảm bảo AI nói kịp)
