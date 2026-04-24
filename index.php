@@ -1,101 +1,123 @@
-<?php
-include 'login/Check_LogIn.php';
-?>
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Btoan AI - ChatGPT Style</title>
-  <link rel="icon" type="image/x-icon" href="https://btoan.com/images/favicon.ico">
-  
-  <!-- CSS -->
+  <!-- 1. Meta -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- 2. Title + Icon -->
+  <title>Btoan AI</title>
+  <base href="/">
+  <link rel="icon" href="favicon.ico">
+
+  <!-- 3. CSS Library -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <link rel="stylesheet" href="/css/style.css?v=21">
-  <link rel="stylesheet" href="/css/main_style.css?v=30">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+  <!-- 4. CSS Local -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
+  <link rel="stylesheet" href="css/main_style.css?v=11">
+
+  <!-- 5. Config Script (Ngắn) -->
+  <script src="js/mathjax_config.js"></script>
+
+  <!-- 6. JS Library Cần Load Sớm -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- MediaPipe Core (Moved to head for reliability) -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+
 </head>
 
 <body>
 
-  <!-- A. LOGIN BOX -->
-  <div id="loginBox" class="login-overlay">
-    <div class="container login-card">
-      <div class="login-header">
-        <img src="https://btoan.com/images/logo.png" alt="Logo" class="login-logo">
-        <h2>Chào mừng trở lại</h2>
-        <p>Đăng nhập để tiếp tục với Btoan AI</p>
-      </div>
-
-      <div id="loginForm">
-        <div class="mb-3">
-          <div class="input-group-premium">
-            <i class="bi bi-person"></i>
-            <input type="text" id="l_user" placeholder="Tên đăng nhập">
+  <!-- A. LOGIN -->
+  <div id="loginBox" style="display:none">
+    <div class="container">
+      <div class="form-box login" id="loginForm">
+        <form onsubmit="event.preventDefault(); login();">
+          <div id="loginMsg" style="color:red;"></div>
+          <h1>Login</h1>
+          <div class="input-box">
+            <input id="login_username" type="text" placeholder="Username" required>
+            <i class='bx bxs-user'></i>
           </div>
-        </div>
-        <div class="mb-3">
-          <div class="input-group-premium">
-            <i class="bi bi-lock"></i>
-            <input type="password" id="l_pass" placeholder="Mật khẩu">
-            <i class="bi bi-eye toggle-password" onclick="togglePassword('l_pass', this)"></i>
+          <div class="input-box">
+            <input id="login_password" type="password" placeholder="Password" required>
+            <i class='bx bxs-lock-alt'></i>
           </div>
-        </div>
-        <button onclick="login()" class="btn btn-primary w-100 login-btn-premium mb-3">Đăng nhập</button>
-        
-        <div class="separator"><span>Hoặc</span></div>
-        
-        <div class="d-flex justify-content-center mb-3">
+          <div class="forgot-link"><a href="#">Forgot Password?</a></div>
+          <button type="submit" class="btn">Login</button>
+          <button type="button" id="face-login-btn" class="btn btn-face">
+            <i class='bx bx-scan'></i> Đăng nhập khuôn mặt
+          </button>
+          <div id="face-login-status"></div>
+          <div class="switch-auth">Chưa có tài khoản? <span onclick="showRegisterForm()">Đăng ký</span></div>
+          <p>or login with social platforms</p>
+          <div class="social-icons">
             <div id="g_id_onload"
-                 data-client_id="866785002016-e5uueovfsl3j3d5p07p99qom6q233j81.apps.googleusercontent.com"
-                 data-callback="handleGoogleLogin">
-            </div>
-            <div class="g_id_signin" data-type="standard"></div>
-        </div>
-
-        <p class="text-center mt-3 small">Chưa có tài khoản? <a href="javascript:void(0)" onclick="showRegister()">Đăng ký ngay</a></p>
+              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
+              data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+            <div class="g_id_signin" data-type="standard" data-size="large"></div>
+          </div>
+        </form>
       </div>
 
-      <div id="registerForm" style="display:none">
-        <div class="mb-3">
-          <div class="input-group-premium">
-            <i class="bi bi-person-plus"></i>
-            <input type="text" id="r_user" placeholder="Tên đăng nhập mới">
+      <div class="form-box register" id="registerForm">
+        <form onsubmit="event.preventDefault(); register();">
+          <div id="registerMsg" style="color:red;"></div>
+          <h1>Registration</h1>
+          <div class="input-box">
+            <input id="reg_username" type="text" placeholder="Username" required>
+            <i class='bx bxs-user'></i>
           </div>
-        </div>
-        <div class="mb-3">
-          <div class="input-group-premium">
-            <i class="bi bi-lock"></i>
-            <input type="password" id="r_pass" placeholder="Mật khẩu">
+          <div class="input-box">
+            <input id="reg_password" type="password" placeholder="Password" required>
+            <i class='bx bxs-lock-alt'></i>
           </div>
+          <div class="input-box">
+            <input id="reg_password2" type="password" placeholder="Confirm Password" required>
+            <i class='bx bxs-lock-alt'></i>
+          </div>
+          <button type="submit" class="btn">Register</button>
+          <div class="switch-auth">Đã có tài khoản? <span onclick="showLoginForm()">Đăng nhập</span></div>
+          <p>or register with social platforms</p>
+          <div class="social-icons">
+            <div id="g_id_onload"
+              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
+              data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+            <div class="g_id_signin" data-type="standard" data-size="large"></div>
+          </div>
+        </form>
+      </div>
+
+      <div class="toggle-box">
+        <div class="toggle-panel toggle-left">
+          <h1>Welcome Back!</h1>
+          <p>Don't have an account?</p>
+          <button class="btn register-btn">Register</button>
         </div>
-        <button onclick="register()" class="btn btn-success w-100 login-btn-premium mb-3">Đăng ký tài khoản</button>
-        <p class="text-center mt-3 small">Đã có tài khoản? <a href="javascript:void(0)" onclick="showLogin()">Đăng nhập</a></p>
+        <div class="toggle-panel toggle-right">
+          <h1>Hello, Welcome!</h1>
+          <p>Already have an account?</p>
+          <button class="btn login-btn">Login</button>
+        </div>
       </div>
     </div>
   </div>
 
   <!-- B. CHAT APP -->
   <div id="chatApp" style="display:none">
-    
-    <!-- 🟢 KỸ THUẬT: HAND ENGINE & 3D ELEMENTS -->
-    <div id="hand-overlay" style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none;">
-        <video id="hand-video" style="display:none"></video>
-        <canvas id="hand-canvas" style="position:absolute; top:10px; right:10px; width:160px; height:120px; border-radius:12px; background:rgba(0,0,0,0.5); border:1px solid var(--primary-color); transform: scaleX(-1);"></canvas>
-        <div id="cursor-left" style="position:fixed; width:24px; height:24px; background:rgba(0,255,204,0.3); border:2px solid #00ffcc; border-radius:50%; pointer-events:none; z-index:1000000; display:none;"></div>
-        <div id="cursor-right" style="position:fixed; width:24px; height:24px; background:rgba(0,255,204,0.3); border:2px solid #00ffcc; border-radius:50%; pointer-events:none; z-index:1000000; display:none;"></div>
-        <div id="hand-mode-label" style="position:absolute; top:140px; right:10px; background:var(--primary-color); color:white; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:bold;">HAND_MODE</div>
-    </div>
-    
-    <div id="shape-container" style="position:fixed; inset:0; pointer-events:none; z-index:9998;"></div>
-    <div id="hand-tracking-container" style="position:fixed; inset:0; pointer-events:none; z-index:9999;">
-        <canvas id="hand-canvas-overlay" style="width:100%; height:100%;"></canvas>
-    </div>
-
     <div class="d-flex main-app-wrapper">
 
       <div id="sidebar" class="sidebar">
@@ -104,17 +126,17 @@ include 'login/Check_LogIn.php';
               <i class="bi bi-plus-lg"></i>
               <span>Chat mới</span>
            </div>
-           <div class="new-chat-wrapper ms-1" onclick="window.location.href='https://code.btoan.com'" title="Btoan Code IDE" style="width: auto; flex-grow: 0; padding: 10px;">
-              <i class="bi bi-code-square"></i>
-           </div>
-           <button class="icon-toggle-btn ms-auto" onclick="toggleSidebar()" title="Đóng sidebar">
+           <button class="icon-toggle-btn" onclick="toggleSidebar()" title="Đóng sidebar">
               <i class="bi bi-layout-sidebar"></i>
            </button>
         </div>
-
-        <div class="sidebar-utils p-2">
-          <div id="toggleHandMode" class="util-item" style="cursor:pointer;" title="Bật/Tắt điều khiển bằng tay">
-            <i class="bi bi-hand-index-thumb"></i>
+        <div class="sidebar-utils">
+          <a href="./code/code.php" class="util-item" title="Btoan Code IDE">
+            <i class="bi bi-journal-code"></i>
+            <span>Btoan AI Code</span>
+          </a>
+          <div id="toggleHandMode" class="util-item" style="cursor:pointer;" title="Bật/Tắt Hand Interaction">
+            <i class="bi bi-hand-index"></i>
             <span>Điều khiển tay</span>
           </div>
           <div id="toggleNarutoMode" class="util-item" style="cursor:pointer;" title="Bật/Tắt hiệu ứng Naruto">
@@ -125,37 +147,10 @@ include 'login/Check_LogIn.php';
 
         <div class="sidebar-title">Lịch sử chat</div>
         <div id="historyList" style="flex:1; overflow-y:auto;"></div>
-        
         <div class="sidebar-footer">
-          <div class="profile-card-sidebar" onclick="toggleUserMenu()">
-            <div id="sidebarUserAvatar" class="avatar">U</div>
-            <div class="user-info-text">
-              <span id="sidebarUserName" class="user-name">User</span>
-              <span class="user-subtext">Btoan AI Plus</span>
-            </div>
-            <div class="more-icon">
-              <i class="bi bi-three-dots"></i>
-            </div>
-          </div>
-          
-          <div id="userMenu" class="user-menu">
-             <div class="menu-item" onclick="openProfile()">
-               <i class="bi bi-person"></i>
-               <span>Hồ sơ</span>
-             </div>
-             <div class="menu-item" onclick="alert('Settings coming soon')">
-               <i class="bi bi-gear"></i>
-               <span>Cài đặt</span>
-             </div>
-             <div class="menu-item" onclick="window.open('https://github.com/btoan2802', '_blank')">
-               <i class="bi bi-question-circle"></i>
-               <span>Trợ giúp</span>
-             </div>
-             <div class="menu-divider"></div>
-             <div class="menu-item text-danger" onclick="logout()">
-               <i class="bi bi-box-arrow-right"></i>
-               <span>Đăng xuất</span>
-             </div>
+          <div class="logout-wrapper" onclick="logout()" title="Đăng xuất">
+            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+            <span>Đăng xuất</span>
           </div>
         </div>
       </div>
@@ -171,47 +166,97 @@ include 'login/Check_LogIn.php';
             <div class="brand-text">Btoan AI</div>
           </div>
           <div class="ms-auto d-flex align-items-center">
-            <button class="icon-toggle-btn me-2" id="themeToggleBtn" onclick="toggleTheme()" title="Đổi chế độ sáng/tối">
-              <i class="bi bi-moon-stars"></i>
-            </button>
+
+            <div id="userBox" class="user-box">
+              <div class="user-info" onclick="toggleUserMenu()">
+                <div id="userAvatar" class="avatar">U</div>
+                <div id="userName" class="user-name">User</div>
+                <div class="arrow">▾</div>
+              </div>
+               <div id="userMenu" class="user-menu">
+                 <div class="menu-item-premium" onclick="openProfile()">
+                   <div class="menu-item-icon">
+                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                   </div>
+                   <span>Hồ sơ cá nhân</span>
+                 </div>
+                 <div class="menu-item-divider"></div>
+                 <div class="menu-item-premium text-danger" onclick="logout()">
+                   <div class="menu-item-icon">
+                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                   </div>
+                   <span>Đăng xuất</span>
+                 </div>
+               </div>
+
+
+            </div>
           </div>
         </div>
 
         <main id="chat" class="flex-grow-1 p-3"></main>
         
+        <!-- Scroll to Bottom Button -->
         <button id="scrollToBottomBtn" class="scroll-bottom-btn" title="Cuộn xuống dưới">
             <i class='bx bx-chevron-down'></i>
         </button>
 
         <div id="status" class="p-2 text-muted" style="display:none"></div>
 
-        <div class="input-container">
-          <div class="input-box-wrapper">
+        <div class="p-2 border-top">
+          <div class="d-flex align-items-center">
+            <input id="fileImg" type="file" accept="image/*" multiple hidden>
+            <input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
+            <input id="fileDoc" type="file"
+              accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              multiple hidden>
+
             <div class="chat-actions-group">
               <button class="action-icon-btn" data-bs-toggle="dropdown" title="Tính năng thêm">
                 <i class="bi bi-plus-lg"></i>
               </button>
-              <span id="modeStatus" class="badge bg-light text-dark" style="font-size:0.7rem; cursor:pointer;">⚡ Fast</span>
+              <span id="modeStatus" class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">⚡ Fast</span>
+
 
               <ul class="dropdown-menu shadow-md border-0 profile-menu-premium">
-                <li><button id="pickImage" class="dropdown-item py-2"><i class="bi bi-image me-2 text-primary"></i> Gửi ảnh</button></li>
-                <li><button id="pickCamera" class="dropdown-item py-2"><i class="bi bi-camera me-2 text-success"></i> Chụp ảnh</button></li>
-                <li><button id="pickFile" class="dropdown-item py-2"><i class="bi bi-file-earmark-text me-2 text-info"></i> Gửi tệp</button></li>
+                <li>
+                  <button id="pickImage" class="dropdown-item d-flex align-items-center py-2">
+                    <i class="bi bi-image me-2 text-primary"></i> <span>Gửi ảnh</span>
+                  </button>
+                </li>
+                <li>
+                  <button id="pickCamera" class="dropdown-item d-flex align-items-center py-2">
+                    <i class="bi bi-camera me-2 text-success"></i> <span>Chụp ảnh</span>
+                  </button>
+                </li>
+                <li>
+                  <button id="pickFile" class="dropdown-item d-flex align-items-center py-2">
+                    <i class="bi bi-file-earmark-text me-2 text-info"></i> <span>Gửi tệp</span>
+                  </button>
+                </li>
                 <li><hr class="dropdown-divider"></li>
-                <li><button class="dropdown-item py-2" onclick="setMode('fast')"><i class="bi bi-lightning-charge-fill me-2 text-warning"></i> Fast</button></li>
-                <li><button class="dropdown-item py-2" onclick="setMode('thinking')"><i class="bi bi-brain me-2 text-purp"></i> Thinking</button></li>
+                <li>
+                  <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
+                    <i class="bi bi-lightning-charge-fill me-2 text-warning"></i> <span>Fast (Mặc định)</span>
+                  </button>
+                </li>
+                <li>
+                  <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
+                    <i class="bi bi-brain me-2 text-purp"></i> <span>Thinking (Chuyên sâu)</span>
+                  </button>
+                </li>
               </ul>
+
             </div>
 
-            <textarea id="msg" class="form-control" placeholder="nhập tin nhắn..." rows="1"></textarea>
-            <button id="send" class="btn send-btn"><i class="bi bi-arrow-up-short" style="font-size: 1.5rem;"></i></button>
+            <textarea id="msg" class="form-control mx-2" placeholder="nhập tin nhắn..." rows="1"></textarea>
+            <button id="send" class="btn btn-primary send-btn"><i class="bi bi-send"></i></button>
           </div>
-          
-          <div id="attachments" class="mt-2"></div>
-          
-          <div class="text-center small mt-2" style="color: var(--text-muted); font-size: 11px;">
-            Btoan AI có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng. Mọi thắc mắc liên hệ <a style="color: var(--text-main);" href="https://github.com/btoan2802" target="_blank">admin</a>
-          </div>
+        </div>
+        <div id="attachments"></div>
+        <div class="text-center small p-2">
+          Btoan AI có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng. Mọi thắc mắc liên hệ <a style="color: black;"
+            href="https://github.com/btoan2802" target="_blank">admin</a>
         </div>
       </div>
     </div>
@@ -223,40 +268,108 @@ include 'login/Check_LogIn.php';
       <div class="avatar-upload">
         <div id="avatarPreview" class="avatar-preview">U</div>
         <input type="file" id="avatarInput" accept="image/*" style="display:none">
-        <button onclick="document.getElementById('avatarInput').click()" class="btn btn-light btn-sm mt-2">Đổi ảnh</button>
+        <button onclick="document.getElementById('avatarInput').click()" class="btn btn-light btn-sm mt-2">Đổi
+          ảnh</button>
       </div>
       <div class="profile-title">Thông tin cá nhân</div>
       <div id="profileMsg" class="text-danger mb-2"></div>
       <input id="pf_name" class="form-control mb-2" placeholder="Họ và tên">
       <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
-      <button type="button" id="face-enroll-btn-profile" class="btn btn-face-enroll w-100 mb-3" style="background: #edf2ff; color: #7494ec; border: none; font-size: 14px; height: 40px;">
-        <i class='bx bx-face'></i> Thiết lập FaceID
+      <button type="button" id="face-enroll-btn-profile" class="btn btn-face-enroll w-100 mb-3"
+        style="background: #edf2ff; color: #7494ec; border: none; font-size: 14px; height: 40px;">
+        <i class='bx bx-face'></i> Thiết lập khuôn mặt (FaceID)
       </button>
       <button onclick="saveProfile()" class="btn btn-primary w-100">Lưu thay đổi</button>
-      <button onclick="document.getElementById('profileModal').style.display='none'" class="btn btn-link w-100 mt-2 text-muted">Đóng</button>
     </div>
   </div>
 
   <!-- D. FACE ENROLL MODAL -->
-  <div id="face-enroll-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
-    <div style="background:var(--bg-main); padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-      <h3 style="margin-top:0; font-weight:700; color:var(--text-main); margin-bottom:10px;">Face ID</h3>
-      <div style="position:relative; width:200px; height:200px; overflow:hidden; border-radius:50%; border:4px solid var(--primary-color); margin: 0 auto 20px;">
-        <video id="face-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
-        <div id="scan-line" style="position:absolute; top:0; left:0; right:0; height:2px; background:var(--primary-color); display:none; animation: scanAnim 2s infinite;"></div>
+  <div id="face-enroll-modal"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+    <div
+      style="background:#fff; padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0; font-weight:700; color:#1e293b; margin-bottom:10px;">Thiết lập FaceID</h3>
+      <p style="color:#64748b; font-size:14px; margin-bottom:20px;">Giữ điện thoại thẳng mặt và đảm bảo đủ ánh sáng</p>
+      <div
+        style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:50%; border:4px solid #7494ec; background:#000; margin-bottom:20px;">
+        <video id="face-video" autoplay playsinline
+          style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
+        <div id="scan-line"
+          style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(to right, transparent, #7494ec, transparent); box-shadow: 0 0 15px #7494ec; animation: scanAnim 2s infinite linear; display:none;">
+        </div>
       </div>
-      <canvas id="face-canvas" style="display:none"></canvas>
-      <p id="face-enroll-status" style="color:var(--text-muted); font-size:14px;"></p>
-      <button id="face-close-btn" class="btn btn-outline-secondary w-100">Hủy bỏ</button>
+      <canvas id="face-canvas" style="display:none;"></canvas>
+      <div id="face-enroll-status" style="min-height:20px; margin-bottom:15px;"></div>
+      <button type="button" id="face-close-btn" class="btn btn-danger"
+        style="background:#ef4444; height:44px; font-size:14px;">Hủy bỏ</button>
     </div>
   </div>
 
-  <style>
-    @keyframes scanAnim {
-      0% { top: 0; }
-      100% { top: 100%; }
-    }
-  </style>
+  <!-- E. HAND OVERLAY -->
+  <div id="hand-overlay"
+    style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.05); overflow:hidden;">
+    <div id="shape-container"
+      style="position:absolute; inset:0; pointer-events:none; z-index:15; perspective: 1200px; transform-style: preserve-3d;">
+    </div>
+    <div id="hud-container"
+      style="position:absolute; inset:0; pointer-events:none; font-family:'JetBrains Mono', monospace;">
+      <div
+        style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:center;">
+        <div id="hand-mode-label"
+          style="font-size:14px; font-weight:900; color:#00ffcc; background:rgba(0,0,0,0.8); padding:6px 15px; border:1px solid #00ffcc; letter-spacing:2px; pointer-events:auto;">
+          3D SPATIAL</div>
+        <button onclick="window.shapeManager.reset()"
+          style="background:rgba(0,255,204,0.1); border:1px solid #00ffcc; color:#00ffcc; padding:6px 15px; font-size:11px; cursor:pointer; pointer-events:auto;">RESET
+          SCENE</button>
+      </div>
+    </div>
+    <div id="cursor-left" class="hand-cursor"
+      style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
+      <div
+        style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);">
+      </div>
+    </div>
+    <div id="cursor-right" class="hand-cursor"
+      style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
+      <div
+        style="position:absolute; inset:25px; border:2px solid #00ffcc; border-radius:50%; box-shadow:0 0 15px rgba(0,255,204,0.4);">
+      </div>
+    </div>
+    <div id="hand-camera-container"
+      style="position:absolute; bottom:30px; left:30px; width:220px; aspect-ratio:4/3; background:#000; border-radius:15px; border:1px solid rgba(0, 255, 204, 0.4); overflow:hidden; pointer-events:auto;">
+      <video id="hand-video" autoplay playsinline
+        style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1); opacity:0.8;"></video>
+      <canvas id="hand-canvas"
+        style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
+      <button onclick="window.handEngine.stop()"
+        style="position:absolute; top:10px; right:10px; background:none; border:none; color:#00ffcc; cursor:pointer;"><i
+          class="bi bi-x-circle"></i></button>
+    </div>
+  </div>
+
+  <!-- F. NARUTO OVERLAY -->
+  <div id="naruto-overlay"
+    style="display:none; position:fixed; inset:0; z-index:9999999; background:#000; overflow:hidden;">
+    <video id="naruto-camera" autoplay playsinline muted
+      style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); opacity:0.85;"></video>
+    <div id="naruto-fx-layer" style="position:absolute; inset:0; pointer-events:none;"></div>
+    <canvas id="naruto-canvas"
+      style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
+    <div
+      style="position:absolute; top:20px; left:0; right:0; display:flex; justify-content:center; pointer-events:none;">
+      <div
+        style="background:rgba(0,0,0,0.6); color:#f97316; font-weight:900; font-size:16px; padding:8px 24px; border:1px solid #f97316; border-radius:4px;">
+        🌀 Btoan Mode songoku</div>
+    </div>
+    <div id="naruto-score"
+      style="position:absolute; top:20px; right:24px; background:rgba(0,0,0,0.7); color:#facc15; font-size:20px; padding:8px 18px; border:1px solid #facc15; border-radius:6px;">
+      💠 0</div>
+    <button onclick="closeNaruto()"
+      style="position:absolute; top:20px; left:20px; background:rgba(220,38,38,0.85); border:none; color:#fff; font-size:14px; padding:8px 16px; border-radius:8px; cursor:pointer; z-index:10;">✕
+      Đóng</button>
+  </div>
+
+  <!-- Cuối body: Toàn bộ script -->
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -264,23 +377,20 @@ include 'login/Check_LogIn.php';
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
-  <!-- MediaPipe / Camera for Hand Tracking (Cần thiết cho JS) -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="facelib/face-api.min.js"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=19"></script>
+  <script src="js/app.js?v=29"></script>
+  <script src="js/hand_scene.js?v=9"></script>
+  <script src="js/hand_shapes.js?v=4"></script>
+  <script src="js/hand_engine.js?v=11"></script>
+  <script src="js/naruto_mode.js?v=35"></script>
 
-  <script src="/facelib/face-api.min.js"></script>
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="/login/SignUp_LogIn_Form.js?v=20"></script>
-  <script src="/js/app.js?v=30"></script>
-  <script src="/js/hand_scene.js?v=10"></script>
-  <script src="/js/hand_shapes.js?v=5"></script>
-  <script src="/js/hand_engine.js?v=12"></script>
-  <script src="/js/naruto_mode.js?v=36"></script>
-
+  <!-- G. IMAGE PREVIEW MODAL -->
   <div id="image-preview-modal" class="image-preview-modal" onclick="closeImagePreview()">
     <span class="close-preview">&times;</span>
     <img id="preview-img" class="preview-content" src="" alt="Preview">
   </div>
 </body>
+
+
 </html>
