@@ -1,23 +1,24 @@
 /* 🎨 Main Design System (Root Variables) */
 :root {
-  --primary-color: #3b82f6;
-  --primary-hover: #2563eb;
-  --bg-main: #f8fafc;
-  --bg-sidebar: #ffffff;
+  --primary-color: #10a37f;
+  --primary-hover: #1a7f64;
+  --bg-main: #ffffff;
+  --bg-sidebar: #f9f9f9;
   --bg-topbar: #ffffff;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
+  --text-main: #0d0d0d;
+  --text-muted: #676767;
   --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.3);
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.08);
-  --bubble-me: #3b82f6;
-  --bubble-bot: #ffffff;
-  --border-color: #f1f5f9;
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 30px rgba(0, 0, 0, 0.1);
+  --bubble-me: #f4f4f4;
+  --bubble-bot: transparent;
+  --border-color: #e5e5e5;
   --input-bg: #ffffff;
+  --sidebar-item-hover: #ececec;
 }
 
-/* 🌙 DARK MODE VARIABLES */
+/* 🌙 DARK MODE (CHATGPT PRECISE) */
 body.dark-mode {
   --bg-main: #212121;
   --bg-sidebar: #171717;
@@ -28,17 +29,92 @@ body.dark-mode {
   --glass-border: rgba(255, 255, 255, 0.1);
   --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.3);
-  --bubble-me: #3b82f6;
-  --bubble-bot: #2f2f2f;
+  --bubble-me: #2f2f2f;
+  --bubble-bot: transparent;
   --border-color: #383838;
   --input-bg: #2f2f2f;
+  --sidebar-item-hover: #2f2f2f;
+}
+
+/* 👤 SIDEBAR PROFILE CARD */
+.sidebar-footer {
+    padding: 12px;
+    position: relative;
+}
+
+.profile-card-sidebar {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    gap: 12px;
+    margin-bottom: 4px;
+}
+
+.profile-card-sidebar:hover {
+    background: var(--sidebar-item-hover);
+}
+
+.profile-card-sidebar .avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.profile-card-sidebar .user-name {
+    flex-grow: 1;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-main);
+}
+
+.profile-card-sidebar .settings-icon {
+    color: var(--text-muted);
+    font-size: 18px;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.profile-card-sidebar:hover .settings-icon {
+    opacity: 1;
+}
+
+.user-menu {
+    position: absolute;
+    bottom: 70px;
+    left: 12px;
+    right: 12px;
+    background: var(--bg-sidebar);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: var(--shadow-md);
+    z-index: 1010;
+    display: none;
+    animation: menuFadeUp 0.2s ease-out;
+}
+
+@keyframes menuFadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* 🖱️ SCROLL TO BOTTOM BUTTON */
 .scroll-bottom-btn {
     position: fixed;
-    bottom: 110px; /* Đưa lên cao hơn */
-    left: 50%; /* Ra giữa */
+    bottom: 110px;
+    left: 50%;
     transform: translateX(-50%) translateY(20px) scale(0.8);
     width: 42px;
     height: 42px;

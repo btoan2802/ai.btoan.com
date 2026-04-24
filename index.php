@@ -147,10 +147,31 @@
 
         <div class="sidebar-title">Lịch sử chat</div>
         <div id="historyList" style="flex:1; overflow-y:auto;"></div>
+        
         <div class="sidebar-footer">
-          <div class="logout-wrapper" onclick="logout()" title="Đăng xuất">
-            <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-            <span>Đăng xuất</span>
+          <div class="profile-card-sidebar" onclick="toggleUserMenu()">
+            <div id="sidebarUserAvatar" class="avatar">U</div>
+            <div id="sidebarUserName" class="user-name">User</div>
+            <div class="settings-icon">
+              <i class="bi bi-gear"></i>
+            </div>
+          </div>
+          
+          <!-- Dropdown Menu (Hidden by default, triggered by toggleUserMenu) -->
+          <div id="userMenu" class="user-menu" style="bottom: 70px; left: 10px; top: auto; right: 10px; width: calc(100% - 20px);">
+             <div class="menu-item-premium" onclick="openProfile()">
+               <div class="menu-item-icon">
+                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+               </div>
+               <span>Hồ sơ & Cài đặt</span>
+             </div>
+             <div class="menu-item-divider"></div>
+             <div class="menu-item-premium text-danger" onclick="logout()">
+               <div class="menu-item-icon">
+                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+               </div>
+               <span>Đăng xuất</span>
+             </div>
           </div>
         </div>
       </div>
@@ -172,30 +193,10 @@
               <i class="bi bi-moon-stars"></i>
             </button>
 
-            <div id="userBox" class="user-box">
-              <div class="user-info" onclick="toggleUserMenu()">
-                <div id="userAvatar" class="avatar">U</div>
-                <div id="userName" class="user-name">User</div>
-                <div class="arrow">▾</div>
-              </div>
-               <div id="userMenu" class="user-menu">
-                 <div class="menu-item-premium" onclick="openProfile()">
-                   <div class="menu-item-icon">
-                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                   </div>
-                   <span>Hồ sơ cá nhân</span>
-                 </div>
-                 <div class="menu-item-divider"></div>
-                 <div class="menu-item-premium text-danger" onclick="logout()">
-                   <div class="menu-item-icon">
-                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                   </div>
-                   <span>Đăng xuất</span>
-                 </div>
-               </div>
-
-
-            </div>
+            <!-- Theme Toggle Button -->
+            <button class="icon-toggle-btn me-2" id="themeToggleBtn" onclick="toggleTheme()" title="Đổi chế độ sáng/tối">
+              <i class="bi bi-moon-stars"></i>
+            </button>
           </div>
         </div>
 

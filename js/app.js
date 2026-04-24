@@ -2186,37 +2186,32 @@ async function checkProfile(user_id) {
         "User"
 
     // ✅ set tên
-    document.getElementById("userName").innerText = name
+    const nameEls = [document.getElementById("userName"), document.getElementById("sidebarUserName")]
+    nameEls.forEach(el => { if (el) el.innerText = name })
 
     // ✅ avatar chữ cái đầu
-    const avatarEl = document.getElementById("userAvatar")
+    const avatarEls = [document.getElementById("userAvatar"), document.getElementById("sidebarUserAvatar")]
+    
+    avatarEls.forEach(avatarEl => {
+        if (!avatarEl) return
+        // reset
+        avatarEl.innerHTML = ""
+        avatarEl.style.background = "none"
 
-    // reset
-    avatarEl.innerHTML = ""
-    avatarEl.style.background = "none"
-
-    if (data.avatar) {
-
-        const url = data.avatar + "?t=" + Date.now()
-
-        avatarEl.innerHTML = `
-                <img src="${url}" 
-                    style="width:100%;height:100%;border-radius:50%">
-            `
-
-    } else {
-
-        avatarEl.innerText = name.charAt(0).toUpperCase()
-
-        const colors = [
-            "linear-gradient(135deg,#6366f1,#4f46e5)",
-            "linear-gradient(135deg,#22c55e,#16a34a)",
-            "linear-gradient(135deg,#f59e0b,#d97706)",
-            "linear-gradient(135deg,#ef4444,#dc2626)"
-        ]
-
-        avatarEl.style.background = colors[name.length % colors.length]
-    }
+        if (data.avatar) {
+            const url = data.avatar + "?t=" + Date.now()
+            avatarEl.innerHTML = `<img src="${url}" style="width:100%;height:100%;border-radius:50%">`
+        } else {
+            avatarEl.innerText = name.charAt(0).toUpperCase()
+            const colors = [
+                "linear-gradient(135deg,#6366f1,#4f46e5)",
+                "linear-gradient(135deg,#22c55e,#16a34a)",
+                "linear-gradient(135deg,#f59e0b,#d97706)",
+                "linear-gradient(135deg,#ef4444,#dc2626)"
+            ]
+            avatarEl.style.background = colors[name.length % colors.length]
+        }
+    })
 
     // 🎨 màu avatar
     const colors = [
@@ -2326,11 +2321,11 @@ async function saveProfile() {
         localStorage.setItem("has_profile", "1")
 
         // ===== UPDATE UI NGAY =====
-        const userName = document.getElementById("userName")
-        const avatar = document.getElementById("userAvatar")
+        const names = [document.getElementById("userName"), document.getElementById("sidebarUserName")]
+        const avatars = [document.getElementById("userAvatar"), document.getElementById("sidebarUserAvatar")]
 
-        if (userName) userName.innerText = full_name
-        if (avatar) avatar.innerText = full_name.charAt(0).toUpperCase()
+        names.forEach(el => { if (el) el.innerText = full_name })
+        avatars.forEach(el => { if (el) el.innerText = full_name.charAt(0).toUpperCase() })
 
         // ===== ĐÓNG MODAL =====
         const modal = document.getElementById("profileModal")
@@ -2418,16 +2413,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function toggleUserMenu() {
     const menu = document.getElementById("userMenu")
+    if (!menu) return
     menu.style.display = menu.style.display === "block" ? "none" : "block"
 }
 
 // click ngoài → đóng
 document.addEventListener("click", function (e) {
-    const box = document.getElementById("userBox")
-    if (!box) return
-
-    if (!box.contains(e.target)) {
-        document.getElementById("userMenu").style.display = "none"
+    const profileCard = document.querySelector(".profile-card-sidebar")
+    const menu = document.getElementById("userMenu")
+    
+    if (menu && menu.style.display === "block") {
+        if (!profileCard.contains(e.target) && !menu.contains(e.target)) {
+            menu.style.display = "none"
+        }
     }
 })
 
