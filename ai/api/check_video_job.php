@@ -20,7 +20,7 @@ function sendJson(array $data, int $statusCode = 200): void
     exit;
 }
 
-// 🛡️ BỘ XỬ LÝ LỖI TOÀN CỤC
+// 🛡️ BỘ XỬ LỚI LỖI TOÀN CỤC
 set_exception_handler(function ($e) {
     sendJson([
         'success' => false,
@@ -61,6 +61,7 @@ function getAccessToken($keyFile) {
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $res = curl_exec($ch);
     $data = json_decode((string)$res, true);
+    // curl_close($ch); // Đã loại bỏ để tương thích PHP 8.0+
     return $data['access_token'] ?? null;
 }
 
@@ -95,14 +96,10 @@ try {
     $responseBody = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     $opData = json_decode((string)$responseBody, true);
-
-    $debugInfo = [
-        "google_http_code" => $httpCode,
-        "raw_response_json" => $opData
-    ];
+    // curl_close($ch); // Đã loại bỏ để tương thích PHP 8.0+
 
     if (isset($opData['error'])) {
-        sendJson(array_merge(['success' => false, 'status' => 'failed', 'error' => $opData['error']['message'] ?? 'Error'], $debugInfo));
+        sendJson(['success' => false, 'status' => 'failed', 'error' => $opData['error']['message'] ?? 'Error']);
     }
 
     $isDone = (bool) ($opData['done'] ?? false);
@@ -111,7 +108,7 @@ try {
         $gcsUri = $opData['response']['videos'][0]['gcsUri'] ?? null;
         
         if ($gcsUri) {
-            // 📥 DOWNLOAD FROM GOOGLE CLOUD STORAGE
+            // 📥 DOWNLOAD TỪ GCS
             $downloadUrl = str_replace('gs://', 'https://storage.googleapis.com/', $gcsUri);
             $tempFile = tempnam(sys_get_temp_dir(), 'veo_');
             
@@ -121,20 +118,19 @@ try {
             curl_setopt($ch_dl, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch_dl, CURLOPT_SSL_VERIFYPEER, false);
             curl_exec($ch_dl);
-            curl_close($ch_dl);
+            // curl_close($ch_dl); // Đã loại bỏ
             fclose($fp);
 
-            // 📤 UPLOAD TO CLOUDFLARE R2
+            // 📤 UPLOAD LÊN CLOUDFLARE R2
             $r2 = new R2Uploader();
             $folder = "videos/{$user_id}/{$conversation_id}";
             $r2PublicUrl = $r2->uploadLocalFile($tempFile, $folder, 'mp4');
 
-            // 🧹 CLEANUP VPS TEMP FILE
+            // 🧹 DỌN TỆP TẠM
             if (file_exists($tempFile)) @unlink($tempFile);
 
-            // 💾 UPDATE DATABASE
+            // 💾 CẬP NHẬT DATABASE
             if ($conversation_id > 0 && $user_id > 0) {
-                // We use assistant_video column in chats table
                 $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
                 if ($stmt) {
                     $stmt->bind_param("sii", $r2PublicUrl, $conversation_id, $user_id);
@@ -143,25 +139,23 @@ try {
                 }
             }
 
-            sendJson(array_merge([
+            sendJson([
                 'success' => true,
                 'status' => 'completed',
                 'video_url' => $r2PublicUrl,
-                'r2_url' => $r2PublicUrl,
-                'gcs_uri' => $gcsUri,
                 'provider' => 'google-veo'
-            ], $debugInfo));
+            ]);
         } else {
-            sendJson(array_merge(['success' => false, 'status' => 'failed', 'error' => 'Job done but no video URI found.'], $debugInfo));
+            sendJson(['success' => false, 'status' => 'failed', 'error' => 'Job done but no video URI found.']);
         }
     } else {
         $progress = $opData['metadata']['progressPercentage'] ?? '0';
-        sendJson(array_merge([
+        sendJson([
             'success' => true,
             'status' => 'processing',
             'progress' => (string)$progress,
             'msg' => "Veo is rendering... ({$progress}%)"
-        ], $debugInfo));
+        ]);
     }
 } catch (Throwable $e) {
     sendJson(['success' => false, 'error' => $e->getMessage()], 200);
