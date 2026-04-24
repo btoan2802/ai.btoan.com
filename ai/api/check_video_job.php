@@ -100,14 +100,26 @@ try {
     $opData = json_decode((string)$responseBody, true);
     // curl_close($ch); // Đã loại bỏ để tương thích PHP 8.0+
 
+    // 1️⃣ KIỂM TRA LỖI HỆ THỐNG TRƯỚC
     if (isset($opData['error'])) {
-        sendJson(['success' => false, 'status' => 'failed', 'error' => $opData['error']['message'] ?? 'Error']);
+        sendJson(['success' => false, 'status' => 'failed', 'error' => $opData['error']['message'] ?? 'Google System Error']);
     }
 
     $isDone = (bool) ($opData['done'] ?? false);
 
     if ($isDone) {
-        $gcsUri = $opData['response']['videos'][0]['gcsUri'] ?? null;
+        // 2️⃣ KIỂM TRA LỖI TRONG PHẢN HỒI (VÍ DỤ: SAFETY FILTERS)
+        if (isset($opData['response']['error'])) {
+            $msg = $opData['response']['error']['message'] ?? 'AI generation failed';
+            if (stripos($msg, 'safety filters') !== false) {
+                $msg = "Yêu cầu bị chặn bởi bộ lọc an toàn của Google (có thể do hình ảnh người nổi tiếng hoặc nội dung nhạy cảm).";
+            }
+            sendJson(['success' => false, 'status' => 'failed', 'error' => $msg, 'debug_op' => $opData]);
+        }
+
+        // 3️⃣ LẤY LINK VIDEO (Hỗ trợ cả 'uri' và 'gcsUri')
+        $videoInfo = $opData['response']['videos'][0] ?? null;
+        $gcsUri = $videoInfo['uri'] ?? ($videoInfo['gcsUri'] ?? null);
         
         if ($gcsUri) {
             // 📥 DOWNLOAD TỪ GCS
@@ -166,22 +178,27 @@ try {
                 'provider' => 'google-veo'
             ]);
         } else {
-            // 🔥 KIỂM TRA LỖI CHI TIẾT TỪ GOOGLE
+            // 🔥 KIỂM TRA LỖI CHI TIẾT TỪ GOOGLE (Bao gồm Safety Filters)
             $errorDetail = "Google không trả về link video.";
-            if (isset($opData['error'])) {
-                $errorDetail = "Lỗi: " . ($opData['error']['message'] ?? "Unknown Google error");
-            } else if (isset($opData['response']['error'])) {
-                $errorDetail = "Lỗi phản hồi: " . ($opData['response']['error']['message'] ?? "Unknown response error");
+            
+            if (isset($opData['response']['error'])) {
+                $errorDetail = $opData['response']['error']['message'] ?? "Lỗi phản hồi từ AI.";
+            } else if (isset($opData['error'])) {
+                $errorDetail = $opData['error']['message'] ?? "Lỗi hệ thống Google.";
             } else if (isset($opData['metadata']['status'])) {
-                 // Một số trường hợp lỗi nằm trong metadata
-                 $errorDetail = "Trạng thái: " . ($opData['metadata']['status'] ?? "Unknown");
+                 $errorDetail = "Trạng thái: " . ($opData['metadata']['status'] ?? "Không xác định");
+            }
+            
+            // Nếu lỗi liên quan đến Safety, dịch sang tiếng Việt cho dễ hiểu
+            if (stripos($errorDetail, 'safety filters') !== false) {
+                $errorDetail = "Yêu cầu bị chặn bởi bộ lọc an toàn của Google (có thể do hình ảnh người nổi tiếng hoặc nội dung nhạy cảm).";
             }
             
             sendJson([
                 'success' => false, 
                 'status' => 'failed', 
-                'error' => "Job hoàn tất nhưng không có video. $errorDetail",
-                'debug_op' => $opData // Gửi kèm để debug nếu cần
+                'error' => $errorDetail,
+                'debug_op' => $opData 
             ]);
         }
     } else {
