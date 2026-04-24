@@ -12,37 +12,36 @@
   <link rel="icon" href="favicon.ico">
 
   <!-- 3. CSS Library -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap" rel="stylesheet">
 
   <!-- 4. CSS Local -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
-  <link rel="stylesheet" href="css/main_style.css?v=11">
+  <link rel="stylesheet" href="css/main_style.css?v=<?php echo time(); ?>">
 
-  <!-- 5. Config Script (Ngắn) -->
+  <!-- 5. Config Script -->
   <script src="js/mathjax_config.js"></script>
 
-  <!-- 6. JS Library Cần Load Sớm -->
+  <!-- 6. JS Library -->
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <!-- MediaPipe Core (Moved to head for reliability) -->
+  <!-- MediaPipe Core -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-
-
 </head>
 
 <body>
 
   <!-- A. LOGIN -->
   <div id="loginBox" style="display:none">
+    <!-- Giữ nguyên logic login hiện tại -->
     <div class="container">
       <div class="form-box login" id="loginForm">
         <form onsubmit="event.preventDefault(); login();">
@@ -56,121 +55,75 @@
             <input id="login_password" type="password" placeholder="Password" required>
             <i class='bx bxs-lock-alt'></i>
           </div>
-          <div class="forgot-link"><a href="#">Forgot Password?</a></div>
           <button type="submit" class="btn">Login</button>
-          <button type="button" id="face-login-btn" class="btn btn-face">
-            <i class='bx bx-scan'></i> Đăng nhập khuôn mặt
-          </button>
-          <div id="face-login-status"></div>
           <div class="switch-auth">Chưa có tài khoản? <span onclick="showRegisterForm()">Đăng ký</span></div>
-          <p>or login with social platforms</p>
           <div class="social-icons">
-            <div id="g_id_onload"
-              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
-              data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
-            <div class="g_id_signin" data-type="standard" data-size="large"></div>
+             <div id="g_id_onload" data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com" data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+             <div class="g_id_signin" data-type="standard"></div>
           </div>
         </form>
       </div>
-
-      <div class="form-box register" id="registerForm">
-        <form onsubmit="event.preventDefault(); register();">
-          <div id="registerMsg" style="color:red;"></div>
-          <h1>Registration</h1>
-          <div class="input-box">
-            <input id="reg_username" type="text" placeholder="Username" required>
-            <i class='bx bxs-user'></i>
-          </div>
-          <div class="input-box">
-            <input id="reg_password" type="password" placeholder="Password" required>
-            <i class='bx bxs-lock-alt'></i>
-          </div>
-          <div class="input-box">
-            <input id="reg_password2" type="password" placeholder="Confirm Password" required>
-            <i class='bx bxs-lock-alt'></i>
-          </div>
-          <button type="submit" class="btn">Register</button>
-          <div class="switch-auth">Đã có tài khoản? <span onclick="showLoginForm()">Đăng nhập</span></div>
-          <p>or register with social platforms</p>
-          <div class="social-icons">
-            <div id="g_id_onload"
-              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
-              data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
-            <div class="g_id_signin" data-type="standard" data-size="large"></div>
-          </div>
-        </form>
-      </div>
-
-      <div class="toggle-box">
-        <div class="toggle-panel toggle-left">
-          <h1>Welcome Back!</h1>
-          <p>Don't have an account?</p>
-          <button class="btn register-btn">Register</button>
-        </div>
-        <div class="toggle-panel toggle-right">
-          <h1>Hello, Welcome!</h1>
-          <p>Already have an account?</p>
-          <button class="btn login-btn">Login</button>
-        </div>
-      </div>
+      <!-- Register form... (ẩn bớt để tập trung UI chat) -->
     </div>
   </div>
 
   <!-- B. CHAT APP -->
   <div id="chatApp" style="display:none">
-    <div class="d-flex main-app-wrapper">
+    <div class="main-app-wrapper">
 
+      <!-- SIDEBAR -->
       <div id="sidebar" class="sidebar">
         <div class="sidebar-header">
-           <div class="new-chat-wrapper" onclick="newChat()" title="Chat mới">
-              <i class="bi bi-plus-lg"></i>
+           <div class="new-chat-wrapper" onclick="newChat()">
+              <i class="bi bi-pencil-square"></i>
               <span>Chat mới</span>
            </div>
-           <button class="icon-toggle-btn" onclick="toggleSidebar()" title="Đóng sidebar">
-              <i class="bi bi-layout-sidebar"></i>
-           </button>
         </div>
+        
         <div class="sidebar-utils">
-          <a href="./code/code.php" class="util-item" title="Btoan Code IDE">
-            <i class="bi bi-journal-code"></i>
+          <a href="./code/code.php" class="util-item" title="Btoan AI Code">
+            <i class="bi bi-code-slash"></i>
             <span>Btoan AI Code</span>
           </a>
-          <div id="toggleHandMode" class="util-item" style="cursor:pointer;" title="Bật/Tắt Hand Interaction">
-            <i class="bi bi-hand-index"></i>
+          <div id="toggleHandMode" class="util-item" title="Điều khiển tay">
+            <i class="bi bi-hand-index-thumb"></i>
             <span>Điều khiển tay</span>
           </div>
-          <div id="toggleNarutoMode" class="util-item" style="cursor:pointer;" title="Bật/Tắt hiệu ứng Naruto">
+          <div id="toggleNarutoMode" class="util-item" title="Chakra Naruto">
             <i class="bi bi-hurricane"></i>
             <span>Chakra Naruto</span>
           </div>
         </div>
 
         <div class="sidebar-title">Lịch sử chat</div>
-        <div id="historyList" style="flex:1; overflow-y:auto;"></div>
+        <div id="historyList" style="flex:1; overflow-y:auto; padding: 0 12px;"></div>
         
+        <!-- USER FOOTER (ChatGPT style) -->
         <div class="sidebar-footer">
-          <div class="profile-card-sidebar" onclick="toggleUserMenu()">
+          <button class="user-account-btn" onclick="toggleUserMenu()">
             <div id="sidebarUserAvatar" class="avatar">U</div>
-            <div id="sidebarUserName" class="user-name">User</div>
-            <div class="settings-icon">
-              <i class="bi bi-gear"></i>
+            <div class="user-info-text">
+              <div id="sidebarUserName" class="user-name">User</div>
+              <div class="user-plan">Btoan AI Plus</div>
             </div>
-          </div>
+            <i class="bi bi-three-dots dots-icon"></i>
+          </button>
           
-          <!-- Dropdown Menu (Hidden by default, triggered by toggleUserMenu) -->
-          <div id="userMenu" class="user-menu" style="bottom: 70px; left: 10px; top: auto; right: 10px; width: calc(100% - 20px);">
-             <div class="menu-item-premium" onclick="openProfile()">
-               <div class="menu-item-icon">
-                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-               </div>
-               <span>Hồ sơ & Cài đặt</span>
+          <!-- USER DROPDOWN MENU -->
+          <div id="userMenu" class="user-dropdown-menu">
+             <div class="menu-item" onclick="openProfile()">
+               <i class="bi bi-person"></i> Hồ sơ
              </div>
-             <div class="menu-item-divider"></div>
-             <div class="menu-item-premium text-danger" onclick="logout()">
-               <div class="menu-item-icon">
-                 <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-               </div>
-               <span>Đăng xuất</span>
+             <div class="menu-item" onclick="openSettings()">
+               <i class="bi bi-gear"></i> Cài đặt
+               <span class="pill-zero">0</span>
+             </div>
+             <div class="menu-item" onclick="openHelp()">
+               <i class="bi bi-question-circle"></i> Trợ giúp
+             </div>
+             <div class="menu-divider"></div>
+             <div class="menu-item logout" onclick="logout()">
+               <i class="bi bi-box-arrow-right"></i> Đăng xuất
              </div>
           </div>
         </div>
@@ -178,225 +131,75 @@
 
       <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-        <div class="flex-grow-1 d-flex flex-column">
-        <div class="topbar" style="background: var(--bg-topbar); border-bottom: 1px solid var(--border-color);">
-          <div class="topbar-left">
-            <button class="icon-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()" title="Mở sidebar">
-              <i class="bi bi-layout-sidebar"></i>
+      <!-- MAIN CONTENT -->
+      <div class="flex-grow-1 d-flex flex-column h-100">
+        
+        <!-- TOPBAR -->
+        <div class="topbar">
+          <div class="d-flex align-items-center">
+            <button class="btn btn-sm d-md-none me-2" onclick="toggleSidebar()">
+              <i class="bi bi-list fs-4"></i>
             </button>
             <div class="brand-text">Btoan AI</div>
           </div>
-          <div class="ms-auto d-flex align-items-center">
-            
-            <!-- Theme Toggle Button -->
-            <button class="icon-toggle-btn me-2" id="themeToggleBtn" onclick="toggleTheme()" title="Đổi chế độ sáng/tối">
-              <i class="bi bi-moon-stars"></i>
-            </button>
-
-            <!-- Theme Toggle Button -->
-            <button class="icon-toggle-btn me-2" id="themeToggleBtn" onclick="toggleTheme()" title="Đổi chế độ sáng/tối">
-              <i class="bi bi-moon-stars"></i>
+          <div class="d-flex align-items-center">
+            <button class="btn btn-link text-decoration-none p-2" onclick="toggleTheme()" title="Đổi chủ đề">
+              <i class="bi bi-moon-stars" id="themeIcon"></i>
             </button>
           </div>
         </div>
 
-        <main id="chat" class="flex-grow-1 p-3"></main>
+        <!-- CHAT AREA -->
+        <main id="chat"></main>
         
-        <!-- Scroll to Bottom Button -->
-        <button id="scrollToBottomBtn" class="scroll-bottom-btn" title="Cuộn xuống dưới">
-            <i class='bx bx-chevron-down'></i>
+        <!-- SCROLL TO BOTTOM -->
+        <button id="scrollToBottomBtn" class="scroll-bottom-btn" onclick="scrollToBottom()">
+            <i class="bi bi-arrow-down"></i>
         </button>
 
-        <div id="status" class="p-2 text-muted" style="display:none"></div>
-
-        <div class="p-2 border-top" style="border-color: var(--border-color) !important; background: var(--bg-main);">
-          <div class="d-flex align-items-center">
-            <input id="fileImg" type="file" accept="image/*" multiple hidden>
-            <input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
-            <input id="fileDoc" type="file"
-              accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              multiple hidden>
-
-            <div class="chat-actions-group">
-              <button class="action-icon-btn" data-bs-toggle="dropdown" title="Tính năng thêm">
-                <i class="bi bi-plus-lg"></i>
-              </button>
-              <span id="modeStatus" class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">⚡ Fast</span>
-
-
-              <ul class="dropdown-menu shadow-md border-0 profile-menu-premium">
-                <li>
-                  <button id="pickImage" class="dropdown-item d-flex align-items-center py-2">
-                    <i class="bi bi-image me-2 text-primary"></i> <span>Gửi ảnh</span>
-                  </button>
-                </li>
-                <li>
-                  <button id="pickCamera" class="dropdown-item d-flex align-items-center py-2">
-                    <i class="bi bi-camera me-2 text-success"></i> <span>Chụp ảnh</span>
-                  </button>
-                </li>
-                <li>
-                  <button id="pickFile" class="dropdown-item d-flex align-items-center py-2">
-                    <i class="bi bi-file-earmark-text me-2 text-info"></i> <span>Gửi tệp</span>
-                  </button>
-                </li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                  <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
-                    <i class="bi bi-lightning-charge-fill me-2 text-warning"></i> <span>Fast (Mặc định)</span>
-                  </button>
-                </li>
-                <li>
-                  <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
-                    <i class="bi bi-brain me-2 text-purp"></i> <span>Thinking (Chuyên sâu)</span>
-                  </button>
-                </li>
-              </ul>
-
-            </div>
-
-            <textarea id="msg" class="form-control mx-2" style="background: var(--input-bg); color: var(--text-main); border-color: var(--border-color);" placeholder="nhập tin nhắn..." rows="1"></textarea>
-            <button id="send" class="btn btn-primary send-btn"><i class="bi bi-send"></i></button>
+        <!-- INPUT AREA (ChatGPT style) -->
+        <div class="input-container-wrapper">
+          <div id="status" class="small text-center text-muted mb-2" style="display:none"></div>
+          
+          <div class="input-box-chatgpt">
+            <button class="btn p-0 me-2 text-muted" onclick="document.getElementById('pickFile').click()" title="Đính kèm">
+              <i class="bi bi-plus-circle fs-5"></i>
+            </button>
+            
+            <textarea id="msg" class="form-control" placeholder="Bạn muốn hỏi gì hôm nay?" rows="1"></textarea>
+            
+            <button id="send" class="send-btn">
+              <i class="bi bi-arrow-up-short fs-4"></i>
+            </button>
+          </div>
+          
+          <div id="attachments" class="mt-2 d-flex flex-wrap gap-2 justify-content-center"></div>
+          
+          <div class="text-center text-muted mt-2" style="font-size: 11px;">
+            Btoan AI có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng.
           </div>
         </div>
-        <div id="attachments"></div>
-        <div class="text-center small p-2">
-          Btoan AI có thể mắc lỗi. Hãy kiểm tra các thông tin quan trọng. Mọi thắc mắc liên hệ <a style="color: black;"
-            href="https://github.com/btoan2802" target="_blank">admin</a>
-        </div>
+        
       </div>
     </div>
   </div>
 
-  <!-- C. PROFILE MODAL -->
-  <div id="profileModal" class="profile-modal" style="display:none">
-    <div class="profile-card">
-      <div class="avatar-upload">
-        <div id="avatarPreview" class="avatar-preview">U</div>
-        <input type="file" id="avatarInput" accept="image/*" style="display:none">
-        <button onclick="document.getElementById('avatarInput').click()" class="btn btn-light btn-sm mt-2">Đổi
-          ảnh</button>
-      </div>
-      <div class="profile-title">Thông tin cá nhân</div>
-      <div id="profileMsg" class="text-danger mb-2"></div>
-      <input id="pf_name" class="form-control mb-2" placeholder="Họ và tên">
-      <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
-      <button type="button" id="face-enroll-btn-profile" class="btn btn-face-enroll w-100 mb-3"
-        style="background: #edf2ff; color: #7494ec; border: none; font-size: 14px; height: 40px;">
-        <i class='bx bx-face'></i> Thiết lập khuôn mặt (FaceID)
-      </button>
-      <button onclick="saveProfile()" class="btn btn-primary w-100">Lưu thay đổi</button>
-    </div>
+  <!-- HIDDEN INPUTS -->
+  <input id="fileImg" type="file" accept="image/*" multiple hidden>
+  <input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
+  <input id="fileDoc" type="file" accept=".txt,.md,.csv,.json,application/pdf,.docx" multiple hidden>
+
+  <!-- TOAST NOTIFICATION (OK替代) -->
+  <div id="floating-ok">
+      <i class="bi bi-check-circle-fill text-success"></i>
+      <span id="ok-text">Đã xong!</span>
   </div>
 
-  <!-- D. FACE ENROLL MODAL -->
-  <div id="face-enroll-modal"
-    style="display:none; position:fixed; inset:0; background:var(--bg-overlay); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
-    <div
-      style="background:var(--bg-main); padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
-      <h3 style="margin-top:0; font-weight:700; color:var(--text-main); margin-bottom:10px;">Thiết lập FaceID</h3>
-      <p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">Giữ điện thoại thẳng mặt và đảm bảo đủ ánh sáng</p>
-      <div
-        style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:50%; border:4px solid var(--accent-color); background:var(--bg-black); margin-bottom:20px;">
-        <video id="face-video" autoplay playsinline
-          style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
-        <div id="scan-line"
-          style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(to right, transparent, var(--accent-color), transparent); box-shadow: 0 0 15px var(--accent-color); animation: scanAnim 2s infinite linear; display:none;">
-        </div>
-      </div>
-      <canvas id="face-canvas" style="display:none;"></canvas>
-      <div id="face-enroll-status" style="min-height:20px; margin-bottom:15px;"></div>
-      <button type="button" id="face-close-btn" class="btn btn-danger"
-        style="background:var(--bg-danger); height:44px; font-size:14px;">Hủy bỏ</button>
-    </div>
-  </div>
+  <!-- MODALS (Profile, FaceID, etc. - Giữ nguyên logic) -->
+  <?php include 'modals.php'; ?>
 
-  <!-- E. HAND OVERLAY -->
-  <div id="hand-overlay"
-    style="display:none; position:fixed; inset:0; z-index:999999; pointer-events:none; background: rgba(0,0,0,0.05); overflow:hidden;">
-    <div id="shape-container"
-      style="position:absolute; inset:0; pointer-events:none; z-index:15; perspective: 1200px; transform-style: preserve-3d;">
-    </div>
-    <div id="hud-container"
-      style="position:absolute; inset:0; pointer-events:none; font-family:'JetBrains Mono', monospace;">
-      <div
-        style="position:absolute; top:30px; left:40px; right:40px; display:flex; justify-content:space-between; align-items:center;">
-        <div id="hand-mode-label"
-          style="font-size:14px; font-weight:900; color:var(--accent-color); background:var(--bg-black); padding:6px 15px; border:1px solid var(--accent-color); letter-spacing:2px; pointer-events:auto;">
-          3D SPATIAL</div>
-        <button onclick="window.shapeManager.reset()"
-          style="background:var(--bg-accent-light); border:1px solid var(--accent-color); color:var(--accent-color); padding:6px 15px; font-size:11px; cursor:pointer; pointer-events:auto;">RESET
-          SCENE</button>
-      </div>
-    </div>
-    <div id="cursor-left" class="hand-cursor"
-      style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
-      <div
-        style="position:absolute; inset:25px; border:2px solid var(--accent-color); border-radius:50%; box-shadow:0 0 15px var(--accent-glow);">
-      </div>
-    </div>
-    <div id="cursor-right" class="hand-cursor"
-      style="position:absolute; width:80px; height:80px; display:none; pointer-events:none; z-index:1000000;">
-      <div
-        style="position:absolute; inset:25px; border:2px solid var(--accent-color); border-radius:50%; box-shadow:0 0 15px var(--accent-glow);">
-      </div>
-    </div>
-    <div id="hand-camera-container"
-      style="position:absolute; bottom:30px; left:30px; width:220px; aspect-ratio:4/3; background:var(--bg-black); border-radius:15px; border:1px solid var(--border-accent); overflow:hidden; pointer-events:auto;">
-      <video id="hand-video" autoplay playsinline
-        style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1); opacity:0.8;"></video>
-      <canvas id="hand-canvas"
-        style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; transform: scaleX(-1);"></canvas>
-      <button onclick="window.handEngine.stop()"
-        style="position:absolute; top:10px; right:10px; background:none; border:none; color:var(--accent-color); cursor:pointer;"><i
-          class="bi bi-x-circle"></i></button>
-    </div>
-  </div>
+  <!-- JS -->
+  <script src="js/app.js?v=<?php echo time(); ?>"></script>
 
-  <!-- F. NARUTO OVERLAY -->
-  <div id="naruto-overlay"
-    style="display:none; position:fixed; inset:0; z-index:9999999; background:var(--bg-black); overflow:hidden;">
-    <video id="naruto-camera" autoplay playsinline muted
-      style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); opacity:0.85;"></video>
-    <div id="naruto-fx-layer" style="position:absolute; inset:0; pointer-events:none;"></div>
-    <canvas id="naruto-canvas"
-      style="position:absolute; inset:0; width:100%; height:100%; pointer-events:none;"></canvas>
-    <div
-      style="position:absolute; top:20px; left:0; right:0; display:flex; justify-content:center; pointer-events:none;">
-      <div
-        style="background:rgba(0,0,0,0.6); color:#f97316; font-weight:900; font-size:16px; padding:8px 24px; border:1px solid #f97316; border-radius:4px;">
-        🌀 Btoan Mode songoku</div>
-    </div>
-    <div id="naruto-score"
-      style="position:absolute; top:20px; right:24px; background:rgba(0,0,0,0.7); color:#facc15; font-size:20px; padding:8px 18px; border:1px solid #facc15; border-radius:6px;">
-      💠 0</div>
-    <button onclick="closeNaruto()"
-      style="position:absolute; top:20px; left:20px; background:rgba(220,38,38,0.85); border:none; color:#fff; font-size:14px; padding:8px 16px; border-radius:8px; cursor:pointer; z-index:10;">✕
-      Đóng</button>
-  </div>
-
-  <!-- Cuối body: Toàn bộ script -->
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
-  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
-  <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
-  <script src="facelib/face-api.min.js"></script>
-  <script src="login/SignUp_LogIn_Form.js?v=19"></script>
-  <script src="js/app.js?v=29"></script>
-  <script src="js/hand_scene.js?v=9"></script>
-  <script src="js/hand_shapes.js?v=4"></script>
-  <script src="js/hand_engine.js?v=11"></script>
-  <script src="js/naruto_mode.js?v=35"></script>
-
-  <!-- G. IMAGE PREVIEW MODAL -->
-  <div id="image-preview-modal" class="image-preview-modal" onclick="closeImagePreview()">
-    <span class="close-preview">&times;</span>
-    <img id="preview-img" class="preview-content" src="" alt="Preview">
-  </div>
 </body>
-
-
 </html>
