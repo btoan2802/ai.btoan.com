@@ -2433,24 +2433,45 @@ async function pollVideoStatus(job_id, containerBubble) {
                 const videoUrl = data.video_url;
 
                 containerBubble.innerHTML = `
-                    <div class="bubble video-bubble-premium">
+                    <div class="video-bubble-premium assistant">
                         <div class="video-container-premium">
                             <video controls class="video-player-premium">
                                 <source src="${videoUrl}" type="video/mp4">
+                                Your browser does not support the video tag.
                             </video>
                         </div>
                         <div class="video-actions-premium">
-                            <span class="status-badge-premium"><i class="fas fa-check-circle"></i> Video AI Hoàn tất</span>
-                            <a href="${videoUrl}" download="btoan_video.mp4" class="download-btn-premium">
-                                <i class="fas fa-download"></i> Tải về
+                            <span class="status-badge-premium">
+                                <i class='bx bx-magic-wand'></i> AI Video Cinematic
+                            </span>
+                            <a href="${videoUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
+                                <i class='bx bx-download'></i> Tải Video
                             </a>
                         </div>
                     </div>
                 `;
                 scrollToBottom();
+            } else if (data.status === 'processing') {
+                const progress = data.progress || "0";
+                containerBubble.innerHTML = `
+                    <div class="bubble assistant video-processing-card">
+                        <div class="processing-glow"></div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold mb-1">Veo 3.1 đang sáng tạo...</div>
+                                <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: ${progress}%"></div>
+                                </div>
+                                <div class="text-muted mt-1" style="font-size: 11px;">Tiến độ: ${progress}% - Vui lòng đợi trong giây lát</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
             } else if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
                 clearInterval(timer);
-                containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Lỗi: ${data.error || "Không thể tạo video."}</div>`;
+                containerBubble.innerHTML = `<div class="bubble assistant border-danger text-danger"><i class='bx bx-error' ></i> Lỗi: ${data.error || "Không thể tạo video."}</div>`;
             }
         } catch (e) {
             console.error("Polling error:", e);
