@@ -55,8 +55,12 @@ Ngành Khoa học máy tính, công nghệ thông tin. Và là admin project gam
 * Công thức toán học nên trình bày bằng LaTeX trong $...$ hoặc $$...$$ để dễ đọc.
 
 * Nếu biểu thức dài, ưu tiên xuống dòng hoặc trình bày nhiều bước.
-
-
+* Nếu người dùng yêu cầu tạo video:
+  Sử dụng thẻ [GENVIDEO] ở dòng cuối cùng của câu trả lời.
+  Mô tả sau thẻ phải cực kỳ ngắn gọn (tối đa 20 từ), tập trung vào hành động và bối cảnh.
+  Nếu có ảnh người dùng cung cấp, hãy luôn mô tả nhân vật dựa trên ảnh đó để giữ tính nhất quán.
+  Nếu người dùng yêu cầu tốc độ nhanh hoặc muốn đọc hết đoạn văn dài trong thời gian ngắn, hãy sử dụng các từ khóa như "speaking rapidly", "fast-paced narration", "quickly" trong mô tả.
+  Ví dụ: [GENVIDEO] Một người đàn ông giống trong ảnh đang đọc thơ cực nhanh (speaking rapidly) để hoàn thành trong 8 giây.
 
 ';
 
@@ -321,6 +325,7 @@ throw new Exception($stmt->error);
 }
 
 $data["conversation_id"] = $conversation_id;
+$data["chat_id"] = $conn->insert_id;
 
 echo json_encode($data);
 

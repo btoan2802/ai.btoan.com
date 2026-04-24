@@ -42,6 +42,7 @@ function getAccessToken($keyFile) {
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     $res = curl_exec($ch);
     $data = json_decode((string)$res, true);
+    // curl_close($ch); // Đã loại bỏ
     return $data['access_token'] ?? null;
 }
 
@@ -55,8 +56,13 @@ try {
 
     $raw = file_get_contents("php://input");
     $input = json_decode((string) $raw, true);
+    
     $prompt = trim((string) ($input['prompt'] ?? ''));
     $conversation_id = (string) ($input['conversation_id'] ?? 'default');
+    $user_id = (string) ($input['user_id'] ?? 'unknown');
+    $chat_id = (int) ($input['chat_id'] ?? 0);
+    $base64Image = $input['image'] ?? null; // base64 string
+    $duration = (int) ($input['duration'] ?? 8);
 
     if ($prompt === '') sendJson(['success' => false, 'error' => 'Prompt is required'], 200);
 
@@ -67,20 +73,51 @@ try {
     // 📁 CLOUD STORAGE OUTPUT CONFIG
     $bucketName = "airy-web-431004-v1-veo";
     $timestamp = time();
-    $outputUri = "gs://{$bucketName}/outputs/{$conversation_id}/{$timestamp}/";
+    $outputUri = "gs://{$bucketName}/veo-output/{$user_id}/{$conversation_id}/{$timestamp}/";
 
     $accessToken = getAccessToken(__DIR__ . "/google-key.json");
-    if (!$accessToken) sendJson(['success' => false, 'error' => 'Auth failed'], 200);
+    if (!$accessToken) sendJson(['success' => false, 'error' => 'Auth failed (token generation).'], 200);
 
     $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:predictLongRunning";
     
+    $instance = ["prompt" => $prompt];
+    
+    // 🔥 IMAGE-TO-VIDEO SUPPORT (WITH MIME TYPE FIX)
+    if ($base64Image) {
+        // Nếu là URL (bắt đầu bằng http), tải về và chuyển sang base64
+        if (strpos($base64Image, 'http') === 0) {
+            $imgData = @file_get_contents($base64Image);
+            if ($imgData) {
+                $base64Image = base64_encode($imgData);
+            }
+        }
+        
+        $mimeType = "image/png"; // Default
+        
+        // Extract mime type from data:image/png;base64,...
+        if (preg_match('/^data:([^;]+);base64,/', $base64Image, $matches)) {
+            $mimeType = $matches[1];
+        }
+
+        // Remove prefix for the bytes field
+        if (strpos($base64Image, ',') !== false) {
+            $base64Image = explode(',', $base64Image)[1];
+        }
+
+        $instance["image"] = [
+            "bytesBase64Encoded" => $base64Image,
+            "mimeType" => $mimeType
+        ];
+    }
+
     $payload = [
-        "instances" => [["prompt" => $prompt]],
+        "instances" => [$instance],
         "parameters" => [
             "sampleCount" => 1,
             "fps" => 24,
             "aspectRatio" => "16:9",
-            "storageUri" => $outputUri // 👈 Chỉ định nơi lưu video
+            "videoDurationSeconds" => $duration,
+            "storageUri" => $outputUri
         ]
     ];
 
@@ -93,11 +130,16 @@ try {
     
     $response = curl_exec($ch);
     $resData = json_decode((string)$response, true);
+    // curl_close($ch); // Đã loại bỏ
 
     if (isset($resData['name'])) {
-        sendJson(['success' => true, 'job_id' => $resData['name'], 'msg' => 'Veo job started', 'provider' => 'google-veo']);
+        sendJson(['success' => true, 'job_id' => $resData['name'], 'msg' => 'Veo job started successfully', 'provider' => 'google-veo']);
     } else {
-        sendJson(['success' => false, 'error' => $resData['error']['message'] ?? 'Failed to start Veo.', 'raw_debug' => $resData], 200);
+        $errorMessage = $resData['error']['message'] ?? 'Failed to start Veo.';
+        if (strpos($errorMessage, "not found") !== false && strpos($errorMessage, $bucketName) !== false) {
+            $errorMessage = "Lỗi: Bucket '{$bucketName}' chưa tồn tại.";
+        }
+        sendJson(['success' => false, 'error' => $errorMessage, 'raw_debug' => $resData], 200);
     }
 } catch (Throwable $e) {
     sendJson(['success' => false, 'error' => $e->getMessage()], 200);

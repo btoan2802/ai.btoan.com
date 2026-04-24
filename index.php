@@ -157,7 +157,7 @@
 
       <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
 
-      <div class="flex-grow-1 d-flex flex-column">
+      <div class="flex-grow-1 d-flex flex-column position-relative">
         <div class="topbar">
           <div class="topbar-left">
             <button class="icon-toggle-btn" id="openSidebarBtn" onclick="toggleSidebar()" title="Mở sidebar">
@@ -195,6 +195,12 @@
         </div>
 
         <main id="chat" class="flex-grow-1 p-3"></main>
+        
+        <!-- Scroll to Bottom Button -->
+        <button id="scrollToBottomBtn" class="scroll-bottom-btn" title="Cuộn xuống dưới">
+            <i class='bx bx-chevron-down'></i>
+        </button>
+
         <div id="status" class="p-2 text-muted" style="display:none"></div>
 
         <div class="p-2 border-top">

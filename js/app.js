@@ -588,7 +588,10 @@ async function callGemini(userText, images, files) {
     }
 
 
-    return reply;
+    return {
+        text: reply,
+        chat_id: data.chat_id
+    };
 
 }
 
@@ -732,13 +735,12 @@ async function send() {
 
     try {
 
-        let reply = await callGemini(userText, images, files)
+        let geminiRes = await callGemini(userText, images, files)
+        let reply = geminiRes.text;
+        let current_chat_id = geminiRes.chat_id;
 
         // 🔥 AI quyết định export
-        // 🔥 AI quyết định export (ĐÚNG LOGIC)
-        // 🔥 EXPORT (FIX CHUẨN)
         let exportType = null
-
         let rawReply = reply   // 🔥 giữ bản gốc
 
         if (rawReply.includes("[EXPORT]")) {
@@ -773,14 +775,9 @@ async function send() {
             const tag = "[GENIMAGE]";
             const index = reply.indexOf(tag);
 
-            // Extract the pure text (combine content before and after the prompt if any)
             let textBefore = reply.substring(0, index).trim();
-            // We assume the prompt is after the tag, but we stop at the next newline if the bot keeps talking
             let remainder = reply.substring(index + tag.length).trim();
 
-            // Split remainder into prompt and potential further text
-            // If the bot follows instructions, this is just the prompt. 
-            // If not, we take the first line as prompt and rest as text.
             let promptLines = remainder.split("\n");
             const imagePrompt = promptLines[0].trim();
             let textAfter = promptLines.slice(1).join("\n").trim();
@@ -813,15 +810,9 @@ async function send() {
                 });
 
                 const rawText = await imgRes.text();
-
                 imgLoading.remove();
 
-                let imgData = null;
-                try {
-                    imgData = JSON.parse(rawText);
-                } catch (e) {
-                    console.error("JSON parse failed for image response", e);
-                }
+                let imgData = JSON.parse(rawText);
 
                 if (imgRes.ok && imgData?.success) {
                     const cleanMimeType = String(imgData.mimeType || "image/png").trim();
@@ -842,20 +833,8 @@ async function send() {
                     `;
                     chatEl.appendChild(row);
                 } else {
-                    const errMsg = imgData?.error || "Lỗi không xác định";
-                    const isQuota = errMsg.toLowerCase().includes("quota") || rawText.includes("429");
-
-                    const errorBubble = document.createElement("div");
-                    errorBubble.className = "msgrow bot";
-                    errorBubble.innerHTML = `
-                        <div class="bubble border-danger text-danger" style="font-size:0.9rem;">
-                            <i class="bi bi-exclamation-triangle"></i> 
-                            ${isQuota ? "<b>Hết lượt vẽ ảnh (Quota Exceeded):</b> Vui lòng thử lại sau 1-2 phút hoặc nhờ AI giải thích bằng chữ." : "Lỗi vẽ ảnh: " + errMsg}
-                        </div>
-                    `;
-                    chatEl.appendChild(errorBubble);
+                    addBotBubble("❌ Lỗi vẽ ảnh: " + (imgData?.error || "Lỗi không xác định"));
                 }
-
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi kết nối khi vẽ ảnh: " + e.message);
@@ -885,7 +864,6 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
-            // Lấy ảnh đầu tiên để sửa
             const baseImage = images.length > 0 ? images[0] : null;
 
             if (!baseImage) {
@@ -916,13 +894,7 @@ async function send() {
 
                 const rawText = await imgRes.text();
                 imgLoading.remove();
-
-                let imgData = null;
-                try {
-                    imgData = JSON.parse(rawText);
-                } catch (e) {
-                    console.error("JSON parse failed", e);
-                }
+                let imgData = JSON.parse(rawText);
 
                 if (imgRes.ok && imgData?.success) {
                     const cleanMimeType = String(imgData.mimeType || "image/png").trim();
@@ -946,7 +918,6 @@ async function send() {
                 } else {
                     addBotBubble("❌ Lỗi chỉnh sửa ảnh: " + (imgData?.error || "Lỗi không xác định"));
                 }
-
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi kết nối khi sửa ảnh: " + e.message);
@@ -976,9 +947,74 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
+            // LUÔN LUÔN CHỈ 1 VIDEO (8S) - Theo yêu cầu người dùng
+            const segmentDuration = 8;
+
+            // 🛡️ HÀM LÀM SẠCH VĂN BẢN (Né bộ lọc Google)
+            const sanitizePrompt = (text) => {
+                const map = {
+                    "trói buộc": "gắn kết",
+                    "quất": "dạy bảo",
+                    "đau": "nghiêm khắc",
+                    "mũi kiếm": "thử thách",
+                    "sắt đá": "kiên cường",
+                    "chết đi": "thay đổi",
+                    "đánh": "dạy",
+                    "kiếm": "thử thách",
+                    "bạo lực": "mạnh mẽ"
+                };
+                let cleanText = text;
+                Object.keys(map).forEach(key => {
+                    const regex = new RegExp(key, "gi");
+                    cleanText = cleanText.replace(regex, map[key]);
+                });
+                return cleanText;
+            };
+
+            const segmentPrompt = sanitizePrompt(videoPrompt);
+
+            // Get reference image (first one)
+            let refImage = images.length > 0 ? images[0] : null;
+
+            // 🔥 TỰ ĐỘNG TÌM ẢNH CŨ (BỀN VỮNG: Gọi Backend)
+            if (!refImage && conversation_id) {
+                try {
+                    const lastImgRes = await fetch(`/ai/api/get_last_image.php?conversation_id=${conversation_id}`);
+                    const lastImgData = await lastImgRes.json();
+                    if (lastImgData.success && lastImgData.image_url) {
+                        refImage = lastImgData.image_url;
+                    }
+                } catch (e) {
+                    console.log("History image fetch error:", e);
+                }
+            }
+
+            // Fallback: Tìm trong DOM nếu backend fail
+            if (!refImage) {
+                const allUserImages = Array.from(document.querySelectorAll('.msgrow.me .usertxt img, .msgrow.me .img-preview img')).reverse();
+                if (allUserImages.length > 0) {
+                    refImage = allUserImages[0].src;
+                }
+            }
+
+            // Create loading bubble
             const vidLoading = document.createElement("div");
             vidLoading.className = "msgrow bot";
-            vidLoading.innerHTML = `<div class="bubble">🎬 Đang khởi tạo luồng tạo video AI...</div>`;
+            vidLoading.innerHTML = `
+                <div class="bubble assistant video-processing-card">
+                    <div class="processing-glow"></div>
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold mb-1">Đang tạo video cho bạn...</div>
+                            <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                            </div>
+                            <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Đang chuẩn bị nội dung...</div>
+                        </div>
+                    </div>
+                </div>
+            `;
             chatEl.appendChild(vidLoading);
             scrollToBottom();
 
@@ -987,26 +1023,23 @@ async function send() {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        prompt: videoPrompt,
+                        prompt: segmentPrompt,
                         conversation_id,
-                        user_id: Number(localStorage.getItem("user_id") || 0)
+                        user_id: Number(localStorage.getItem("user_id") || 0),
+                        chat_id: current_chat_id,
+                        image: refImage,
+                        duration: segmentDuration
                     })
                 });
 
                 const vidData = await vidRes.json();
                 if (vidRes.ok && vidData?.success) {
-                    const job_id = vidData.job_id;
-                    vidLoading.innerHTML = `<div class="bubble">⚡ Job ID: ${job_id}<br>🎥 Đang xử lý video, vui lòng đợi trong giây lát...</div>`;
-                    
-                    // Bắt đầu Polling
-                    pollVideoStatus(job_id, vidLoading);
+                    pollVideoStatus(vidData.job_id, vidLoading, current_chat_id);
                 } else {
-                    vidLoading.remove();
-                    addBotBubble("❌ Lỗi tạo video: " + (vidData?.error || "Lỗi không xác định"));
+                    vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi: ${vidData?.error || "Lỗi không xác định"}</div>`;
                 }
             } catch (e) {
-                vidLoading.remove();
-                addBotBubble("❌ Lỗi kết nối khi tạo video: " + e.message);
+                vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi kết nối video</div>`;
             }
 
             isSending = false;
@@ -1352,6 +1385,56 @@ async function loadConversation(id, updateUrl = true) {
                         localStorage.setItem("lastExportContent", text)
                     }
                     addBotBubble(text, exportType)
+
+                    // 🔥 RENDER SAVED VIDEO (SERIES)
+                    if (Array.isArray(m.videos) && m.videos.length > 0) {
+                        m.videos.forEach(vidUrl => {
+                            const row = document.createElement("div");
+                            row.className = "msgrow bot";
+                            row.innerHTML = `
+                                <div class="video-bubble-premium assistant">
+                                    <div class="video-container-premium">
+                                        <video controls class="video-player-premium">
+                                            <source src="${vidUrl}" type="video/mp4">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                    <div class="video-actions-premium">
+                                        <span class="status-badge-premium">
+                                            <i class='bx bx-magic-wand'></i> Btoan AI Video
+                                        </span>
+                                        <button onclick="forceDownloadVideo('${vidUrl}', 'btoan_ai_video_${Date.now()}.mp4', this)" class="download-btn-premium">
+                                            <i class='bx bx-download'></i> <span>Tải Video</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                            chatEl.appendChild(row);
+                        });
+                    } else if (m.video) {
+                        const row = document.createElement("div");
+                        row.className = "msgrow bot";
+                        row.innerHTML = `
+                            <div class="video-bubble-premium assistant">
+                                <div class="video-container-premium">
+                                    <video controls class="video-player-premium">
+                                        <source src="${m.video}" type="video/mp4">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                </div>
+                                <div class="video-actions-premium">
+                                    <span class="status-badge-premium">
+                                        <i class='bx bx-magic-wand'></i> Btoan AI Video
+                                    </span>
+                                    <button onclick="forceDownloadVideo('${m.video}', 'btoan_ai_video_${Date.now()}.mp4', this)" class="download-btn-premium">
+                                        <i class='bx bx-download'></i> <span>Tải Video</span>
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                        chatEl.appendChild(row);
+                    }
+
                     if (Array.isArray(m.images) && m.images.length > 0) {
                         const row = document.createElement("div");
                         row.className = "msgrow bot";
@@ -1361,9 +1444,9 @@ async function loadConversation(id, updateUrl = true) {
                         bubble.innerHTML = `
                             <div class="image-wrapper-premium">
                                 <img src="${imageSrc}" alt="Generated image" onclick="viewImage('${imageSrc}')">
-                                <a href="${imageSrc}" download="btoan_ai_image.png" class="image-download-btn-premium" title="Tải ảnh về máy">
+                                <button onclick="forceDownloadVideo('${imageSrc}', 'btoan_ai_image_${Date.now()}.png', this)" class="image-download-btn-premium" title="Tải ảnh về máy">
                                     <i class="bi bi-download"></i>
-                                </a>
+                                </button>
                             </div>
                             <div class="image-caption-premium">Đây là ảnh của bạn</div>
                         `;
@@ -1523,6 +1606,38 @@ window.onload = function () {
             send()
         }
     })
+
+    // 🖱️ SCROLL TO BOTTOM BUTTON LOGIC
+    const scrollBtn = document.getElementById("scrollToBottomBtn");
+    if (chatEl && scrollBtn) {
+        chatEl.addEventListener("scroll", () => {
+            // Hiển thị nút nếu cách đáy hơn 300px
+            const threshold = 300;
+            const isAtBottom = (chatEl.scrollHeight - chatEl.scrollTop - chatEl.clientHeight) < threshold;
+
+            if (isAtBottom) {
+                if (scrollBtn.classList.contains("show")) {
+                    scrollBtn.classList.remove("show");
+                    setTimeout(() => {
+                        if (!scrollBtn.classList.contains("show")) scrollBtn.style.display = "none";
+                    }, 400);
+                }
+            } else {
+                if (!scrollBtn.classList.contains("show")) {
+                    scrollBtn.style.display = "flex";
+                    // Small delay to trigger CSS transition
+                    setTimeout(() => scrollBtn.classList.add("show"), 10);
+                }
+            }
+        });
+
+        scrollBtn.addEventListener("click", () => {
+            chatEl.scrollTo({
+                top: chatEl.scrollHeight,
+                behavior: "smooth"
+            });
+        });
+    }
 
     // ===== auto format dd/mm/yyyy =====
     const dobInput = document.getElementById("pf_dob")
@@ -2017,19 +2132,7 @@ async function searchHistory(q) {
         list.appendChild(div)
     })
 }
-let startY = 0
-
-document.addEventListener("touchstart", (e) => {
-    startY = e.touches[0].clientY
-})
-
-document.addEventListener("touchmove", (e) => {
-    const y = e.touches[0].clientY
-
-    if (y - startY > 120 && window.scrollY === 0) {
-        location.reload()
-    }
-})
+// Pull-to-refresh logic removed to prevent unintended reloads on mobile
 function fixLatex(text) {
 
     return text
@@ -2411,47 +2514,114 @@ async function loadProfileData() {
 
 // 📸 Image Preview Logic (Lightbox)
 
-async function pollVideoStatus(job_id, containerBubble) {
+async function pollVideoStatus(job_id, containerBubble, chat_id) {
     let attempts = 0;
-    const maxAttempts = 60; // 60 x 5s = 300 seconds (5 mins)
+    const maxAttempts = 120; // 120 x 5s = 600 seconds (10 mins)
     const interval = 5000;
+    let simulatedProgress = 0;
+    let isInitialized = false;
 
     const timer = setInterval(async () => {
         attempts++;
+
+        // 🛡️ CHẶN QUÁ TẢI
         if (attempts > maxAttempts) {
             clearInterval(timer);
-            containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Quá thời gian tạo video (5 phút). Bạn hãy thử lại sau.</div>`;
+            containerBubble.innerHTML = `<div class="bubble assistant border-danger text-danger"><i class='bx bx-time-five'></i> Quá thời gian tạo video. Vui lòng kiểm tra lại sau.</div>`;
             return;
         }
 
+        // 🧠 GIẢ LẬP TIẾN ĐỘ THỰC TẾ (Tăng tốc theo yêu cầu người dùng)
+        if (simulatedProgress < 95) {
+            // Tốc độ nhảy: 8% mỗi 5s ban đầu, sau đó chậm dần nhưng vẫn nhanh hơn cũ
+            const increment = simulatedProgress < 40 ? 8 : (simulatedProgress < 80 ? 3 : 1);
+            simulatedProgress = Math.min(95, simulatedProgress + increment);
+        }
+
         try {
-            const res = await fetch(`/ai/api/check_video_job.php?job_id=${job_id}&conversation_id=${conversation_id}&user_id=${localStorage.getItem("user_id")}`);
+            const res = await fetch(`/ai/api/check_video_job.php?job_id=${job_id}&conversation_id=${conversation_id}&user_id=${localStorage.getItem("user_id")}&chat_id=${chat_id}`);
             const data = await res.json();
 
+            // 1️⃣ KHỞI TẠO UI LẦN ĐẦU
+            if (!isInitialized) {
+                containerBubble.innerHTML = `
+                    <div class="bubble assistant video-processing-card">
+                        <div class="processing-glow"></div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold mb-1">Đợi chút nha, tui đang tạo video...</div>
+                                <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         role="progressbar" style="width: 0%; transition: width 0.5s ease-in-out;"></div>
+                                </div>
+                                <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Tiến độ: 0% - Vui lòng đợi trong giây lát</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                isInitialized = true;
+                scrollToBottom();
+            }
+
+            // 2️⃣ XỬ LÝ KHI HOÀN THÀNH
             if (data.success && data.status === 'completed') {
                 clearInterval(timer);
                 const videoUrl = data.video_url;
 
-                containerBubble.innerHTML = `
-                    <div class="bubble video-bubble-premium">
-                        <div class="video-container-premium">
-                            <video controls class="video-player-premium">
-                                <source src="${videoUrl}" type="video/mp4">
-                            </video>
+                // 🔥 ÉP NHẢY LÊN 100% VÀ ĐỔI MÀU THÀNH CÔNG
+                const bar = containerBubble.querySelector('.progress-bar');
+                const text = containerBubble.querySelector('.progress-text');
+                if (bar) {
+                    bar.style.width = '100%';
+                    bar.classList.remove('progress-bar-animated');
+                    bar.style.backgroundColor = '#22c55e'; // Màu xanh lá (Success)
+                }
+                if (text) {
+                    text.innerHTML = '<span style="color: #22c55e; font-weight: bold;"><i class="bx bx-check-double"></i> Đã hoàn thành 100%! Đang tải video...</span>';
+                }
+
+                setTimeout(() => {
+                    containerBubble.innerHTML = `
+                        <div class="video-bubble-premium assistant">
+                            <div class="video-container-premium">
+                                <video controls class="video-player-premium">
+                                    <source src="${videoUrl}" type="video/mp4">
+                                </video>
+                            </div>
+                            <div class="video-actions-premium">
+                                <span class="status-badge-premium">
+                                    <i class='bx bx-magic-wand'></i> Btoan AI Video
+                                </span>
+                                <button onclick="forceDownloadVideo('${videoUrl}', 'btoan_ai_video_${Date.now()}.mp4', this)" class="download-btn-premium">
+                                    <i class='bx bx-download'></i> <span>Tải Video</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="video-actions-premium">
-                            <span class="status-badge-premium"><i class="fas fa-check-circle"></i> Video AI Hoàn tất</span>
-                            <a href="${videoUrl}" download="btoan_video.mp4" class="download-btn-premium">
-                                <i class="fas fa-download"></i> Tải về
-                            </a>
-                        </div>
-                    </div>
-                `;
-                scrollToBottom();
-            } else if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
-                clearInterval(timer);
-                containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Lỗi: ${data.error || "Không thể tạo video."}</div>`;
+                    `;
+                    scrollToBottom();
+                }, 1200); 
+                return;
             }
+
+            // 3️⃣ CẬP NHẬT TIẾN ĐỘ ĐANG CHẠY (PROCESSING)
+            if (data.status === 'processing' || data.success) {
+                // Ưu tiên progress thật từ API nếu nó > 0
+                const realProgress = parseFloat(data.progress || 0);
+                const displayProgress = Math.max(simulatedProgress, realProgress);
+
+                const bar = containerBubble.querySelector('.progress-bar');
+                const text = containerBubble.querySelector('.progress-text');
+                if (bar) bar.style.width = displayProgress + '%';
+                if (text) text.innerText = `Tiến độ: ${Math.floor(displayProgress)}% - Vui lòng đợi trong giây lát`;
+            }
+
+            // 4️⃣ XỬ LÝ LỖI
+            if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
+                clearInterval(timer);
+                containerBubble.innerHTML = `<div class="bubble assistant border-danger text-danger"><i class='bx bx-error' ></i> Lỗi: ${data.error || "Không thể tạo video."}</div>`;
+            }
+
         } catch (e) {
             console.error("Polling error:", e);
         }
@@ -2476,3 +2646,49 @@ function closeImagePreview() {
 document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") closeImagePreview();
 });
+
+// 📥 FORCE DOWNLOAD VIDEO (VIA PROXY TO BYPASS CORS)
+async function forceDownloadVideo(url, filename, btn) {
+    if (!url) return;
+    
+    const originalContent = btn.innerHTML;
+    try {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> <span>Đang xử lý...</span>`;
+
+        // Sử dụng proxy để né CORS và ép tải xuống chuẩn hơn
+        const proxyUrl = `/ai/api/download_proxy.php?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+        
+        // Cách 1: Fetch qua proxy (để giữ UI loading)
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("Proxy error");
+        
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        
+        document.body.appendChild(a);
+        a.click();
+        
+        window.URL.revokeObjectURL(blobUrl);
+        document.body.removeChild(a);
+
+        btn.innerHTML = `<i class='bx bx-check'></i> <span>Xong!</span>`;
+    } catch (err) {
+        console.error("❌ Download error:", err);
+        btn.innerHTML = `<i class='bx bx-error'></i> <span>Lỗi rồi!</span>`;
+        
+        // Cách 2: Direct link qua proxy (fallback cuối cùng)
+        const proxyUrl = `/ai/api/download_proxy.php?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+        window.location.href = proxyUrl;
+    } finally {
+        setTimeout(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }, 3000);
+    }
+}

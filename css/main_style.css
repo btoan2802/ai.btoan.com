@@ -12,6 +12,53 @@
   --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.08);
 }
 
+/* 🖱️ SCROLL TO BOTTOM BUTTON */
+.scroll-bottom-btn {
+    position: absolute; /* Thay đổi sang absolute để căn theo cha */
+    bottom: 150px; 
+    left: 50%;    
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--primary-color); 
+    color: #ffffff;                  
+    border: none;
+    box-shadow: 0 8px 24px rgba(59, 130, 246, 0.35); 
+    display: none; 
+    align-items: center;
+    justify-content: center;
+    z-index: 998;
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform: translateX(-50%) translateY(20px) scale(0.8); 
+    opacity: 0;
+}
+
+.scroll-bottom-btn.show {
+    display: flex;
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+}
+
+.scroll-bottom-btn:hover {
+    background: var(--primary-hover);
+    transform: translateX(-50%) translateY(-3px) scale(1.1);
+    box-shadow: 0 12px 32px rgba(59, 130, 246, 0.45);
+}
+
+.scroll-bottom-btn i {
+    font-size: 22px;
+}
+
+@media (max-width: 768px) {
+    .scroll-bottom-btn {
+        bottom: 110px;
+        left: 50%;
+        width: 38px;
+        height: 38px;
+    }
+}
+
 /* GLOBAL */
 
 html, body {
@@ -612,14 +659,23 @@ pre code {
     width: 0;
     padding: 0;
     overflow: hidden;
-    transition: all 0.2s ease;
+    display: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* HIỆN NÚT KHI SIDEBAR ĐÃ ĐÓNG (TRÊN PC) */
 .sidebar-collapsed #openSidebarBtn {
     opacity: 1;
     visibility: visible;
-    width: 34px;
-    padding: 8px;
-    margin-right: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex !important; /* Ép hiển thị */
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    border-radius: 8px;
+    color: var(--primary-color);
+    margin-right: 12px;
 }
 
 .sidebar {
@@ -843,3 +899,120 @@ pre code {
     }
 }
 
+/* 🎬 Cinematic Video Output Styling */
+.video-bubble-premium {
+    padding: 12px !important;
+    background: #ffffff !important;
+    border-radius: 20px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+    border: 1px solid #f1f5f9 !important;
+    max-width: 90% !important;
+    margin-bottom: 20px;
+    animation: slideUpFade 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.video-container-premium {
+    position: relative;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #000;
+    aspect-ratio: 16 / 9;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    margin-bottom: 12px;
+}
+
+.video-player-premium {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+}
+
+.video-actions-premium {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 4px;
+}
+
+.status-badge-premium {
+    font-size: 13px;
+    font-weight: 600;
+    color: #10b981;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.1);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.download-btn-premium {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: #fff !important;
+    text-decoration: none !important;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    transition: all 0.3s ease;
+}
+
+.download-btn-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.3);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.download-btn-premium:active {
+    transform: translateY(0);
+}
+
+@keyframes slideUpFade {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .video-bubble-premium {
+        max-width: 100% !important;
+    }
+}
+
+/* 🌀 Video Processing Card Styling */
+.video-processing-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(59, 130, 246, 0.2) !important;
+    padding: 16px 20px !important;
+    border-radius: 16px !important;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.08) !important;
+    min-width: 280px;
+}
+
+.processing-glow {
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.05) 0%, transparent 60%);
+    animation: rotateGlow 4s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes rotateGlow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.video-processing-card .progress-bar {
+    background-color: var(--primary-color) !important;
+}
