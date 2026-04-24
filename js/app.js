@@ -2425,11 +2425,11 @@ function toggleUserMenu() {
 
 // click ngoài → đóng menu
 document.addEventListener("click", function (e) {
-    const btn = document.querySelector(".user-account-btn")
+    const card = document.querySelector(".profile-card")
     const menu = document.getElementById("userMenu")
     
     if (menu && menu.style.display === "block") {
-        if (btn && !btn.contains(e.target) && !menu.contains(e.target)) {
+        if (card && !card.contains(e.target) && !menu.contains(e.target)) {
             menu.style.display = "none"
         }
     }
@@ -2694,7 +2694,7 @@ function toggleUserMenu() {
 
 // click ngoài → đóng menu
 document.addEventListener("click", function (e) {
-    const btn = document.querySelector(".user-account-btn")
+    const btn = document.querySelector(".profile-card")
     const menu = document.getElementById("userMenu")
     
     if (menu && menu.style.display === "block") {

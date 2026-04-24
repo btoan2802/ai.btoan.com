@@ -1,222 +1,245 @@
-/* 🎨 BTOAN AI - CHATGPT INSPIRED DESIGN SYSTEM */
+/* 🎨 BTOAN AI - REFINED THEME (CHATGPT STYLE) */
 
 :root {
-  /* LIGHT MODE (CHATGPT) */
+  /* LIGHT MODE */
+  --bg-main: #FFFFFF;
+  --bg-sidebar: #F7F7F8;
+  --bg-topbar: #FFFFFF;
+  --text-main: #111827;
+  --text-muted: #6B7280;
+  --border-color: #E5E7EB;
+  --hover-bg: #F3F4F6;
+  --bubble-user: #F7F7F8;
+  --bubble-bot: transparent;
   --primary-color: #10a37f;
   --primary-hover: #1a7f64;
-  --bg-main: #ffffff;
-  --bg-sidebar: #f9f9f9;
-  --bg-topbar: #ffffff;
-  --text-main: #0d0d0d;
-  --text-muted: #676767;
-  --border-light: #e5e7eb;
-  --hover-bg: #ececec;
-  --bubble-user: #f4f4f4;
-  --bubble-bot: transparent;
-  --input-bg: #ffffff;
-  --input-border: #e5e5e5;
-  --shadow-sm: 0 2px 6px rgba(0,0,0,0.05);
-  --shadow-md: 0 8px 30px rgba(0,0,0,0.1);
-  --danger-color: #ef4444;
+  --input-bg: #FFFFFF;
+  --font-main: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body.dark-mode {
-  /* DARK MODE (CHATGPT PRECISE) */
+  /* DARK MODE */
   --bg-main: #212121;
   --bg-sidebar: #171717;
   --bg-topbar: #212121;
-  --text-main: #ececec;
-  --text-muted: #b4b4b4;
-  --border-light: rgba(255, 255, 255, 0.1);
+  --text-main: #ECECEC;
+  --text-muted: #B4B4B4;
+  --border-color: rgba(255, 255, 255, 0.1);
   --hover-bg: rgba(255, 255, 255, 0.08);
   --bubble-user: #2f2f2f;
   --bubble-bot: transparent;
   --input-bg: #2f2f2f;
-  --input-border: rgba(255, 255, 255, 0.15);
-  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 12px 32px rgba(0, 0, 0, 0.4);
-  --danger-color: #f87171;
 }
 
-/* 🟢 GLOBAL RESET */
-html, body {
-  height: 100%;
-  height: 100dvh;
+/* 🟢 GLOBAL */
+* { box-sizing: border-box; }
+
+body {
   margin: 0;
   padding: 0;
-  overflow: hidden;
-  background: var(--bg-main);
+  font-family: var(--font-main);
+  background-color: var(--bg-main);
   color: var(--text-main);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  transition: background 0.3s ease, color 0.3s ease;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
 }
 
 .main-app-wrapper {
-  width: 100%;
-  height: 100dvh;
   display: flex;
+  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
-  background: var(--bg-main);
 }
 
-/* 🟢 SIDEBAR (ChatGPT Style) */
+/* 🟢 SIDEBAR */
 .sidebar {
   width: 260px;
   background: var(--bg-sidebar);
-  flex-shrink: 0;
-  border-right: 1px solid var(--border-light);
-  height: 100%;
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
   z-index: 1000;
 }
 
 .sidebar-header {
   padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
-.new-chat-wrapper {
+.brand-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+  background: var(--primary-color);
+  color: white;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.brand-text {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.new-chat-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.new-chat-btn:hover {
+  background: var(--hover-bg);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.nav-links {
+  margin-bottom: 20px;
+}
+
+.nav-item {
   display: flex;
   align-items: center;
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.2s;
-  font-weight: 500;
-  gap: 12px;
   color: var(--text-main);
+  text-decoration: none;
+  font-size: 14px;
+  gap: 12px;
+  transition: background 0.2s;
 }
 
-.new-chat-wrapper:hover {
+.nav-item:hover {
   background: var(--hover-bg);
 }
 
-.new-chat-wrapper i {
-  font-size: 18px;
+.sidebar-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 12px 4px;
 }
 
-.sidebar-utils {
-  padding: 0 12px 10px;
+.sidebar-title {
+  padding: 0 12px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
 }
 
-.util-item {
-  display: flex;
-  align-items: center;
+#historyList .history-item {
   padding: 8px 12px;
   margin-bottom: 2px;
   border-radius: 8px;
   cursor: pointer;
-  text-decoration: none;
-  color: var(--text-main);
   font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 0.2s;
+}
+
+#historyList .history-item:hover {
+  background: var(--hover-bg);
+}
+
+#historyList .history-item.active {
+  background: var(--hover-bg);
+  font-weight: 500;
+}
+
+/* 👤 SIDEBAR FOOTER */
+.sidebar-footer {
+  padding: 12px;
+  position: relative;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
   gap: 12px;
   transition: background 0.2s;
 }
 
-.util-item:hover {
+.profile-card:hover {
   background: var(--hover-bg);
 }
 
-.sidebar-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  padding: 18px 24px 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-/* 👤 SIDEBAR USER FOOTER (ChatGPT) */
-.sidebar-footer {
-  padding: 8px;
-  position: relative;
-}
-
-.user-account-btn {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background 0.2s;
-  gap: 10px;
-  width: 100%;
-  border: none;
-  background: transparent;
-  color: var(--text-main);
-}
-
-.user-account-btn:hover {
-  background: var(--hover-bg);
-}
-
-.user-account-btn .avatar {
+.profile-card .avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  overflow: hidden;
+  background: var(--primary-color);
+  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary-color);
-  color: white;
-  font-weight: 600;
   font-size: 13px;
-  flex-shrink: 0;
+  font-weight: 600;
 }
 
-.user-account-btn .user-info-text {
-  flex-grow: 1;
-  text-align: left;
-  overflow: hidden;
-}
-
-.user-account-btn .user-name {
+.profile-card .user-name {
+  flex: 1;
   font-size: 14px;
   font-weight: 500;
-  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.user-account-btn .user-plan {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.user-account-btn .dots-icon {
+.profile-card .dots-icon {
   color: var(--text-muted);
   font-size: 16px;
-  opacity: 0.7;
 }
 
-/* 👤 USER DROPDOWN MENU */
-.user-dropdown-menu {
+.user-menu {
   position: absolute;
   bottom: 70px;
-  left: 8px;
-  right: 8px;
+  left: 12px;
+  right: 12px;
   background: var(--bg-sidebar);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 6px;
-  box-shadow: var(--shadow-md);
-  z-index: 1010;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   display: none;
-  animation: menuAppear 0.15s ease-out;
+  z-index: 1010;
 }
 
-@keyframes menuAppear {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-.user-dropdown-menu .menu-item {
+.user-menu .menu-item {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
   gap: 12px;
@@ -224,57 +247,65 @@ html, body {
   transition: background 0.15s;
 }
 
-.user-dropdown-menu .menu-item:hover {
+.user-menu .menu-item:hover {
   background: var(--hover-bg);
 }
 
-.user-dropdown-menu .menu-divider {
+.menu-divider {
   height: 1px;
-  background: var(--border-light);
+  background: var(--border-color);
   margin: 6px 0;
 }
 
-.user-dropdown-menu .menu-item.logout {
-  color: var(--danger-color);
-}
-
-.user-dropdown-menu .pill-zero {
-    font-size: 10px;
-    background: var(--hover-bg);
-    padding: 2px 6px;
-    border-radius: 10px;
-    margin-left: auto;
-    opacity: 0.5;
-}
-
-/* 🟢 MAIN CHAT AREA */
-.topbar {
-  height: 56px;
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  background: var(--bg-topbar);
-  border-bottom: 1px solid var(--border-light);
-  justify-content: space-between;
-}
-
-.brand-text {
-  font-weight: 600;
-  font-size: 18px;
-  color: var(--text-main);
-}
-
-#chat {
-  flex-grow: 1;
-  overflow-y: auto;
-  padding: 20px 0;
+/* 🟢 CONTENT AREA */
+.content-wrapper {
+  flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100%;
+  position: relative;
 }
 
-/* 🟢 MESSAGES Style (ChatGPT) */
+.topbar {
+  height: 56px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.topbar-brand {
+  font-weight: 600;
+  font-size: 16px;
+  margin-left: 8px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.icon-btn:hover {
+  background: var(--hover-bg);
+}
+
+.chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 0;
+}
+
+/* 🟢 MESSAGES */
 .msgrow {
-  width: 100%;
   max-width: 800px;
   margin: 0 auto;
   padding: 12px 20px;
@@ -289,122 +320,126 @@ html, body {
 .bubble {
   max-width: 85%;
   padding: 10px 16px;
-  border-radius: 18px;
+  border-radius: 16px;
   font-size: 15px;
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 .msgrow.user .bubble {
   background: var(--bubble-user);
   color: var(--text-main);
-  border-bottom-right-radius: 4px;
 }
 
 .msgrow.bot .bubble {
   background: var(--bubble-bot);
   color: var(--text-main);
-  border-radius: 0;
   padding-left: 0;
 }
 
-/* 🟢 INPUT AREA (ChatGPT style) */
-.input-container-wrapper {
+/* 🟢 INPUT AREA */
+.input-area {
   padding: 0 20px 24px;
-  background: var(--bg-main);
 }
 
-.input-box-chatgpt {
+.input-wrapper {
   max-width: 800px;
   margin: 0 auto;
   background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 26px;
-  padding: 10px 14px 10px 20px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 10px 14px;
   display: flex;
-  align-items: center;
-  box-shadow: var(--shadow-sm);
-  transition: border-color 0.2s, box-shadow 0.2s;
+  align-items: flex-end;
+  gap: 10px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
 }
 
-.input-box-chatgpt:focus-within {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 1px var(--primary-color);
+.attach-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 4px;
+  cursor: pointer;
+  font-size: 18px;
 }
 
 #msg {
-  border: none !important;
-  background: transparent !important;
-  color: var(--text-main) !important;
-  box-shadow: none !important;
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text-main);
   resize: none;
-  font-size: 15px;
+  padding: 6px 0;
   max-height: 200px;
-  padding: 4px 0;
+  font-family: inherit;
+  font-size: 15px;
 }
 
-#msg::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
+#msg:focus {
+  outline: none;
 }
 
 .send-btn {
+  background: var(--primary-color);
+  color: white;
+  border: none;
   width: 32px;
   height: 32px;
-  border-radius: 50% !important;
-  padding: 0 !important;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary-color) !important;
-  border: none !important;
-  color: white !important;
-  margin-left: 8px;
+  cursor: pointer;
+  font-size: 20px;
   transition: opacity 0.2s;
 }
 
 .send-btn:disabled {
   opacity: 0.3;
-  cursor: not-allowed;
 }
 
-/* 🟢 FLOATING OK TOAST */
-#floating-ok {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: var(--bg-sidebar);
-    color: var(--text-main);
-    padding: 8px 16px;
-    border-radius: 20px;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-light);
-    font-size: 13px;
-    z-index: 9999;
-    display: none;
-    align-items: center;
-    gap: 8px;
+.footer-note {
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 8px;
 }
 
-/* 🖱️ SCROLL BUTTON */
+/* 🟢 FLOATING / OVERLAYS */
 .scroll-bottom-btn {
-    position: fixed;
-    bottom: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--bg-main);
-    color: var(--text-main);
-    border: 1px solid var(--border-light);
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--shadow-sm);
-    z-index: 500;
+  position: absolute;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  z-index: 500;
 }
 
-/* 🟢 RESPONSIVE */
+#floating-ok {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 20px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 9999;
+}
+
 @media (max-width: 768px) {
   .sidebar {
     position: fixed;
@@ -415,16 +450,12 @@ html, body {
   }
   .sidebar.open {
     transform: translateX(0);
-    box-shadow: 20px 0 60px rgba(0,0,0,0.2);
   }
   .sidebar-overlay {
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.5);
     z-index: 999;
-  }
-  .sidebar.open + .sidebar-overlay {
-    display: block;
   }
 }
