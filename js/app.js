@@ -1645,6 +1645,10 @@ window.onload = function () {
         document.body.classList.add("dark-mode");
         const themeBtn = document.getElementById("themeToggleBtn");
         if (themeBtn) themeBtn.innerHTML = '<i class="bi bi-sun"></i>';
+    } else {
+        document.body.classList.remove("dark-mode");
+        const themeBtn = document.getElementById("themeToggleBtn");
+        if (themeBtn) themeBtn.innerHTML = '<i class="bi bi-moon-stars"></i>';
     }
 
     // ===== auto format dd/mm/yyyy =====
@@ -1721,7 +1725,13 @@ window.onload = function () {
 function toggleSidebar() {
     const sb = document.getElementById("sidebar")
     if (!sb) return
-    sb.classList.toggle("open")
+
+    if (isMobile()) {
+        sb.classList.toggle("open")
+    } else {
+        sb.classList.toggle("collapsed")
+        document.body.classList.toggle("sidebar-collapsed")
+    }
 }
 
 
@@ -2180,20 +2190,15 @@ async function checkProfile(user_id) {
         "User"
 
     // ✅ set tên
-    const nameEls = [
-        document.getElementById("userName"), 
-        document.getElementById("sidebarUserName")
-    ]
+    const nameEls = [document.getElementById("userName"), document.getElementById("sidebarUserName")]
     nameEls.forEach(el => { if (el) el.innerText = name })
 
-    // ✅ avatar
-    const avatarEls = [
-        document.getElementById("userAvatar"), 
-        document.getElementById("sidebarUserAvatar")
-    ]
+    // ✅ avatar chữ cái đầu
+    const avatarEls = [document.getElementById("userAvatar"), document.getElementById("sidebarUserAvatar")]
     
     avatarEls.forEach(avatarEl => {
         if (!avatarEl) return
+        // reset
         avatarEl.innerHTML = ""
         avatarEl.style.background = "none"
 
@@ -2203,29 +2208,14 @@ async function checkProfile(user_id) {
         } else {
             avatarEl.innerText = name.charAt(0).toUpperCase()
             const colors = [
-                "linear-gradient(135deg,#10a37f,#1a7f64)", // ChatGPT green
                 "linear-gradient(135deg,#6366f1,#4f46e5)",
-                "linear-gradient(135deg,#f59e0b,#d97706)"
+                "linear-gradient(135deg,#22c55e,#16a34a)",
+                "linear-gradient(135deg,#f59e0b,#d97706)",
+                "linear-gradient(135deg,#ef4444,#dc2626)"
             ]
             avatarEl.style.background = colors[name.length % colors.length]
         }
     })
-    
-    // Sync theme icon on load
-    const savedTheme = localStorage.getItem("theme") || "light";
-    const themeIcon = document.getElementById("themeIcon");
-    if (themeIcon) {
-        themeIcon.className = savedTheme === "dark" ? "bi bi-sun" : "bi bi-moon-stars";
-    }
-
-    // 🎨 màu avatar
-    const colors = [
-        "linear-gradient(135deg,#6366f1,#4f46e5)",
-        "linear-gradient(135deg,#22c55e,#16a34a)",
-        "linear-gradient(135deg,#f59e0b,#d97706)",
-        "linear-gradient(135deg,#ef4444,#dc2626)"
-    ]
-    avatarEl.style.background = colors[name.length % colors.length]
 
     // 💾 lưu lại full_name để dùng sau
     if (fullName) {
@@ -2419,47 +2409,20 @@ document.addEventListener("DOMContentLoaded", () => {
 function toggleUserMenu() {
     const menu = document.getElementById("userMenu")
     if (!menu) return
-    const isVisible = menu.style.display === "block"
-    menu.style.display = isVisible ? "none" : "block"
+    menu.style.display = menu.style.display === "block" ? "none" : "block"
 }
 
-// click ngoài → đóng menu
+// click ngoài → đóng
 document.addEventListener("click", function (e) {
-    const card = document.querySelector(".profile-card")
+    const profileCard = document.querySelector(".profile-card-sidebar")
     const menu = document.getElementById("userMenu")
     
     if (menu && menu.style.display === "block") {
-        if (card && !card.contains(e.target) && !menu.contains(e.target)) {
+        if (!profileCard.contains(e.target) && !menu.contains(e.target)) {
             menu.style.display = "none"
         }
     }
 })
-
-function openSettings() {
-    toggleUserMenu();
-    showToast("Cài đặt sẽ sớm ra mắt!");
-}
-
-function openHelp() {
-    toggleUserMenu();
-    window.open("https://github.com/btoan2802", "_blank");
-}
-
-function showToast(text) {
-    const toast = document.getElementById("floating-ok");
-    const label = document.getElementById("ok-text");
-    if (!toast || !label) return;
-    
-    label.innerText = text;
-    toast.style.display = "flex";
-    toast.style.animation = "none";
-    void toast.offsetWidth; // trigger reflow
-    toast.style.animation = "menuAppear 0.3s ease-out";
-    
-    setTimeout(() => {
-        toast.style.display = "none";
-    }, 3000);
-}
 
 function openProfile() {
 
@@ -2685,60 +2648,15 @@ document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") closeImagePreview();
 });
 
-function toggleUserMenu() {
-    const menu = document.getElementById("userMenu")
-    if (!menu) return
-    const isVisible = menu.style.display === "block"
-    menu.style.display = isVisible ? "none" : "block"
-}
-
-// click ngoài → đóng menu
-document.addEventListener("click", function (e) {
-    const btn = document.querySelector(".profile-card")
-    const menu = document.getElementById("userMenu")
-    
-    if (menu && menu.style.display === "block") {
-        if (btn && !btn.contains(e.target) && !menu.contains(e.target)) {
-            menu.style.display = "none"
-        }
-    }
-})
-
-function openSettings() {
-    toggleUserMenu();
-    showToast("Cài đặt sẽ sớm ra mắt!");
-}
-
-function openHelp() {
-    toggleUserMenu();
-    window.open("https://github.com/btoan2802", "_blank");
-}
-
-function showToast(text) {
-    const toast = document.getElementById("floating-ok");
-    const label = document.getElementById("ok-text");
-    if (!toast || !label) return;
-    
-    label.innerText = text;
-    toast.style.display = "flex";
-    toast.style.animation = "none";
-    void toast.offsetWidth; // trigger reflow
-    toast.style.animation = "menuAppear 0.3s ease-out";
-    
-    setTimeout(() => {
-        toast.style.display = "none";
-    }, 3000);
-}
-
 function toggleTheme() {
     const isDark = document.body.classList.toggle("dark-mode");
-    const icon = document.getElementById("themeIcon");
+    const btn = document.getElementById("themeToggleBtn");
     
     if (isDark) {
         localStorage.setItem("theme", "dark");
-        if (icon) icon.className = "bi bi-sun";
+        if (btn) btn.innerHTML = '<i class="bi bi-sun"></i>';
     } else {
         localStorage.setItem("theme", "light");
-        if (icon) icon.className = "bi bi-moon-stars";
+        if (btn) btn.innerHTML = '<i class="bi bi-moon-stars"></i>';
     }
 }
