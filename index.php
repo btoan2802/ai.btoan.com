@@ -24,7 +24,8 @@ include 'login/Check_LogIn.php';
 
   <!-- A. LOGIN BOX -->
   <div id="loginBox" class="login-overlay">
-    <div class="login-card">
+    <!-- Thêm class container để JS login không bị lỗi -->
+    <div class="container login-card">
       <div class="login-header">
         <img src="https://btoan.com/images/logo.png" alt="Logo" class="login-logo">
         <h2>Chào mừng trở lại</h2>
@@ -81,6 +82,11 @@ include 'login/Check_LogIn.php';
 
   <!-- B. CHAT APP -->
   <div id="chatApp" style="display:none">
+    <!-- Hand Tracking Canvas (Cần thiết cho JS) -->
+    <div id="hand-tracking-container" style="position:fixed; inset:0; pointer-events:none; z-index:9999;">
+        <canvas id="hand-canvas-overlay" style="width:100%; height:100%;"></canvas>
+    </div>
+
     <div class="d-flex main-app-wrapper">
 
       <div id="sidebar" class="sidebar">
@@ -218,6 +224,27 @@ include 'login/Check_LogIn.php';
       <button onclick="document.getElementById('profileModal').style.display='none'" class="btn btn-link w-100 mt-2 text-muted">Đóng</button>
     </div>
   </div>
+
+  <!-- D. FACE ENROLL MODAL (Cần cho face login) -->
+  <div id="face-enroll-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+    <div style="background:var(--bg-main); padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0; font-weight:700; color:var(--text-main); margin-bottom:10px;">Face ID</h3>
+      <div style="position:relative; width:200px; height:200px; overflow:hidden; border-radius:50%; border:4px solid var(--primary-color); margin: 0 auto 20px;">
+        <video id="face-video" autoplay playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+        <div id="scan-line" style="position:absolute; top:0; left:0; right:0; height:2px; background:var(--primary-color); display:none; animation: scanAnim 2s infinite;"></div>
+      </div>
+      <canvas id="face-canvas" style="display:none"></canvas>
+      <p id="face-enroll-status" style="color:var(--text-muted); font-size:14px;"></p>
+      <button id="face-close-btn" class="btn btn-outline-secondary w-100">Hủy bỏ</button>
+    </div>
+  </div>
+
+  <style>
+    @keyframes scanAnim {
+      0% { top: 0; }
+      100% { top: 100%; }
+    }
+  </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
