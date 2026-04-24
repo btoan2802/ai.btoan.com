@@ -951,20 +951,12 @@ async function send() {
             const allWords = videoPrompt.trim().split(/\s+/).filter(w => w.length > 0);
             const wordCount = allWords.length;
 
-            // 🔥 TỰ ĐỘNG ƯỚC TÍNH "KHÔN" HƠN
+            // 🔥 LUÔN MẶC ĐỊNH 8 GIÂY (1 CLIP) - CHỈ CHIA KHI USER YÊU CẦU RÕ SỐ GIÂY
             let requestedDuration = 8; 
             const durationMatch = userText.match(/(\d+)\s*(s|giây|second)/i);
             
             if (durationMatch) {
                 requestedDuration = parseInt(durationMatch[1]);
-            } else if (wordCount > 100) {
-                // Chỉ tự động chia thành chuỗi nếu thực sự RẤT DÀI (> 100 từ)
-                const estimatedSecs = Math.ceil(wordCount / 30) * 8;
-                // Giới hạn mặc định không quá 24s (3 clip) để tránh "ngu"
-                requestedDuration = Math.min(24, estimatedSecs);
-            } else {
-                // Các trường hợp còn lại (ngắn hoặc vừa) -> CHỈ 1 CLIP 8S
-                requestedDuration = 8;
             }
 
             // Calculate segments (max 8s per segment)
