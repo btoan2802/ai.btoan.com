@@ -158,10 +158,27 @@ try {
                 'success' => true,
                 'status' => 'completed',
                 'video_url' => $r2PublicUrl,
+                'msg' => 'Video generated and saved successfully.',
                 'provider' => 'google-veo'
             ]);
         } else {
-            sendJson(['success' => false, 'status' => 'failed', 'error' => 'Job done but no video URI found.']);
+            // 🔥 KIỂM TRA LỖI CHI TIẾT TỪ GOOGLE
+            $errorDetail = "Google không trả về link video.";
+            if (isset($opData['error'])) {
+                $errorDetail = "Lỗi: " . ($opData['error']['message'] ?? "Unknown Google error");
+            } else if (isset($opData['response']['error'])) {
+                $errorDetail = "Lỗi phản hồi: " . ($opData['response']['error']['message'] ?? "Unknown response error");
+            } else if (isset($opData['metadata']['status'])) {
+                 // Một số trường hợp lỗi nằm trong metadata
+                 $errorDetail = "Trạng thái: " . ($opData['metadata']['status'] ?? "Unknown");
+            }
+            
+            sendJson([
+                'success' => false, 
+                'status' => 'failed', 
+                'error' => "Job hoàn tất nhưng không có video. $errorDetail",
+                'debug_op' => $opData // Gửi kèm để debug nếu cần
+            ]);
         }
     } else {
         $progress = $opData['metadata']['progressPercentage'] ?? '0';
