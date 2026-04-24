@@ -2537,11 +2537,17 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
                 clearInterval(timer);
                 const videoUrl = data.video_url;
 
-                // Nhảy lên 100% trước khi hiện video
+                // 🔥 ÉP NHẢY LÊN 100% VÀ ĐỔI MÀU THÀNH CÔNG
                 const bar = containerBubble.querySelector('.progress-bar');
                 const text = containerBubble.querySelector('.progress-text');
-                if (bar) bar.style.width = '100%';
-                if (text) text.innerText = 'Hoàn tất! Đang chuẩn bị video...';
+                if (bar) {
+                    bar.style.width = '100%';
+                    bar.classList.remove('progress-bar-animated');
+                    bar.style.backgroundColor = '#22c55e'; // Màu xanh lá (Success)
+                }
+                if (text) {
+                    text.innerHTML = '<span style="color: #22c55e; font-weight: bold;"><i class="bx bx-check-double"></i> Đã hoàn thành 100%! Đang tải video...</span>';
+                }
 
                 setTimeout(() => {
                     containerBubble.innerHTML = `
@@ -2562,7 +2568,7 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
                         </div>
                     `;
                     scrollToBottom();
-                }, 800);
+                }, 1200); // Tăng thời gian chờ một chút để nhìn rõ 100%
                 return;
             }
 
