@@ -16,8 +16,8 @@ include 'login/Check_LogIn.php';
   <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="css/style.css?v=21">
-  <link rel="stylesheet" href="css/main_style.css?v=30">
+  <link rel="stylesheet" href="/css/style.css?v=21">
+  <link rel="stylesheet" href="/css/main_style.css?v=30">
 </head>
 
 <body>
@@ -225,14 +225,14 @@ include 'login/Check_LogIn.php';
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
-  <script src="facelib/face-api.min.js"></script>
+  <script src="/facelib/face-api.min.js"></script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="login/SignUp_LogIn_Form.js?v=20"></script>
-  <script src="js/app.js?v=30"></script>
-  <script src="js/hand_scene.js?v=10"></script>
-  <script src="js/hand_shapes.js?v=5"></script>
-  <script src="js/hand_engine.js?v=12"></script>
-  <script src="js/naruto_mode.js?v=36"></script>
+  <script src="/login/SignUp_LogIn_Form.js?v=20"></script>
+  <script src="/js/app.js?v=30"></script>
+  <script src="/js/hand_scene.js?v=10"></script>
+  <script src="/js/hand_shapes.js?v=5"></script>
+  <script src="/js/hand_engine.js?v=12"></script>
+  <script src="/js/naruto_mode.js?v=36"></script>
 
   <div id="image-preview-modal" class="image-preview-modal" onclick="closeImagePreview()">
     <span class="close-preview">&times;</span>
