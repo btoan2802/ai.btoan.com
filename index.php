@@ -95,7 +95,10 @@ include 'login/Check_LogIn.php';
               <i class="bi bi-plus-lg"></i>
               <span>Chat mới</span>
            </div>
-           <button class="icon-toggle-btn" onclick="toggleSidebar()" title="Đóng sidebar">
+           <div class="new-chat-wrapper ms-1" onclick="window.location.href='https://code.btoan.com'" title="Btoan Code IDE" style="width: auto; flex-grow: 0; padding: 10px;">
+              <i class="bi bi-code-square"></i>
+           </div>
+           <button class="icon-toggle-btn ms-auto" onclick="toggleSidebar()" title="Đóng sidebar">
               <i class="bi bi-layout-sidebar"></i>
            </button>
         </div>

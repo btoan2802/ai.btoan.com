@@ -93,7 +93,7 @@ let isAiReady = false;
 // Initialize Face-API
 async function initFaceAI() {
   try {
-    const MODEL_URL = "facelib/models";
+    const MODEL_URL = "/facelib/models";
     await Promise.all([
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
       faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
