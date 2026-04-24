@@ -952,11 +952,15 @@ async function send() {
             const durationMatch = userText.match(/(\d+)\s*(s|giây|second)/i);
             if (durationMatch) {
                 requestedDuration = parseInt(durationMatch[1]);
+            } else {
+                // 🔥 TỰ ĐỘNG ƯỚC TÍNH: Nếu text dài (> 200 ký tự), tự tăng lên 16s hoặc 24s
+                if (videoPrompt.length > 500) requestedDuration = 24;
+                else if (videoPrompt.length > 200) requestedDuration = 16;
             }
 
             // Calculate segments (max 8s per segment)
             const numSegments = Math.ceil(requestedDuration / 8);
-            const segmentDuration = 8; // Luôn dùng 8s cho chất lượng tốt nhất
+            const segmentDuration = 8; 
 
             // Get reference image (first one)
             let refImage = images.length > 0 ? images[0] : null;
