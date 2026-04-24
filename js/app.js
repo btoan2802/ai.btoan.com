@@ -2647,7 +2647,7 @@ document.addEventListener('keydown', (e) => {
     if (e.key === "Escape") closeImagePreview();
 });
 
-// 📥 FORCE DOWNLOAD VIDEO (CROSS-ORIGIN)
+// 📥 FORCE DOWNLOAD VIDEO (VIA PROXY TO BYPASS CORS)
 async function forceDownloadVideo(url, filename, btn) {
     if (!url) return;
     
@@ -2656,7 +2656,13 @@ async function forceDownloadVideo(url, filename, btn) {
         btn.disabled = true;
         btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> <span>Đang xử lý...</span>`;
 
-        const response = await fetch(url);
+        // Sử dụng proxy để né CORS và ép tải xuống chuẩn hơn
+        const proxyUrl = `/ai/api/download_proxy.php?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+        
+        // Cách 1: Fetch qua proxy (để giữ UI loading)
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error("Proxy error");
+        
         const blob = await response.blob();
         const blobUrl = window.URL.createObjectURL(blob);
         
@@ -2675,8 +2681,10 @@ async function forceDownloadVideo(url, filename, btn) {
     } catch (err) {
         console.error("❌ Download error:", err);
         btn.innerHTML = `<i class='bx bx-error'></i> <span>Lỗi rồi!</span>`;
-        // Fallback to direct link if fetch fails
-        window.open(url, '_blank');
+        
+        // Cách 2: Direct link qua proxy (fallback cuối cùng)
+        const proxyUrl = `/ai/api/download_proxy.php?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`;
+        window.location.href = proxyUrl;
     } finally {
         setTimeout(() => {
             btn.disabled = false;
