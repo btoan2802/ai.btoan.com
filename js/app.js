@@ -2499,9 +2499,10 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
             return;
         }
 
-        // 🧠 GIẢ LẬP TIẾN ĐỘ (Cho người dùng thấy nó đang chạy)
+        // 🧠 GIẢ LẬP TIẾN ĐỘ THỰC TẾ (Làm chậm lại để khớp với thời gian tạo video thật)
         if (simulatedProgress < 95) {
-            const increment = simulatedProgress < 30 ? 4 : (simulatedProgress < 70 ? 1.5 : 0.4);
+            // Tốc độ nhảy: 2% mỗi 5s ban đầu, sau đó chậm dần
+            const increment = simulatedProgress < 40 ? 2 : (simulatedProgress < 80 ? 0.8 : 0.2);
             simulatedProgress = Math.min(95, simulatedProgress + increment);
         }
 
