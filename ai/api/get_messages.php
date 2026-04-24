@@ -87,11 +87,21 @@ try {
                 }
             }
 
+            $videos = null;
+            if (!empty($row["assistant_video"])) {
+                $decodedVideo = json_decode($row["assistant_video"], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decodedVideo)) {
+                    $videos = $decodedVideo;
+                } else {
+                    $videos = [$row["assistant_video"]];
+                }
+            }
+
             $data[] = [
                 "role" => "assistant",
                 "text" => $row["answer"] ?? "",
                 "images" => $assistantImages,
-                "video" => !empty($row["assistant_video"]) ? $row["assistant_video"] : null
+                "videos" => $videos
             ];
         }
     }

@@ -947,16 +947,16 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
-            const vidLoading = document.createElement("div");
-            vidLoading.className = "msgrow bot";
-            vidLoading.innerHTML = `<div class="bubble">🎬 Đang khởi tạo luồng tạo video AI...</div>`;
-            chatEl.appendChild(vidLoading);
-            scrollToBottom();
-
             // Detect duration from prompt
-            let duration = 8; // Default
-            if (userText.match(/5\s*s|5\s*giây/i)) duration = 5;
-            else if (userText.match(/8\s*s|8\s*giây/i)) duration = 8;
+            let requestedDuration = 8; 
+            const durationMatch = userText.match(/(\d+)\s*(s|giây|second)/i);
+            if (durationMatch) {
+                requestedDuration = parseInt(durationMatch[1]);
+            }
+
+            // Calculate segments (max 8s per segment)
+            const numSegments = Math.ceil(requestedDuration / 8);
+            const segmentDuration = 8; // Luôn dùng 8s cho chất lượng tốt nhất
 
             // Get reference image (first one)
             let refImage = images.length > 0 ? images[0] : null;
@@ -970,34 +970,58 @@ async function send() {
                 }
             }
 
-            try {
-                const vidRes = await fetch("/ai/api/generate_video.php", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        prompt: videoPrompt,
-                        conversation_id,
-                        user_id: Number(localStorage.getItem("user_id") || 0),
-                        chat_id: current_chat_id,
-                        image: refImage,
-                        duration: duration
-                    })
-                });
+            // Trigger multiple segments
+            for (let i = 0; i < numSegments; i++) {
+                const vidLoading = document.createElement("div");
+                vidLoading.className = "msgrow bot";
+                vidLoading.innerHTML = `
+                    <div class="bubble assistant video-processing-card">
+                        <div class="processing-glow"></div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
+                            <div class="flex-grow-1">
+                                <div class="fw-bold mb-1">Đang tạo clip ${i + 1}/${numSegments}...</div>
+                                <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Khởi tạo luồng AI...</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                chatEl.appendChild(vidLoading);
+                scrollToBottom();
 
-                const vidData = await vidRes.json();
-                if (vidRes.ok && vidData?.success) {
-                    const job_id = vidData.job_id;
-                    vidLoading.innerHTML = `<div class="bubble">⚡ Job ID: ${job_id}<br>🎥 Đang xử lý video (${duration}s), vui lòng đợi...</div>`;
+                try {
+                    // Thêm thông tin segment vào prompt để AI tạo nội dung tiếp nối
+                    const segmentPrompt = numSegments > 1 ? `${videoPrompt} (segment ${i + 1} of ${numSegments})` : videoPrompt;
 
-                    // Bắt đầu Polling
-                    pollVideoStatus(job_id, vidLoading, current_chat_id);
-                } else {
-                    vidLoading.remove();
-                    addBotBubble("❌ Lỗi tạo video: " + (vidData?.error || "Lỗi không xác định"));
+                    const vidRes = await fetch("/ai/api/generate_video.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            prompt: segmentPrompt,
+                            conversation_id,
+                            user_id: Number(localStorage.getItem("user_id") || 0),
+                            chat_id: current_chat_id,
+                            image: refImage,
+                            duration: segmentDuration
+                        })
+                    });
+
+                    const vidData = await vidRes.json();
+                    if (vidRes.ok && vidData?.success) {
+                        const job_id = vidData.job_id;
+                        pollVideoStatus(job_id, vidLoading, current_chat_id);
+                    } else {
+                        vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi clip ${i + 1}: ${vidData?.error || "Lỗi không xác định"}</div>`;
+                    }
+                } catch (e) {
+                    vidLoading.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Lỗi kết nối clip ${i + 1}</div>`;
                 }
-            } catch (e) {
-                vidLoading.remove();
-                addBotBubble("❌ Lỗi kết nối khi tạo video: " + e.message);
+                
+                // Đợi một chút trước khi gửi job tiếp theo để tránh rate limit
+                if (numSegments > 1) await new Promise(r => setTimeout(r, 1000));
             }
 
             isSending = false;
@@ -1344,8 +1368,32 @@ async function loadConversation(id, updateUrl = true) {
                     }
                     addBotBubble(text, exportType)
 
-                    // 🔥 RENDER SAVED VIDEO
-                    if (m.video) {
+                    // 🔥 RENDER SAVED VIDEO (SERIES)
+                    if (Array.isArray(m.videos) && m.videos.length > 0) {
+                        m.videos.forEach(vidUrl => {
+                            const row = document.createElement("div");
+                            row.className = "msgrow bot";
+                            row.innerHTML = `
+                                <div class="video-bubble-premium assistant">
+                                    <div class="video-container-premium">
+                                        <video controls class="video-player-premium">
+                                            <source src="${vidUrl}" type="video/mp4">
+                                            Your browser does not support the video tag.
+                                        </video>
+                                    </div>
+                                    <div class="video-actions-premium">
+                                        <span class="status-badge-premium">
+                                            <i class='bx bx-magic-wand'></i> AI Video Cinematic
+                                        </span>
+                                        <a href="${vidUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
+                                            <i class='bx bx-download'></i> Tải Video
+                                        </a>
+                                    </div>
+                                </div>
+                            `;
+                            chatEl.appendChild(row);
+                        });
+                    } else if (m.video) {
                         const row = document.createElement("div");
                         row.className = "msgrow bot";
                         row.innerHTML = `
@@ -1358,7 +1406,7 @@ async function loadConversation(id, updateUrl = true) {
                                 </div>
                                 <div class="video-actions-premium">
                                     <span class="status-badge-premium">
-                                        <i class='bx bx-magic-wand'></i> AI Video Cinematic
+                                        <i class='bx bx-magic-wand'></i> Btoan AI Video
                                     </span>
                                     <a href="${m.video}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
                                         <i class='bx bx-download'></i> Tải Video
@@ -2498,7 +2546,7 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
                             </div>
                             <div class="video-actions-premium">
                                 <span class="status-badge-premium">
-                                    <i class='bx bx-magic-wand'></i> AI Video Cinematic
+                                    <i class='bx bx-magic-wand'></i> Btoan AI Video
                                 </span>
                                 <a href="${videoUrl}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
                                     <i class='bx bx-download'></i> Tải Video

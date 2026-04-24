@@ -131,19 +131,24 @@ try {
             // 🧹 DỌN TỆP TẠM
             if (file_exists($tempFile)) @unlink($tempFile);
 
-            // 💾 CẬP NHẬT DATABASE
+            // 💾 CẬP NHẬT DATABASE (Hỗ trợ nhiều video - Append mode)
             if ($chat_id > 0) {
+                // Lấy dữ liệu cũ trước
+                $currentVideos = [];
+                $res = $conn->query("SELECT assistant_video FROM chats WHERE id = $chat_id");
+                if ($res && $row = $res->fetch_assoc()) {
+                    $oldData = json_decode($row['assistant_video'] ?? '[]', true);
+                    if (is_array($oldData)) $currentVideos = $oldData;
+                    else if (!empty($row['assistant_video'])) $currentVideos = [$row['assistant_video']];
+                }
+                
+                // Thêm video mới vào mảng
+                $currentVideos[] = $r2PublicUrl;
+                $newJson = json_encode($currentVideos);
+
                 $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE id = ?");
                 if ($stmt) {
-                    $stmt->bind_param("si", $r2PublicUrl, $chat_id);
-                    $stmt->execute();
-                    $stmt->close();
-                }
-            } else if ($conversation_id > 0 && $user_id > 0) {
-                // Fallback nếu không có chat_id
-                $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
-                if ($stmt) {
-                    $stmt->bind_param("sii", $r2PublicUrl, $conversation_id, $user_id);
+                    $stmt->bind_param("si", $newJson, $chat_id);
                     $stmt->execute();
                     $stmt->close();
                 }
