@@ -60,6 +60,9 @@ try {
     $prompt = trim((string) ($input['prompt'] ?? ''));
     $conversation_id = (string) ($input['conversation_id'] ?? 'default');
     $user_id = (string) ($input['user_id'] ?? 'unknown');
+    $chat_id = (int) ($input['chat_id'] ?? 0);
+    $base64Image = $input['image'] ?? null; // base64 string
+    $duration = (int) ($input['duration'] ?? 8);
 
     if ($prompt === '') sendJson(['success' => false, 'error' => 'Prompt is required'], 200);
 
@@ -77,12 +80,24 @@ try {
 
     $url = "https://{$location}-aiplatform.googleapis.com/v1/projects/{$projectId}/locations/{$location}/publishers/google/models/{$model}:predictLongRunning";
     
+    $instance = ["prompt" => $prompt];
+    
+    // 🔥 IMAGE-TO-VIDEO SUPPORT
+    if ($base64Image) {
+        // Remove data:image/png;base64, prefix if present
+        if (strpos($base64Image, ',') !== false) {
+            $base64Image = explode(',', $base64Image)[1];
+        }
+        $instance["image"] = ["bytesBase64Encoded" => $base64Image];
+    }
+
     $payload = [
-        "instances" => [["prompt" => $prompt]],
+        "instances" => [$instance],
         "parameters" => [
             "sampleCount" => 1,
             "fps" => 24,
             "aspectRatio" => "16:9",
+            "videoDurationSeconds" => $duration,
             "storageUri" => $outputUri
         ]
     ];

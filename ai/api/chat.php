@@ -321,6 +321,7 @@ throw new Exception($stmt->error);
 }
 
 $data["conversation_id"] = $conversation_id;
+$data["chat_id"] = $conn->insert_id;
 
 echo json_encode($data);
 

@@ -588,7 +588,10 @@ async function callGemini(userText, images, files) {
     }
 
 
-    return reply;
+    return {
+        text: reply,
+        chat_id: data.chat_id
+    };
 
 }
 
@@ -732,13 +735,12 @@ async function send() {
 
     try {
 
-        let reply = await callGemini(userText, images, files)
+        let geminiRes = await callGemini(userText, images, files)
+        let reply = geminiRes.text;
+        let current_chat_id = geminiRes.chat_id;
 
         // 🔥 AI quyết định export
-        // 🔥 AI quyết định export (ĐÚNG LOGIC)
-        // 🔥 EXPORT (FIX CHUẨN)
         let exportType = null
-
         let rawReply = reply   // 🔥 giữ bản gốc
 
         if (rawReply.includes("[EXPORT]")) {
@@ -773,14 +775,9 @@ async function send() {
             const tag = "[GENIMAGE]";
             const index = reply.indexOf(tag);
 
-            // Extract the pure text (combine content before and after the prompt if any)
             let textBefore = reply.substring(0, index).trim();
-            // We assume the prompt is after the tag, but we stop at the next newline if the bot keeps talking
             let remainder = reply.substring(index + tag.length).trim();
 
-            // Split remainder into prompt and potential further text
-            // If the bot follows instructions, this is just the prompt. 
-            // If not, we take the first line as prompt and rest as text.
             let promptLines = remainder.split("\n");
             const imagePrompt = promptLines[0].trim();
             let textAfter = promptLines.slice(1).join("\n").trim();
@@ -813,15 +810,9 @@ async function send() {
                 });
 
                 const rawText = await imgRes.text();
-
                 imgLoading.remove();
 
-                let imgData = null;
-                try {
-                    imgData = JSON.parse(rawText);
-                } catch (e) {
-                    console.error("JSON parse failed for image response", e);
-                }
+                let imgData = JSON.parse(rawText);
 
                 if (imgRes.ok && imgData?.success) {
                     const cleanMimeType = String(imgData.mimeType || "image/png").trim();
@@ -842,20 +833,8 @@ async function send() {
                     `;
                     chatEl.appendChild(row);
                 } else {
-                    const errMsg = imgData?.error || "Lỗi không xác định";
-                    const isQuota = errMsg.toLowerCase().includes("quota") || rawText.includes("429");
-
-                    const errorBubble = document.createElement("div");
-                    errorBubble.className = "msgrow bot";
-                    errorBubble.innerHTML = `
-                        <div class="bubble border-danger text-danger" style="font-size:0.9rem;">
-                            <i class="bi bi-exclamation-triangle"></i> 
-                            ${isQuota ? "<b>Hết lượt vẽ ảnh (Quota Exceeded):</b> Vui lòng thử lại sau 1-2 phút hoặc nhờ AI giải thích bằng chữ." : "Lỗi vẽ ảnh: " + errMsg}
-                        </div>
-                    `;
-                    chatEl.appendChild(errorBubble);
+                    addBotBubble("❌ Lỗi vẽ ảnh: " + (imgData?.error || "Lỗi không xác định"));
                 }
-
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi kết nối khi vẽ ảnh: " + e.message);
@@ -885,7 +864,6 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
-            // Lấy ảnh đầu tiên để sửa
             const baseImage = images.length > 0 ? images[0] : null;
 
             if (!baseImage) {
@@ -916,13 +894,7 @@ async function send() {
 
                 const rawText = await imgRes.text();
                 imgLoading.remove();
-
-                let imgData = null;
-                try {
-                    imgData = JSON.parse(rawText);
-                } catch (e) {
-                    console.error("JSON parse failed", e);
-                }
+                let imgData = JSON.parse(rawText);
 
                 if (imgRes.ok && imgData?.success) {
                     const cleanMimeType = String(imgData.mimeType || "image/png").trim();
@@ -946,7 +918,6 @@ async function send() {
                 } else {
                     addBotBubble("❌ Lỗi chỉnh sửa ảnh: " + (imgData?.error || "Lỗi không xác định"));
                 }
-
             } catch (e) {
                 imgLoading.remove();
                 addBotBubble("❌ Lỗi kết nối khi sửa ảnh: " + e.message);
@@ -982,6 +953,14 @@ async function send() {
             chatEl.appendChild(vidLoading);
             scrollToBottom();
 
+            // Detect duration from prompt
+            let duration = 8; // Default
+            if (userText.match(/5\s*s|5\s*giây/i)) duration = 5;
+            else if (userText.match(/8\s*s|8\s*giây/i)) duration = 8;
+
+            // Get reference image (first one)
+            const refImage = images.length > 0 ? images[0] : null;
+
             try {
                 const vidRes = await fetch("/ai/api/generate_video.php", {
                     method: "POST",
@@ -989,17 +968,20 @@ async function send() {
                     body: JSON.stringify({
                         prompt: videoPrompt,
                         conversation_id,
-                        user_id: Number(localStorage.getItem("user_id") || 0)
+                        user_id: Number(localStorage.getItem("user_id") || 0),
+                        chat_id: current_chat_id,
+                        image: refImage,
+                        duration: duration
                     })
                 });
 
                 const vidData = await vidRes.json();
                 if (vidRes.ok && vidData?.success) {
                     const job_id = vidData.job_id;
-                    vidLoading.innerHTML = `<div class="bubble">⚡ Job ID: ${job_id}<br>🎥 Đang xử lý video, vui lòng đợi trong giây lát...</div>`;
+                    vidLoading.innerHTML = `<div class="bubble">⚡ Job ID: ${job_id}<br>🎥 Đang xử lý video (${duration}s), vui lòng đợi...</div>`;
                     
                     // Bắt đầu Polling
-                    pollVideoStatus(job_id, vidLoading);
+                    pollVideoStatus(job_id, vidLoading, current_chat_id);
                 } else {
                     vidLoading.remove();
                     addBotBubble("❌ Lỗi tạo video: " + (vidData?.error || "Lỗi không xác định"));
@@ -1352,6 +1334,32 @@ async function loadConversation(id, updateUrl = true) {
                         localStorage.setItem("lastExportContent", text)
                     }
                     addBotBubble(text, exportType)
+                    
+                    // 🔥 RENDER SAVED VIDEO
+                    if (m.video) {
+                        const row = document.createElement("div");
+                        row.className = "msgrow bot";
+                        row.innerHTML = `
+                            <div class="video-bubble-premium assistant">
+                                <div class="video-container-premium">
+                                    <video controls class="video-player-premium">
+                                        <source src="${m.video}" type="video/mp4">
+                                        Your browser does not support the video tag.
+                                    </video>
+                                </div>
+                                <div class="video-actions-premium">
+                                    <span class="status-badge-premium">
+                                        <i class='bx bx-magic-wand'></i> AI Video Cinematic
+                                    </span>
+                                    <a href="${m.video}" target="_blank" download="btoan_ai_video_${Date.now()}.mp4" class="download-btn-premium">
+                                        <i class='bx bx-download'></i> Tải Video
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                        chatEl.appendChild(row);
+                    }
+
                     if (Array.isArray(m.images) && m.images.length > 0) {
                         const row = document.createElement("div");
                         row.className = "msgrow bot";
@@ -2411,7 +2419,7 @@ async function loadProfileData() {
 
 // 📸 Image Preview Logic (Lightbox)
 
-async function pollVideoStatus(job_id, containerBubble) {
+async function pollVideoStatus(job_id, containerBubble, chat_id) {
     let attempts = 0;
     const maxAttempts = 60; // 60 x 5s = 300 seconds (5 mins)
     const interval = 5000;
@@ -2420,12 +2428,12 @@ async function pollVideoStatus(job_id, containerBubble) {
         attempts++;
         if (attempts > maxAttempts) {
             clearInterval(timer);
-            containerBubble.innerHTML = `<div class="bubble border-danger text-danger">❌ Quá thời gian tạo video (5 phút). Bạn hãy thử lại sau.</div>`;
+            containerBubble.innerHTML = `<div class="bubble assistant border-danger text-danger">❌ Quá thời gian tạo video (5 phút). Bạn hãy thử lại sau.</div>`;
             return;
         }
 
         try {
-            const res = await fetch(`/ai/api/check_video_job.php?job_id=${job_id}&conversation_id=${conversation_id}&user_id=${localStorage.getItem("user_id")}`);
+            const res = await fetch(`/ai/api/check_video_job.php?job_id=${job_id}&conversation_id=${conversation_id}&user_id=${localStorage.getItem("user_id")}&chat_id=${chat_id}`);
             const data = await res.json();
 
             if (data.success && data.status === 'completed') {

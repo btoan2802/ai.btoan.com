@@ -74,6 +74,8 @@ try {
     $conversation_id = (int) ($_GET['conversation_id'] ?? 0);
     $user_id = (int) ($_GET['user_id'] ?? 0);
 
+    $chat_id = (int) ($_GET['chat_id'] ?? 0);
+
     if (empty($job_id)) sendJson(['success' => false, 'error' => 'Job ID required'], 200);
 
     $accessToken = getAccessToken(__DIR__ . "/google-key.json");
@@ -130,7 +132,15 @@ try {
             if (file_exists($tempFile)) @unlink($tempFile);
 
             // 💾 CẬP NHẬT DATABASE
-            if ($conversation_id > 0 && $user_id > 0) {
+            if ($chat_id > 0) {
+                $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE id = ?");
+                if ($stmt) {
+                    $stmt->bind_param("si", $r2PublicUrl, $chat_id);
+                    $stmt->execute();
+                    $stmt->close();
+                }
+            } else if ($conversation_id > 0 && $user_id > 0) {
+                // Fallback nếu không có chat_id
                 $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE conversation_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1");
                 if ($stmt) {
                     $stmt->bind_param("sii", $r2PublicUrl, $conversation_id, $user_id);
