@@ -131,26 +131,30 @@ try {
             // 🧹 DỌN TỆP TẠM
             if (file_exists($tempFile)) @unlink($tempFile);
 
-            // 💾 CẬP NHẬT DATABASE (Hỗ trợ nhiều video - Append mode)
+            // 💾 CẬP NHẬT DATABASE (Atomic Append - Tránh Race Condition)
             if ($chat_id > 0) {
-                // Lấy dữ liệu cũ trước
-                $currentVideos = [];
-                $res = $conn->query("SELECT assistant_video FROM chats WHERE id = $chat_id");
-                if ($res && $row = $res->fetch_assoc()) {
-                    $oldData = json_decode($row['assistant_video'] ?? '[]', true);
-                    if (is_array($oldData)) $currentVideos = $oldData;
-                    else if (!empty($row['assistant_video'])) $currentVideos = [$row['assistant_video']];
-                }
-                
-                // Thêm video mới vào mảng
-                $currentVideos[] = $r2PublicUrl;
-                $newJson = json_encode($currentVideos);
-
-                $stmt = $conn->prepare("UPDATE chats SET assistant_video = ? WHERE id = ?");
+                // Thử dùng JSON_ARRAY_APPEND (Yêu cầu MySQL 5.7+)
+                $success = false;
+                $stmt = $conn->prepare("UPDATE chats SET assistant_video = JSON_ARRAY_APPEND(IFNULL(assistant_video, '[]'), '$', ?) WHERE id = ?");
                 if ($stmt) {
-                    $stmt->bind_param("si", $newJson, $chat_id);
-                    $stmt->execute();
+                    $stmt->bind_param("si", $r2PublicUrl, $chat_id);
+                    if ($stmt->execute() && $conn->affected_rows > 0) {
+                        $success = true;
+                    }
                     $stmt->close();
+                }
+
+                // Fallback nếu MySQL cũ không hỗ trợ JSON functions
+                if (!$success) {
+                    // Lock table hoặc dùng cơ chế retry đơn giản
+                    $res = $conn->query("SELECT assistant_video FROM chats WHERE id = $chat_id FOR UPDATE");
+                    if ($res && $row = $res->fetch_assoc()) {
+                        $oldData = json_decode($row['assistant_video'] ?? '[]', true);
+                        $currentVideos = is_array($oldData) ? $oldData : (empty($row['assistant_video']) ? [] : [$row['assistant_video']]);
+                        $currentVideos[] = $r2PublicUrl;
+                        $newJson = json_encode($currentVideos);
+                        $conn->query("UPDATE chats SET assistant_video = '" . $conn->real_escape_string($newJson) . "' WHERE id = $chat_id");
+                    }
                 }
             }
 
