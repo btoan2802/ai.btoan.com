@@ -2118,19 +2118,7 @@ async function searchHistory(q) {
         list.appendChild(div)
     })
 }
-let startY = 0
-
-document.addEventListener("touchstart", (e) => {
-    startY = e.touches[0].clientY
-})
-
-document.addEventListener("touchmove", (e) => {
-    const y = e.touches[0].clientY
-
-    if (y - startY > 120 && window.scrollY === 0) {
-        location.reload()
-    }
-})
+// Pull-to-refresh logic removed to prevent unintended reloads on mobile
 function fixLatex(text) {
 
     return text
