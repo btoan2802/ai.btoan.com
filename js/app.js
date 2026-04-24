@@ -959,7 +959,16 @@ async function send() {
             else if (userText.match(/8\s*s|8\s*giây/i)) duration = 8;
 
             // Get reference image (first one)
-            const refImage = images.length > 0 ? images[0] : null;
+            let refImage = images.length > 0 ? images[0] : null;
+
+            // 🔥 TỰ ĐỘNG TÌM ẢNH CŨ NẾU TIN NHẮN NÀY KHÔNG CÓ ẢNH
+            if (!refImage) {
+                const allUserImages = Array.from(document.querySelectorAll('.msgrow.user .img-preview img')).reverse();
+                if (allUserImages.length > 0) {
+                    refImage = allUserImages[0].src;
+                    console.log("📸 Đã tìm thấy ảnh tham chiếu từ lịch sử!");
+                }
+            }
 
             try {
                 const vidRes = await fetch("/ai/api/generate_video.php", {
@@ -979,7 +988,7 @@ async function send() {
                 if (vidRes.ok && vidData?.success) {
                     const job_id = vidData.job_id;
                     vidLoading.innerHTML = `<div class="bubble">⚡ Job ID: ${job_id}<br>🎥 Đang xử lý video (${duration}s), vui lòng đợi...</div>`;
-                    
+
                     // Bắt đầu Polling
                     pollVideoStatus(job_id, vidLoading, current_chat_id);
                 } else {
@@ -1334,7 +1343,7 @@ async function loadConversation(id, updateUrl = true) {
                         localStorage.setItem("lastExportContent", text)
                     }
                     addBotBubble(text, exportType)
-                    
+
                     // 🔥 RENDER SAVED VIDEO
                     if (m.video) {
                         const row = document.createElement("div");
@@ -2454,7 +2463,7 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
                         <div class="d-flex align-items-center gap-3">
                             <div class="spinner-border text-primary spinner-border-sm" role="status"></div>
                             <div class="flex-grow-1">
-                                <div class="fw-bold mb-1">Veo 3.1 đang sáng tạo...</div>
+                                <div class="fw-bold mb-1">Đợi chút nha, tui đang tạo video...</div>
                                 <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated" 
                                          role="progressbar" style="width: 0%; transition: width 0.5s ease-in-out;"></div>
@@ -2507,13 +2516,13 @@ async function pollVideoStatus(job_id, containerBubble, chat_id) {
                 // Ưu tiên progress thật từ API nếu nó > 0
                 const realProgress = parseFloat(data.progress || 0);
                 const displayProgress = Math.max(simulatedProgress, realProgress);
-                
+
                 const bar = containerBubble.querySelector('.progress-bar');
                 const text = containerBubble.querySelector('.progress-text');
                 if (bar) bar.style.width = displayProgress + '%';
                 if (text) text.innerText = `Tiến độ: ${Math.floor(displayProgress)}% - Vui lòng đợi trong giây lát`;
-            } 
-            
+            }
+
             // 4️⃣ XỬ LÝ LỖI
             if (data.status === 'failed' || (data.success === false && data.status !== 'processing')) {
                 clearInterval(timer);

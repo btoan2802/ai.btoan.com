@@ -84,6 +84,14 @@ try {
     
     // 🔥 IMAGE-TO-VIDEO SUPPORT (WITH MIME TYPE FIX)
     if ($base64Image) {
+        // Nếu là URL (bắt đầu bằng http), tải về và chuyển sang base64
+        if (strpos($base64Image, 'http') === 0) {
+            $imgData = @file_get_contents($base64Image);
+            if ($imgData) {
+                $base64Image = base64_encode($imgData);
+            }
+        }
+        
         $mimeType = "image/png"; // Default
         
         // Extract mime type from data:image/png;base64,...
