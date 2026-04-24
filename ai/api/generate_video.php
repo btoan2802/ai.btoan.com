@@ -82,13 +82,24 @@ try {
     
     $instance = ["prompt" => $prompt];
     
-    // 🔥 IMAGE-TO-VIDEO SUPPORT
+    // 🔥 IMAGE-TO-VIDEO SUPPORT (WITH MIME TYPE FIX)
     if ($base64Image) {
-        // Remove data:image/png;base64, prefix if present
+        $mimeType = "image/png"; // Default
+        
+        // Extract mime type from data:image/png;base64,...
+        if (preg_match('/^data:([^;]+);base64,/', $base64Image, $matches)) {
+            $mimeType = $matches[1];
+        }
+
+        // Remove prefix for the bytes field
         if (strpos($base64Image, ',') !== false) {
             $base64Image = explode(',', $base64Image)[1];
         }
-        $instance["image"] = ["bytesBase64Encoded" => $base64Image];
+
+        $instance["image"] = [
+            "bytesBase64Encoded" => $base64Image,
+            "mimeType" => $mimeType
+        ];
     }
 
     $payload = [
