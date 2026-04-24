@@ -953,14 +953,26 @@ async function send() {
             if (durationMatch) {
                 requestedDuration = parseInt(durationMatch[1]);
             } else {
-                // 🔥 TỰ ĐỘNG ƯỚC TÍNH: Nếu text dài (> 200 ký tự), tự tăng lên 16s hoặc 24s
-                if (videoPrompt.length > 500) requestedDuration = 24;
-                else if (videoPrompt.length > 200) requestedDuration = 16;
+                // 🔥 TỰ ĐỘNG ƯỚC TÍNH SIÊU DÀI: 150 ký tự ~ 8 giây
+                const estimatedSecs = Math.ceil(videoPrompt.length / 150) * 8;
+                requestedDuration = Math.max(8, estimatedSecs);
             }
 
             // Calculate segments (max 8s per segment)
             const numSegments = Math.ceil(requestedDuration / 8);
             const segmentDuration = 8; 
+
+            // ✂️ CHIA NHỎ VĂN BẢN THEO PHÂN ĐOẠN
+            const promptParts = [];
+            if (numSegments > 1) {
+                const words = videoPrompt.split(/\s+/);
+                const wordsPerSegment = Math.ceil(words.length / numSegments);
+                for (let i = 0; i < numSegments; i++) {
+                    promptParts.push(words.slice(i * wordsPerSegment, (i + 1) * wordsPerSegment).join(" "));
+                }
+            } else {
+                promptParts.push(videoPrompt);
+            }
 
             // Get reference image (first one)
             let refImage = images.length > 0 ? images[0] : null;
@@ -970,7 +982,6 @@ async function send() {
                 const allUserImages = Array.from(document.querySelectorAll('.msgrow.user .img-preview img')).reverse();
                 if (allUserImages.length > 0) {
                     refImage = allUserImages[0].src;
-                    console.log("📸 Đã tìm thấy ảnh tham chiếu từ lịch sử!");
                 }
             }
 
@@ -988,7 +999,7 @@ async function send() {
                                 <div class="progress" style="height: 6px; background: #f1f5f9; border-radius: 10px;">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
                                 </div>
-                                <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Khởi tạo luồng AI...</div>
+                                <div class="text-muted mt-1 progress-text" style="font-size: 11px;">Đang chuẩn bị nội dung phần ${i + 1}...</div>
                             </div>
                         </div>
                     </div>
@@ -997,8 +1008,8 @@ async function send() {
                 scrollToBottom();
 
                 try {
-                    // Thêm thông tin segment vào prompt để AI tạo nội dung tiếp nối
-                    const segmentPrompt = numSegments > 1 ? `${videoPrompt} (segment ${i + 1} of ${numSegments})` : videoPrompt;
+                    // Gửi phần văn bản tương ứng cho từng clip
+                    const segmentPrompt = promptParts[i] || videoPrompt;
 
                     const vidRes = await fetch("/ai/api/generate_video.php", {
                         method: "POST",
@@ -1025,7 +1036,7 @@ async function send() {
                 }
                 
                 // Đợi một chút trước khi gửi job tiếp theo để tránh rate limit
-                if (numSegments > 1) await new Promise(r => setTimeout(r, 1000));
+                if (numSegments > 1) await new Promise(r => setTimeout(r, 1500));
             }
 
             isSending = false;
