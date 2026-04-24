@@ -948,7 +948,7 @@ async function send() {
             }
 
             // Split prompt into words
-            const allWords = videoPrompt.split(/\s+/).filter(w => w.length > 0);
+            const allWords = videoPrompt.trim().split(/\s+/).filter(w => w.length > 0);
             const wordCount = allWords.length;
 
             // 🔥 TỰ ĐỘNG ƯỚC TÍNH THÔNG MINH: 22 từ ~ 8 giây
@@ -960,11 +960,14 @@ async function send() {
             } else if (wordCount > 25) {
                 // Chỉ tự động chia nếu trên 25 từ
                 const estimatedSecs = Math.ceil(wordCount / 22) * 8;
-                requestedDuration = Math.max(8, estimatedSecs);
+                requestedDuration = estimatedSecs;
+            } else {
+                // MẶC ĐỊNH LUÔN LÀ 8S CHO CÂU NGẮN
+                requestedDuration = 8;
             }
 
             // Calculate segments (max 8s per segment)
-            const numSegments = Math.ceil(requestedDuration / 8);
+            const numSegments = Math.max(1, Math.ceil(requestedDuration / 8));
             const segmentDuration = 8; 
 
             // ✂️ CHIA NHỎ VĂN BẢN THEO SỐ TỪ (Đảm bảo AI nói kịp)
