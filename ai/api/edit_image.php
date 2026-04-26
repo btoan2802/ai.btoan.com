@@ -17,6 +17,8 @@ error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 set_time_limit(180);
 
 require "db.php";
+require "intent_engine.php";
+
 
 set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
@@ -67,6 +69,9 @@ try {
 
     shuffle($API_KEYS);
 
+    $intent_obj = IntentEngine::analyzeIntent($prompt, true);
+    $protection = IntentEngine::getSystemProtection($intent_obj);
+
     // Using gemini-2.5-flash-image or imagen model for editing
     // For Vertex AI / Google AI, this varies. Here we use the common pool logic.
     $model = "gemini-2.5-flash-image"; 
@@ -82,7 +87,8 @@ try {
                 [
                     "role" => "user",
                     "parts" => [
-                        ["text" => "Please edit the following image based on this description: " . $prompt],
+                        ["text" => "PROTOCOL:\n" . $protection . "\n\nTASK: Please edit the following image based on this description: " . $prompt],
+
                         [
                             "inline_data" => [
                                 "mime_type" => "image/png",

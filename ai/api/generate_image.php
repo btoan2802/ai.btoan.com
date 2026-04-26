@@ -17,6 +17,8 @@ error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 set_time_limit(180);
 
 require "db.php";
+require "intent_engine.php";
+
 
 set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
@@ -73,6 +75,15 @@ try {
 
     shuffle($API_KEYS);
 
+    $intent_obj = IntentEngine::analyzeIntent($prompt);
+    $protection = IntentEngine::getSystemProtection($intent_obj);
+
+    // Build a more robust prompt for the image model based on the analysis
+    $refinedPrompt = "STRICT INSTRUCTIONS: " . $protection . "\n\nPRIMARY PROMPT: " . $prompt;
+    if (!empty($intent_obj['negative_constraints'])) {
+        $refinedPrompt .= "\nNEGATIVE CONSTRAINTS (DO NOT INCLUDE): " . implode(", ", $intent_obj['negative_constraints']);
+    }
+
     $model = "gemini-2.5-flash-image";
     $lastError = "Unknown Gemini API error";
     $lastHttpCode = 0;
@@ -85,10 +96,11 @@ try {
             "contents" => [
                 [
                     "parts" => [
-                        ["text" => $prompt]
+                        ["text" => $refinedPrompt]
                     ]
                 ]
             ],
+
             "generationConfig" => [
                 "imageConfig" => [
                     "aspectRatio" => $aspectRatio

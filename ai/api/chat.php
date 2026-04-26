@@ -10,6 +10,8 @@ error_reporting(E_ALL);
 try {
 
 require "db.php";
+require "intent_engine.php";
+
 
 $API_KEYS = [
 "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
@@ -106,6 +108,36 @@ $last = end($payload["contents"]);
 $question = $last["parts"][0]["text"] ?? "";
 
 }
+
+// --- INTENT ANALYSIS STEP ---
+$has_images = false;
+if (isset($payload["contents"])) {
+    foreach ($payload["contents"] as $msg) {
+        if (isset($msg["parts"])) {
+            foreach ($msg["parts"] as $part) {
+                if (isset($part["inline_data"])) {
+                    $has_images = true;
+                    break 2;
+                }
+            }
+        }
+    }
+}
+
+$intent_obj = IntentEngine::analyzeIntent($question, $has_images);
+
+// --- PROMPT PROTECTION ---
+$protection = IntentEngine::getSystemProtection($intent_obj);
+$SYSTEM_INSTRUCTION .= $protection;
+$payload["systemInstruction"]["parts"][0]["text"] = $SYSTEM_INSTRUCTION;
+
+// --- SPECIALIZED TASK HANDLING ---
+if ($intent_obj['task_type'] === 'image_generation' || $intent_obj['task_type'] === 'image_edit' || $intent_obj['task_type'] === 'identity_preserving_image_edit') {
+    // If it's an image task, we might want to adjust the prompt or model
+    // For now, let's just ensure the system instruction is very clear about it
+    // If the frontend expects a specific redirect, that would happen here
+}
+
 
 /*
 Tạo conversation
@@ -234,6 +266,19 @@ if (strpos($intent, "visual_exact_") !== 0 && !empty($question)) {
 
 
 
+// --- IMAGE PROTECTION ---
+if ($intent_obj['needs_reference_image'] && !$has_images) {
+    echo json_encode([
+        "error" => false,
+        "conversation_id" => $conversation_id,
+        "intent_analysis" => $intent_obj,
+        "candidates" => [
+            ["content" => ["parts" => [["text" => "Tôi cần bạn gửi ảnh tham chiếu để có thể thực hiện yêu cầu này chính xác (ví dụ: giữ khuôn mặt hoặc sửa chi tiết trong ảnh). Vui lòng tải ảnh lên và thử lại."]]]]
+        ]
+    ]);
+    exit;
+}
+
 /*
 Gọi Gemini
 */
@@ -260,23 +305,17 @@ CURLOPT_TIMEOUT => 600
 ]);
 
 $response = curl_exec($ch);
-
 $curl_error = curl_error($ch);
-
 $data = json_decode($response,true);
 
 $debug[] = [
-"key"=>substr($API_KEY,0,12)."****",
-"curl_error"=>$curl_error,
-"response"=>$response
+    "key"=>substr($API_KEY,0,12)."****",
+    "curl_error"=>$curl_error,
+    "response"=>$response
 ];
 
-if($response === false){
-continue;
-}
-
-if(!$data){
-continue;
+if($response === false || !$data){
+    continue;
 }
 
 /*
@@ -285,6 +324,20 @@ Nếu có câu trả lời
 if(isset($data["candidates"][0]["content"]["parts"][0]["text"])){
 
 $answer = $data["candidates"][0]["content"]["parts"][0]["text"];
+
+// --- SELF-CHECK STEP ---
+$validation = IntentEngine::validateResponse($intent_obj, $answer);
+if (!$validation['valid']) {
+    // If invalid, try ONE retry with a stronger warning
+    $payload["contents"][] = ["role" => "model", "parts" => [["text" => $answer]]];
+    $payload["contents"][] = ["role" => "user", "parts" => [["text" => "Kết quả của bạn vi phạm ràng buộc: " . $validation['reason'] . ". Hãy sửa lại và TUÂN THỦ TUYỆT ĐỐI các ràng buộc đã nêu trong Protocol."]]];
+    
+    // We reuse the same loop or just call once more? Let's just do a manual retry for simplicity in this key
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    $response = curl_exec($ch);
+    $data = json_decode($response, true);
+    $answer = $data["candidates"][0]["content"]["parts"][0]["text"] ?? $answer;
+}
 
 
 
@@ -326,10 +379,12 @@ throw new Exception($stmt->error);
 
 $data["conversation_id"] = $conversation_id;
 $data["chat_id"] = $conn->insert_id;
+$data["intent_analysis"] = $intent_obj; // For debugging
 
 echo json_encode($data);
 
 exit;
+
 
 }
 
