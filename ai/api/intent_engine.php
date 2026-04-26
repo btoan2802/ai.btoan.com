@@ -75,11 +75,12 @@ PROMPT;
             $data = json_decode($response, true);
 
             
-            if (isset($data["candidates"][0]["content"]["parts"][0]["text"])) {
+            if ($data && isset($data["candidates"][0]["content"]["parts"][0]["text"])) {
                 $json_text = $data["candidates"][0]["content"]["parts"][0]["text"];
                 $intent = json_decode($json_text, true);
                 if ($intent) return $intent;
             }
+
         }
 
         // Fallback if AI analysis fails
@@ -180,8 +181,9 @@ PROMPT;
             if (strpos($result, "INVALID") !== false) {
                 return ["valid" => false, "reason" => $result];
             }
-            return ["valid" => true];
+            if ($data && isset($data["candidates"])) return ["valid" => true];
         }
+
 
         return ["valid" => true]; 
     }

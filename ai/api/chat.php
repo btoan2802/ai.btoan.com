@@ -6,6 +6,9 @@ header("Access-Control-Allow-Methods: POST, OPTIONS");
 
 ini_set('memory_limit', '512M');
 set_time_limit(600);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', dirname(__FILE__) . '/ai_error.log');
 
 try {
 
@@ -364,9 +367,10 @@ Lưu DB
 */
 $image_list = [];
 
-$lastContent = end($input["payload"]["contents"]);
+$contents = $input["payload"]["contents"] ?? [];
+$lastContent = !empty($contents) ? end($contents) : null;
 
-if (isset($lastContent["parts"])) {
+if ($lastContent && isset($lastContent["parts"])) {
     foreach ($lastContent["parts"] as $part) {
 
         if (isset($part["inline_data"])) {
@@ -380,6 +384,7 @@ if (isset($lastContent["parts"])) {
 }
 
 $images = json_encode($image_list);
+
 $stmt = $conn->prepare("
 INSERT INTO chats(user_id,question,answer,conversation_id,images)
 VALUES (?,?,?,?,?)
