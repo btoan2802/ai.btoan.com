@@ -4,8 +4,8 @@ header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Headers: Content-Type");
 header("Access-Control-Allow-Methods: POST, OPTIONS");
 
-ini_set('display_errors',1);
-error_reporting(E_ALL);
+ini_set('memory_limit', '512M');
+set_time_limit(600);
 
 try {
 
@@ -313,9 +313,11 @@ CURLOPT_CONNECTTIMEOUT => 30,
 CURLOPT_TIMEOUT => 600
 ]);
 
-error_log("[CHAT DEBUG] Final Payload sent to Gemini: " . json_encode($payload));
+// Removed large payload logging to prevent memory issues
+// error_log("[CHAT DEBUG] Final Payload sent to Gemini: " . json_encode($payload));
 
 $response = curl_exec($ch);
+
 
 $curl_error = curl_error($ch);
 $data = json_decode($response,true);
@@ -323,8 +325,9 @@ $data = json_decode($response,true);
 $debug[] = [
     "key"=>substr($API_KEY,0,12)."****",
     "curl_error"=>$curl_error,
-    "response"=>$response
+    "response"=> (strlen($response) > 500) ? substr($response, 0, 500) . "..." : $response
 ];
+
 
 if($response === false || !$data){
     error_log("[CHAT DEBUG] Gemini API Call Failed. Response: " . $response);

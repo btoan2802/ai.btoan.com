@@ -68,10 +68,12 @@ PROMPT;
                 CURLOPT_POST => true,
                 CURLOPT_HTTPHEADER => ["Content-Type: application/json"],
                 CURLOPT_POSTFIELDS => json_encode($payload),
-                CURLOPT_TIMEOUT => 10
+                CURLOPT_TIMEOUT => 30
             ]);
             $response = curl_exec($ch);
+            curl_close($ch);
             $data = json_decode($response, true);
+
             
             if (isset($data["candidates"][0]["content"]["parts"][0]["text"])) {
                 $json_text = $data["candidates"][0]["content"]["parts"][0]["text"];
@@ -167,10 +169,12 @@ PROMPT;
                 CURLOPT_POSTFIELDS => json_encode([
                     "contents" => [["parts" => [["text" => $prompt]]]]
                 ]),
-                CURLOPT_TIMEOUT => 10
+                CURLOPT_TIMEOUT => 30
             ]);
             $response = curl_exec($ch);
+            curl_close($ch);
             $data = json_decode($response, true);
+
             $result = $data["candidates"][0]["content"]["parts"][0]["text"] ?? "VALID";
             
             if (strpos($result, "INVALID") !== false) {
