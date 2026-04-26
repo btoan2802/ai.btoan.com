@@ -126,6 +126,11 @@ PROMPT;
             case 'image_edit':
             case 'identity_preserving_image_edit':
                 $protection .= "10. IMAGE EDIT RULES: Use the provided reference image. Only modify the specific parts mentioned in 'allowed_changes'. If this is an identity-preserving task, keep the facial features and character identity exactly as they appear in the reference image. Do not change the art style unless requested.\n";
+                
+                // Special handling for stickers
+                if (mb_stripos($intent['user_goal'], 'sticker') !== false || mb_stripos($intent['user_goal'], 'nhãn dán') !== false) {
+                    $protection .= "11. STICKER PROTOCOL: Generate a 4x4 or 2x2 grid of stickers. Each sticker should feature the SAME person from the reference image with different expressions (laughing, crying, sleeping, surprised). Use a clean white background. Add cute Vietnamese text (e.g., 'Haha', 'Huhu', 'Khò khò', 'Ối!') to each sticker using a playful font style. Ensure the person looks REAL (not chibi/anime) as per user request.\n";
+                }
                 break;
             case 'ui_edit':
             case 'code_edit':
@@ -133,11 +138,12 @@ PROMPT;
                 break;
         }
         
-        $protection .= "11. FINAL INTERPRETATION: " . $intent['final_interpretation'] . "\n";
+        $protection .= "12. FINAL INTERPRETATION: " . $intent['final_interpretation'] . "\n";
         $protection .= "### END PROTOCOL\n";
         
         return $protection;
     }
+
 
     public static function validateResponse($intent, $answer) {
         // Run a quick check for common violations
