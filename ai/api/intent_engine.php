@@ -71,8 +71,8 @@ PROMPT;
                 CURLOPT_TIMEOUT => 30
             ]);
             $response = curl_exec($ch);
-            curl_close($ch);
             $data = json_decode($response, true);
+
 
             
             if ($data && isset($data["candidates"][0]["content"]["parts"][0]["text"])) {
@@ -173,8 +173,8 @@ PROMPT;
                 CURLOPT_TIMEOUT => 30
             ]);
             $response = curl_exec($ch);
-            curl_close($ch);
             $data = json_decode($response, true);
+
 
             $result = $data["candidates"][0]["content"]["parts"][0]["text"] ?? "VALID";
             
