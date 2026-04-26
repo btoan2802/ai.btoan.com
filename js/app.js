@@ -501,6 +501,8 @@ async function callGemini(userText, images, files) {
         }
     };
 
+    console.log("[CHAT REQUEST]", payload);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -537,11 +539,13 @@ async function callGemini(userText, images, files) {
     clearTimeout(timeout);
 
     const raw = await res.text();
+    console.log("[CHAT RAW RESPONSE]", raw);
 
     let data;
 
     try {
         data = JSON.parse(raw);
+        console.log("[CHAT JSON RESPONSE]", data);
     } catch {
         throw new Error("server trả dữ liệu không phải JSON");
     }
@@ -555,12 +559,19 @@ async function callGemini(userText, images, files) {
 
 
 
-    if (!res.ok) {
-        throw new Error(data?.error?.message || "http error");
+    if (!res.ok || data.ok === false) {
+        return {
+            ok: false,
+            text: data.answer || data?.error?.message || "Lỗi máy chủ",
+            error: data.error || "http error",
+            chat_id: data.chat_id
+        };
     }
 
     const respParts = data?.candidates?.[0]?.content?.parts || [];
-    const reply = respParts.map(p => p.text).join("\n");
+    let reply = respParts.map(p => p.text).join("\n");
+    if (!reply && data.answer) reply = data.answer; // Use standardized answer if candidates missing
+
     // 🔥 AUTO TITLE (CHỈ 1 LẦN)
     if (conversation_id && !autoRenamed) {
 
@@ -589,7 +600,9 @@ async function callGemini(userText, images, files) {
 
 
     return {
+        ok: true,
         text: reply,
+        images: data.images || [],
         chat_id: data.chat_id
     };
 
@@ -736,8 +749,23 @@ async function send() {
     try {
 
         let geminiRes = await callGemini(userText, images, files)
+        
+        if (!geminiRes.ok) {
+            typing.remove();
+            addBotBubble("❌ " + geminiRes.text);
+            isSending = false;
+            return;
+        }
+
         let reply = geminiRes.text;
         let current_chat_id = geminiRes.chat_id;
+
+        if (!reply || reply.trim() === "") {
+            typing.remove();
+            addBotBubble("❌ Backend trả về rỗng, vui lòng kiểm tra log.");
+            isSending = false;
+            return;
+        }
 
         // 🔥 AI quyết định export
         let exportType = null
@@ -864,10 +892,23 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
-            const baseImage = images.length > 0 ? images[0] : null;
+            let baseImage = images.length > 0 ? images[0] : null;
+
+            // 🔥 TỰ ĐỘNG TÌM ẢNH CŨ (BỀN VỮNG: Gọi Backend)
+            if (!baseImage && conversation_id) {
+                try {
+                    const lastImgRes = await fetch(`/ai/api/get_last_image.php?conversation_id=${conversation_id}`);
+                    const lastImgData = await lastImgRes.json();
+                    if (lastImgData.success && lastImgData.image_url) {
+                        baseImage = lastImgData.image_url;
+                    }
+                } catch (e) {
+                    console.log("History image fetch error:", e);
+                }
+            }
 
             if (!baseImage) {
-                addBotBubble("❌ Bạn cần gửi kèm ảnh để tôi có thể chỉnh sửa.");
+                addBotBubble("❌ Bạn cần gửi kèm ảnh hoặc đã từng gửi ảnh trong đoạn chat này để tôi có thể chỉnh sửa.");
                 isSending = false;
                 return;
             }

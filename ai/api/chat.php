@@ -1,8 +1,8 @@
 <?php
-header("Content-Type: text/plain; charset=utf-8");
-header("Content-Disposition: inline");
-header("Content-Type: application/json");
+header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 
 ini_set('display_errors',1);
 error_reporting(E_ALL);
@@ -80,8 +80,10 @@ throw new Exception("empty request body");
 $input = json_decode($input_raw,true);
 
 if(!$input){
-throw new Exception("invalid json");
+throw new Exception("invalid json: " . json_last_error_msg());
 }
+error_log("[CHAT DEBUG] Parsed Input: " . json_encode($input));
+
 
 $model = $input["model"] ?? "gemini-2.5-flash";
 $payload = $input["payload"] ?? [];
@@ -123,8 +125,11 @@ if (isset($payload["contents"])) {
         }
     }
 }
+error_log("[CHAT DEBUG] Has Images: " . ($has_images ? "Yes" : "No"));
 
 $intent_obj = IntentEngine::analyzeIntent($question, $has_images);
+error_log("[CHAT DEBUG] Intent Analysis: " . json_encode($intent_obj));
+
 
 // --- PROMPT PROTECTION ---
 $protection = IntentEngine::getSystemProtection($intent_obj);
@@ -269,7 +274,10 @@ if (strpos($intent, "visual_exact_") !== 0 && !empty($question)) {
 // --- IMAGE PROTECTION ---
 if ($intent_obj['needs_reference_image'] && !$has_images) {
     echo json_encode([
-        "error" => false,
+        "ok" => true,
+        "answer" => "Tôi cần bạn gửi ảnh tham chiếu để có thể thực hiện yêu cầu này chính xác (ví dụ: giữ khuôn mặt hoặc sửa chi tiết trong ảnh). Vui lòng tải ảnh lên và thử lại.",
+        "images" => [],
+        "error" => null,
         "conversation_id" => $conversation_id,
         "intent_analysis" => $intent_obj,
         "candidates" => [
@@ -278,6 +286,7 @@ if ($intent_obj['needs_reference_image'] && !$has_images) {
     ]);
     exit;
 }
+
 
 /*
 Gọi Gemini
@@ -304,7 +313,10 @@ CURLOPT_CONNECTTIMEOUT => 30,
 CURLOPT_TIMEOUT => 600
 ]);
 
+error_log("[CHAT DEBUG] Final Payload sent to Gemini: " . json_encode($payload));
+
 $response = curl_exec($ch);
+
 $curl_error = curl_error($ch);
 $data = json_decode($response,true);
 
@@ -315,8 +327,11 @@ $debug[] = [
 ];
 
 if($response === false || !$data){
+    error_log("[CHAT DEBUG] Gemini API Call Failed. Response: " . $response);
     continue;
 }
+error_log("[CHAT DEBUG] Gemini Response: " . $response);
+
 
 /*
 Nếu có câu trả lời
@@ -377,41 +392,54 @@ if(!$stmt->execute()){
 throw new Exception($stmt->error);
 }
 
-$data["conversation_id"] = $conversation_id;
-$data["chat_id"] = $conn->insert_id;
-$data["intent_analysis"] = $intent_obj; // For debugging
+        // --- FINAL RESPONSE ---
+        $final_response = [
+            "ok" => true,
+            "answer" => $answer,
+            "images" => $image_list,
+            "error" => null,
+            "conversation_id" => $conversation_id,
+            "chat_id" => $conn->insert_id,
+            "debug" => [
+                "task_type" => $intent_obj['task_type'],
+                "has_reference_images" => $has_images,
+                "route" => ($intent_obj['task_type'] === 'image_generation' || $intent_obj['task_type'] === 'image_edit' || $intent_obj['task_type'] === 'identity_preserving_image_edit') ? "image_task" : "chat",
+                "model" => $model
+            ],
+            // Keep Gemini structure for backward compatibility
+            "candidates" => [
+                ["content" => ["parts" => [["text" => $answer]]]]
+            ]
+        ];
 
-echo json_encode($data);
-
-exit;
-
-
-}
-
+        echo json_encode($final_response);
+        exit;
+    }
 }
 
 /*
 Nếu tất cả key fail
 */
-
-/*
-Nếu tất cả key fail
-*/
-
 echo json_encode([
-    "error"=>true,
-    "conversation_id"=>$conversation_id ?? null,
-    "message"=>"All API keys failed",
-    "debug"=>$debug
+    "ok" => false,
+    "answer" => "Tất cả API keys đều thất bại hoặc không có câu trả lời.",
+    "images" => [],
+    "error" => "All API keys failed",
+    "conversation_id" => $conversation_id ?? null,
+    "debug" => [
+        "task_type" => $intent_obj['task_type'] ?? 'unknown',
+        "has_reference_images" => $has_images ?? false,
+        "detail" => $debug
+    ]
 ]);
 
 } catch(Throwable $e){
-
-echo json_encode([
-"error"=>true,
-"message"=>$e->getMessage(),
-"file"=>$e->getFile(),
-"line"=>$e->getLine()
-]);
-
-}
+    echo json_encode([
+        "ok" => false,
+        "answer" => "Lỗi hệ thống: " . $e->getMessage(),
+        "images" => [],
+        "error" => $e->getMessage(),
+        "file" => $e->getFile(),
+        "line" => $e->getLine()
+    ]);
+}
