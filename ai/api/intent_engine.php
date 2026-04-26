@@ -187,4 +187,3 @@ PROMPT;
         return preg_match('/(không|không có|không thêm|did not|didn\'t|without)\s+' . preg_quote($term, '/') . '/iu', $text);
     }
 }
-}
