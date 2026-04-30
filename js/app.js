@@ -34,10 +34,10 @@ function setMode(m) {
     const status = document.getElementById("modeStatus");
     if (status) {
         if (m === "thinking") {
-            status.innerHTML = `<img src="img/thinking_logo.png?v=3" style="width:14px; height:14px; margin-right:5px; vertical-align: middle;"> Thinking`;
+            status.innerHTML = `<img src="img/thinking_logo.png?v=4" style="width:14px; height:14px; margin-right:5px; vertical-align: middle;"> Thinking`;
             status.className = "badge bg-purple text-white ms-1";
         } else {
-            status.innerHTML = `<img src="img/fast_logo.png?v=3" style="width:14px; height:14px; margin-right:5px; vertical-align: middle;"> Fast`;
+            status.innerHTML = `<img src="img/fast_logo.png?v=4" style="width:14px; height:14px; margin-right:5px; vertical-align: middle;"> Fast`;
             status.className = "badge bg-light text-dark ms-1 border";
         }
     }
