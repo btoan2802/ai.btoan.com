@@ -122,7 +122,14 @@ try {
             "fps" => 24,
             "aspectRatio" => "16:9",
             "videoDurationSeconds" => $duration,
-            "storageUri" => $outputUri
+            "storageUri" => $outputUri,
+            "personGeneration" => "allow_all",
+            "safetySettings" => [
+                ["category" => "HATE_SPEECH", "threshold" => "BLOCK_NONE"],
+                ["category" => "DANGEROUS_CONTENT", "threshold" => "BLOCK_NONE"],
+                ["category" => "SEXUALLY_EXPLICIT", "threshold" => "BLOCK_NONE"],
+                ["category" => "HARASSMENT", "threshold" => "BLOCK_NONE"]
+            ]
         ]
     ];
 
