@@ -40,14 +40,18 @@ try {
     }
 
     // 🔥 AUTO MIGRATE (Self-healing)
-    $check = $conn->query("SHOW COLUMNS FROM `chats` LIKE 'assistant_video'");
-    if ($check && $check->num_rows === 0) {
-        $conn->query("ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images");
-    }
+    $cols = [
+        'assistant_video' => "ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images",
+        'music_url' => "ALTER TABLE chats ADD COLUMN music_url TEXT NULL",
+        'music_prompt' => "ALTER TABLE chats ADD COLUMN music_prompt TEXT NULL",
+        'music_duration' => "ALTER TABLE chats ADD COLUMN music_duration INT NULL"
+    ];
 
-    $checkMusic = $conn->query("SHOW COLUMNS FROM `chats` LIKE 'music_url'");
-    if ($checkMusic && $checkMusic->num_rows === 0) {
-        $conn->query("ALTER TABLE chats ADD COLUMN music_url TEXT NULL, ADD COLUMN music_prompt TEXT NULL, ADD COLUMN music_duration INT NULL");
+    foreach ($cols as $col => $sql) {
+        $check = $conn->query("SHOW COLUMNS FROM `chats` LIKE '$col'");
+        if ($check && $check->num_rows === 0) {
+            $conn->query($sql);
+        }
     }
 
     $stmt = $conn->prepare("
