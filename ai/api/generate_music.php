@@ -64,6 +64,7 @@ try {
     $finalPrompt = "Create an original music track. Style: $prompt. Duration: {$duration}s. High quality, clean mix, suitable for social media background. Do not imitate copyrighted artists.";
 
     // 2. Generate Music
+    error_log("[MUSIC DEBUG] Starting generation with prompt: " . $finalPrompt);
     $audioBytes = $provider->generateMusic($finalPrompt, $duration);
 
     if (!$audioBytes) {
@@ -71,11 +72,13 @@ try {
     }
 
     // 3. Upload to R2
+    error_log("[MUSIC DEBUG] Audio generated, size: " . strlen($audioBytes) . " bytes");
     $uploader = new R2Uploader();
     
     // Save bytes to temp file to use uploadLocalFile (more reliable for binary)
     $tempFile = tempnam(sys_get_temp_dir(), 'music_');
     file_put_contents($tempFile, $audioBytes);
+    error_log("[MUSIC DEBUG] Temp file created: " . $tempFile);
     
     $timestamp = time();
     $random = bin2hex(random_bytes(4));
@@ -90,7 +93,9 @@ try {
     
     // I'll use it as is, but maybe I should have more control.
     // For now, I'll use it.
+    error_log("[MUSIC DEBUG] Uploading to R2 folder: " . $folder);
     $publicUrl = $uploader->uploadLocalFile($tempFile, $folder, 'mp3');
+    error_log("[MUSIC DEBUG] Upload success: " . $publicUrl);
     @unlink($tempFile);
 
     // 4. Save to DB
