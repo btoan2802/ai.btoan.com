@@ -45,8 +45,13 @@ try {
         $conn->query("ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images");
     }
 
+    $checkMusic = $conn->query("SHOW COLUMNS FROM `chats` LIKE 'music_url'");
+    if ($checkMusic && $checkMusic->num_rows === 0) {
+        $conn->query("ALTER TABLE chats ADD COLUMN music_url TEXT NULL, ADD COLUMN music_prompt TEXT NULL, ADD COLUMN music_duration INT NULL");
+    }
+
     $stmt = $conn->prepare("
-        SELECT question, answer, images, assistant_images, assistant_video
+        SELECT question, answer, images, assistant_images, assistant_video, music_url, music_prompt, music_duration
         FROM chats
         WHERE conversation_id = ?
         ORDER BY id ASC
@@ -101,7 +106,10 @@ try {
                 "role" => "assistant",
                 "text" => $row["answer"] ?? "",
                 "images" => $assistantImages,
-                "videos" => $videos
+                "videos" => $videos,
+                "music_url" => $row["music_url"] ?? null,
+                "music_prompt" => $row["music_prompt"] ?? null,
+                "music_duration" => $row["music_duration"] ?? null
             ];
         }
     }

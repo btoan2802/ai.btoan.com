@@ -29,6 +29,20 @@ let mode = "auto"
 let lastExportContent = ""
 let isSending = false
 
+function setMode(m) {
+    mode = m;
+    const status = document.getElementById("modeStatus");
+    if (status) {
+        if (m === "thinking") {
+            status.innerText = "🧠 Thinking";
+            status.className = "badge bg-purple text-white ms-1";
+        } else {
+            status.innerText = "⚡ Fast";
+            status.className = "badge bg-light text-dark ms-1";
+        }
+    }
+}
+
 const systemInstruction = `
 Bạn đang chạy trong một ứng dụng CÓ THỂ tạo và xuất file thật cho người dùng.
 
@@ -683,6 +697,7 @@ async function send() {
         isSending = false
         return
     }
+
     // ===== TOOL DETECTION =====
     if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
 
@@ -787,6 +802,37 @@ async function send() {
                 lastExportContent = reply
                 localStorage.setItem("lastExportContent", reply)
             }
+        }
+
+        // 🔥 AUTO GENMUSIC
+        if (reply.includes("[GENMUSIC]")) {
+            const tag = "[GENMUSIC]";
+            const index = reply.indexOf(tag);
+
+            let textBefore = reply.substring(0, index).trim();
+            let remainder = reply.substring(index + tag.length).trim();
+
+            let promptLines = remainder.split("\n");
+            const musicPrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
+
+            const fullText = (textBefore + "\n" + textAfter).trim();
+
+            typing.remove();
+
+            if (fullText) {
+                streamBot(fullText, exportType);
+            }
+
+            const musicLoading = document.createElement("div");
+            musicLoading.className = "msgrow bot";
+            musicLoading.innerHTML = `<div class="bubble music-card assistant">🎵 Đang soạn nhạc cho bạn...</div>`;
+            chatEl.appendChild(musicLoading);
+            scrollToBottom();
+
+            triggerMusicGeneration(musicPrompt, musicLoading, current_chat_id);
+            isSending = false;
+            return;
         }
 
         // 🔥 AUTO GENIMAGE (ROBUST JOIN)
@@ -1503,6 +1549,13 @@ async function loadConversation(id, updateUrl = true) {
                         chatEl.appendChild(row);
                     }
 
+                    if (m.music_url) {
+                        addMusicBubble({
+                            music_url: m.music_url,
+                            music_prompt: m.music_prompt,
+                            music_duration: m.music_duration
+                        });
+                    }
                 }
                 chatHistoryBuffer.push({
                     role: "model",
@@ -2740,4 +2793,67 @@ async function forceDownloadVideo(url, filename, btn) {
             btn.innerHTML = originalContent;
         }, 3000);
     }
+}
+async function triggerMusicGeneration(prompt, loadingBubble, chatId) {
+    try {
+        const res = await fetch("/ai/api/generate_music.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                prompt: prompt,
+                conversation_id: conversation_id,
+                user_id: localStorage.getItem("user_id"),
+                chat_id: chatId,
+                duration: 30
+            })
+        });
+
+        const data = await res.json();
+        if (loadingBubble) loadingBubble.remove();
+
+        if (data.success) {
+            addMusicBubble(data);
+        } else {
+            addBotBubble("❌ Lỗi tạo nhạc: " + (data.error || "Lỗi không xác định"));
+        }
+    } catch (e) {
+        if (loadingBubble) loadingBubble.remove();
+        addBotBubble("❌ Lỗi kết nối: " + e.message);
+    }
+}
+
+function addMusicBubble(data) {
+    const row = document.createElement("div");
+    row.className = "msgrow bot";
+    row.innerHTML = `
+        <div class="bubble music-card assistant">
+            <div class="music-header">
+                <i class="bi bi-music-note-beamed"></i>
+                <span>Btoan AI Music</span>
+            </div>
+            <div class="music-body">
+                <div class="music-prompt">"${data.music_prompt || data.prompt || 'Nhạc AI'}"</div>
+                <audio controls preload="metadata" src="${data.music_url || data.url}" class="w-100 mt-2"></audio>
+            </div>
+            <div class="music-footer">
+                <button class="music-action-btn" onclick="copyMusicLink('${data.music_url || data.url}', this)">
+                    <i class="bi bi-link-45deg"></i> <span>Copy link</span>
+                </button>
+                <a href="${data.music_url || data.url}" download="btoan_music_${Date.now()}.mp3" class="music-action-btn">
+                    <i class="bi bi-download"></i> Tải về
+                </a>
+            </div>
+        </div>
+    `;
+    chatEl.appendChild(row);
+    scrollToBottom();
+}
+
+function copyMusicLink(url, btn) {
+    navigator.clipboard.writeText(url);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i class="bi bi-check2"></i> <span>Copied!</span>`;
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+    }, 2000);
 }

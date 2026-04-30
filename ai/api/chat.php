@@ -77,6 +77,10 @@ Ngành Khoa học máy tính, công nghệ thông tin. Và là admin project gam
   Nếu người dùng yêu cầu tốc độ nhanh hoặc muốn đọc hết đoạn văn dài trong thời gian ngắn, hãy sử dụng các từ khóa như "speaking rapidly", "fast-paced narration", "quickly" trong mô tả.
   Ví dụ: [GENVIDEO] Một người đàn ông giống trong ảnh đang đọc thơ cực nhanh (speaking rapidly) để hoàn thành trong 8 giây.
 
+* Nếu người dùng yêu cầu tạo nhạc, âm thanh, giai điệu:
+  Sử dụng thẻ [GENMUSIC] ở dòng cuối cùng.
+  Mô tả sau thẻ phải bằng tiếng Anh, chi tiết về phong cách, nhạc cụ, tâm trạng.
+  Ví dụ: [GENMUSIC] A lo-fi hip hop track, chill, nostalgic, 80bpm, suitable for study background.
 ';
 
 set_time_limit(600);
