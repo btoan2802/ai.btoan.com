@@ -216,7 +216,7 @@
                 <i class="bi bi-plus-lg"></i>
               </button>
               <span id="modeStatus" class="badge bg-light text-dark ms-1 border d-inline-flex align-items-center" style="font-size: 0.75rem; cursor: pointer; padding: 4px 10px; border-radius: 20px;">
-                <span class="mode-logo-css fast"><i class="bi bi-lightning-charge-fill"></i></span> Fast
+                <img src="img/fast_logo.png?v=10" class="me-2" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;"> Fast
               </span>
 
 
@@ -239,12 +239,12 @@
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
-                    <span class="mode-logo-css fast me-2"><i class="bi bi-lightning-charge-fill"></i></span> <span>Fast (Mặc định)</span>
+                    <img src="img/fast_logo.png?v=10" class="me-2" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover;"> <span>Fast (Mặc định)</span>
                   </button>
                 </li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
-                    <span class="mode-logo-css thinking me-2"><i class="bi bi-brain"></i></span> <span>Thinking (Chuyên sâu)</span>
+                    <img src="img/thinking_logo.png?v=10" class="me-2" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover;"> <span>Thinking (Chuyên sâu)</span>
                   </button>
                 </li>
               </ul>

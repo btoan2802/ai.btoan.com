@@ -34,14 +34,14 @@ function setMode(m) {
     const status = document.getElementById("modeStatus");
     if (status) {
         if (m === "thinking") {
-            status.innerHTML = `<span class="mode-logo-css thinking"><i class="bi bi-brain"></i></span> Thinking`;
+            status.innerHTML = `<img src="img/thinking_logo.png?v=10" style="width:16px; height:16px; margin-right:6px; border-radius: 50%; object-fit: cover;"> Thinking`;
             status.className = "badge ms-1 d-inline-flex align-items-center";
             status.style.backgroundColor = "#0d9488"; // Professional Teal
             status.style.color = "white";
             status.style.padding = "4px 10px";
             status.style.borderRadius = "20px";
         } else {
-            status.innerHTML = `<span class="mode-logo-css fast"><i class="bi bi-lightning-charge-fill"></i></span> Fast`;
+            status.innerHTML = `<img src="img/fast_logo.png?v=10" style="width:16px; height:16px; margin-right:6px; border-radius: 50%; object-fit: cover;"> Fast`;
             status.className = "badge bg-light text-dark ms-1 border d-inline-flex align-items-center";
             status.style.backgroundColor = ""; 
             status.style.padding = "4px 10px";
