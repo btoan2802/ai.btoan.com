@@ -60,6 +60,16 @@ Ngành Khoa học máy tính, công nghệ thông tin. Và là admin project gam
 * Công thức toán học nên trình bày bằng LaTeX trong $...$ hoặc $$...$$ để dễ đọc.
 
 * Nếu biểu thức dài, ưu tiên xuống dòng hoặc trình bày nhiều bước.
+* Nếu người dùng yêu cầu tạo ảnh mới:
+  Sử dụng thẻ [GENIMAGE] ở dòng cuối cùng.
+  Mô tả sau thẻ phải bằng tiếng Anh, chi tiết và nghệ thuật.
+  Ví dụ: [GENIMAGE] A beautiful landscape of Ha Long Bay at sunset, cinematic lighting, 8k.
+
+* Nếu người dùng yêu cầu chỉnh sửa ảnh (có ảnh trong lịch sử hoặc đính kèm):
+  Sử dụng thẻ [EDITIMAGE] ở dòng cuối cùng.
+  Mô tả sau thẻ phải bằng tiếng Anh, tập trung vào những thay đổi cần thực hiện.
+  Ví dụ: [EDITIMAGE] Change the hair color to red and add sunglasses to the person in the image.
+
 * Nếu người dùng yêu cầu tạo video:
   Sử dụng thẻ [GENVIDEO] ở dòng cuối cùng của câu trả lời.
   Mô tả sau thẻ phải cực kỳ ngắn gọn (tối đa 20 từ), tập trung vào hành động và bối cảnh.
@@ -105,34 +115,82 @@ $conversation_id = intval($input["conversation_id"] ?? 0);
 Lấy câu hỏi
 */
 $question = "";
-
 if(isset($payload["contents"]) && is_array($payload["contents"])){
-
-$last = end($payload["contents"]);
-
-$question = $last["parts"][0]["text"] ?? "";
-
+    $last = end($payload["contents"]);
+    $question = $last["parts"][0]["text"] ?? "";
 }
 
-// --- INTENT ANALYSIS STEP ---
-$has_images = false;
-if (isset($payload["contents"])) {
-    foreach ($payload["contents"] as $msg) {
-        if (isset($msg["parts"])) {
-            foreach ($msg["parts"] as $part) {
-                if (isset($part["inline_data"])) {
-                    $has_images = true;
-                    break 2;
+/*
+Tạo/Kiểm tra conversation
+*/
+if(!$conversation_id){
+    $stmt = $conn->prepare("INSERT INTO conversations(user_id,title) VALUES (?,?)");
+    if(!$stmt) throw new Exception($conn->error);
+    $title = "Chat mới";
+    $stmt->bind_param("is",$user_id,$title);
+    if(!$stmt->execute()) throw new Exception($stmt->error);
+    $conversation_id = $conn->insert_id;
+} else {
+    $stmt = $conn->prepare("SELECT id FROM conversations WHERE id=? AND user_id=?");
+    $stmt->bind_param("ii", $conversation_id, $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if(!$res || $res->num_rows == 0) throw new Exception("conversation không hợp lệ");
+}
+
+$intent = $input["intent"] ?? "chat";
+
+// 📚 Load history BEFORE intent analysis to know if we have previous images
+$messages = [];
+if (strpos($intent, "visual_exact_") !== 0 && $conversation_id) {
+    $stmt = $conn->prepare("
+        SELECT question, answer, images
+        FROM chats 
+        WHERE conversation_id=? AND user_id=?
+        ORDER BY id ASC
+        LIMIT 20
+    ");
+    $stmt->bind_param("ii", $conversation_id, $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    while($row = $res->fetch_assoc()){
+        $parts = [["text"=>$row["question"]]];
+        $imgs = json_decode($row["images"], true);
+        if (is_array($imgs)) {
+            foreach ($imgs as $img) {
+                if (strpos($img, "base64,") !== false) {
+                    [$meta, $base64] = explode(",", $img);
+                    $mime = str_replace("data:", "", explode(";", $meta)[0]);
+                    $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => $base64]];
                 }
+            }
+        }
+        $messages[] = ["role"=>"user", "parts"=>$parts];
+        $messages[] = ["role"=>"model", "parts"=>[["text"=>$row["answer"]]]];
+    }
+}
+
+// Merge history into payload early
+$payload["contents"] = array_merge($messages, $payload["contents"]);
+
+// --- INTENT ANALYSIS STEP ---
+// Now $has_images will correctly detect images from history
+$has_images = false;
+foreach ($payload["contents"] as $msg) {
+    if (isset($msg["parts"])) {
+        foreach ($msg["parts"] as $part) {
+            if (isset($part["inline_data"])) {
+                $has_images = true;
+                break 2;
             }
         }
     }
 }
-error_log("[CHAT DEBUG] Has Images: " . ($has_images ? "Yes" : "No"));
+error_log("[CHAT DEBUG] Has Images (incl history): " . ($has_images ? "Yes" : "No"));
 
 $intent_obj = IntentEngine::analyzeIntent($question, $has_images);
 error_log("[CHAT DEBUG] Intent Analysis: " . json_encode($intent_obj));
-
 
 // --- PROMPT PROTECTION ---
 $protection = IntentEngine::getSystemProtection($intent_obj);
@@ -150,43 +208,6 @@ if ($intent_obj['task_type'] === 'image_generation' || $intent_obj['task_type'] 
 /*
 Tạo conversation
 */
-if(!$conversation_id){
-
-$stmt = $conn->prepare("
-INSERT INTO conversations(user_id,title)
-VALUES (?,?)
-");
-
-if(!$stmt){
-throw new Exception($conn->error);
-}
-
-$title = "Chat mới";
-
-$stmt->bind_param("is",$user_id,$title);
-
-if(!$stmt->execute()){
-throw new Exception($stmt->error);
-}
-
-$conversation_id = $conn->insert_id;
-
-}
-else{
-    // 🔥 check conversation có thuộc user không
-    $stmt = $conn->prepare("
-        SELECT id FROM conversations 
-        WHERE id=? AND user_id=?
-    ");
-    $stmt->bind_param("ii", $conversation_id, $user_id);
-    $stmt->execute();
-
-$res = $stmt->get_result();
-
-if(!$res || $res->num_rows == 0){
-    throw new Exception("conversation không hợp lệ");
-}
-}
 $intent = $input["intent"] ?? "chat";
 
 // 🎨 Handle Specialized Intents (Visual/Math Mode)
@@ -200,42 +221,7 @@ if (strpos($intent, "visual_exact_") === 0) {
     - Format: [Lời giải chi tiết...] [GENIMAGE] [English prompt for image generation]
     - Focus on educational accuracy.";
 
-    
     $payload["systemInstruction"]["parts"][0]["text"] = $SYSTEM_INSTRUCTION;
-    $messages = []; 
-} else if ($conversation_id) {
-
-    // 📚 NORMAL CHAT: Load history as usual
-    $stmt = $conn->prepare("
-        SELECT question, answer, images
-        FROM chats 
-        WHERE conversation_id=? AND user_id=?
-        ORDER BY id ASC
-        LIMIT 20
-    ");
-
-    $stmt->bind_param("ii", $conversation_id, $user_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-
-    $messages = [];
-    while($row = $res->fetch_assoc()){
-        $parts = [["text"=>$row["question"]]];
-        $imgs = json_decode($row["images"], true);
-        if (is_array($imgs)) {
-            foreach ($imgs as $img) {
-                if (strpos($img, "base64,") !== false) {
-                    [$meta, $base64] = explode(",", $img);
-                    $mime = str_replace("data:", "", explode(";", $meta)[0]);
-                    $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => $base64]];
-                }
-            }
-        }
-        $messages[] = ["role"=>"user", "parts"=>$parts];
-        $messages[] = ["role"=>"model", "parts"=>[["text"=>$row["answer"]]]];
-    }
-    
-    $payload["contents"] = array_merge($messages, $payload["contents"]);
 }
 
 
