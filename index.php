@@ -216,7 +216,7 @@
                 <i class="bi bi-plus-lg"></i>
               </button>
               <span id="modeStatus" class="badge bg-light text-dark ms-1 border d-inline-flex align-items-center" style="font-size: 0.75rem; cursor: pointer; padding: 4px 10px; border-radius: 20px;">
-                <span class="mode-logo-css fast">T</span> Fast
+                <span class="mode-logo-css fast"><i class="bi bi-lightning-charge-fill"></i></span> Fast
               </span>
 
 
@@ -239,12 +239,12 @@
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
-                    <span class="mode-logo-css fast me-2">T</span> <span>Fast (Mặc định)</span>
+                    <span class="mode-logo-css fast me-2"><i class="bi bi-lightning-charge-fill"></i></span> <span>Fast (Mặc định)</span>
                   </button>
                 </li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
-                    <span class="mode-logo-css thinking me-2">T</span> <span>Thinking (Chuyên sâu)</span>
+                    <span class="mode-logo-css thinking me-2"><i class="bi bi-brain"></i></span> <span>Thinking (Chuyên sâu)</span>
                   </button>
                 </li>
               </ul>
