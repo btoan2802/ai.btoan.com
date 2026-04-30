@@ -34,11 +34,11 @@ function setMode(m) {
     const status = document.getElementById("modeStatus");
     if (status) {
         if (m === "thinking") {
-            status.innerText = "🧠 Thinking";
+            status.innerHTML = `<img src="img/thinking_logo.png" style="width:14px; height:14px; margin-right:5px; vertical-align: middle;"> Thinking`;
             status.className = "badge bg-purple text-white ms-1";
         } else {
-            status.innerText = "⚡ Fast";
-            status.className = "badge bg-light text-dark ms-1";
+            status.innerHTML = `<img src="img/fast_logo.png" style="width:14px; height:14px; margin-right:5px; vertical-align: middle;"> Fast`;
+            status.className = "badge bg-light text-dark ms-1 border";
         }
     }
 }

@@ -237,12 +237,12 @@
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
-                    <i class="bi bi-lightning-charge-fill me-2 text-warning"></i> <span>Fast (Mặc định)</span>
+                    <img src="img/fast_logo.png" class="me-2" style="width: 20px; height: 20px; object-fit: contain;"> <span>Fast (Mặc định)</span>
                   </button>
                 </li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
-                    <i class="bi bi-brain me-2 text-purp"></i> <span>Thinking (Chuyên sâu)</span>
+                    <img src="img/thinking_logo.png" class="me-2" style="width: 20px; height: 20px; object-fit: contain;"> <span>Thinking (Chuyên sâu)</span>
                   </button>
                 </li>
               </ul>
