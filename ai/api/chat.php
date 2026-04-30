@@ -163,6 +163,22 @@ if (strpos($intent, "visual_exact_") !== 0 && $conversation_id) {
                     [$meta, $base64] = explode(",", $img);
                     $mime = str_replace("data:", "", explode(";", $meta)[0]);
                     $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => $base64]];
+                } elseif (strpos($img, "/uploads/") === 0) {
+                    // Handle local URLs: Read from disk and convert to base64 for Gemini
+                    $localPath = $_SERVER['DOCUMENT_ROOT'] . $img;
+                    // Fallback for different environments
+                    if (!file_exists($localPath)) {
+                        $localPath = dirname(__FILE__, 3) . $img;
+                    }
+                    
+                    $imgContent = @file_get_contents($localPath);
+                    if ($imgContent) {
+                        $mime = "image/jpeg"; 
+                        if (strpos($img, ".png") !== false) $mime = "image/png";
+                        if (strpos($img, ".webp") !== false) $mime = "image/webp";
+                        
+                        $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => base64_encode($imgContent)]];
+                    }
                 }
             }
         }
@@ -357,14 +373,25 @@ $contents = $input["payload"]["contents"] ?? [];
 $lastContent = !empty($contents) ? end($contents) : null;
 
 if ($lastContent && isset($lastContent["parts"])) {
+    $uploadDir = dirname(__FILE__, 3) . "/uploads/chat/";
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+
     foreach ($lastContent["parts"] as $part) {
-
         if (isset($part["inline_data"])) {
-
             $mime = $part["inline_data"]["mime_type"];
             $base64Data = $part["inline_data"]["data"];
+            
+            $ext = explode("/", $mime)[1] ?? "jpg";
+            $filename = "img_" . bin2hex(random_bytes(10)) . "." . $ext;
+            $savePath = $uploadDir . $filename;
+            $publicUrl = "/uploads/chat/" . $filename;
 
-            $image_list[] = "data:$mime;base64,$base64Data";
+            if (file_put_contents($savePath, base64_decode($base64Data))) {
+                $image_list[] = $publicUrl;
+            } else {
+                // Fallback to base64 if save fails
+                $image_list[] = "data:$mime;base64,$base64Data";
+            }
         }
     }
 }

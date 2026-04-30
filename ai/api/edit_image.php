@@ -147,9 +147,25 @@ try {
         if ($imageBase64 !== null) {
             $imageSrc = "data:{$mimeType};base64,{$imageBase64}";
 
+            // Save to local storage to avoid DB packet limit issues
+            $uploadDir = dirname(__FILE__, 3) . "/uploads/edits/";
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+            
+            $ext = explode("/", $mimeType)[1] ?? "png";
+            $filename = "edit_" . bin2hex(random_bytes(10)) . "." . $ext;
+            $savePath = $uploadDir . $filename;
+            $publicUrl = "/uploads/edits/" . $filename;
+
+            if (file_put_contents($savePath, base64_decode($imageBase64))) {
+                $dbImageValue = $publicUrl;
+            } else {
+                // Fallback to base64 if save fails
+                $dbImageValue = $imageSrc;
+            }
+
             // Sync to database history
             if ($conversation_id > 0 && $user_id > 0) {
-                $assistant_images = json_encode([$imageSrc], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $assistant_images = json_encode([$dbImageValue], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 $stmt = $conn->prepare("
                     UPDATE chats
                     SET answer = ?, assistant_images = ?
@@ -166,7 +182,8 @@ try {
             sendJson([
                 'success' => true,
                 'mimeType' => $mimeType,
-                'imageBase64' => $imageBase64
+                'imageBase64' => $imageBase64,
+                'publicUrl' => $publicUrl ?? null
             ]);
         }
     }
