@@ -44,7 +44,7 @@ try {
     }
 
     $prompt = trim((string) ($input['prompt'] ?? ''));
-    $baseImage = trim((string) ($input['image'] ?? '')); // Base64
+    $baseImage = trim((string) ($input['image'] ?? '')); // Can be Base64 or local URL
     $conversation_id = (int) ($input['conversation_id'] ?? 0);
     $user_id = (int) ($input['user_id'] ?? 0);
     $assistant_text = trim((string) ($input['assistant_text'] ?? 'Đây là ảnh đã chỉnh sửa của bạn:'));
@@ -53,8 +53,19 @@ try {
         sendJson(['success' => false, 'error' => 'Prompt and Base Image are required'], 400);
     }
 
-    // Prepare Base64 data (remove prefix if exists)
-    $cleanBase64 = preg_replace('#^data:image/[^;]+;base64,#', '', $baseImage);
+    $cleanBase64 = "";
+    if (strpos($baseImage, "/uploads/") === 0) {
+        // Handle local URLs: Read from disk
+        $localPath = dirname(__FILE__, 3) . $baseImage;
+        if (file_exists($localPath)) {
+            $cleanBase64 = base64_encode(file_get_contents($localPath));
+        } else {
+            sendJson(['success' => false, 'error' => 'Reference image file not found: ' . $baseImage], 404);
+        }
+    } else {
+        // Prepare Base64 data (remove prefix if exists)
+        $cleanBase64 = preg_replace('#^data:image/[^;]+;base64,#', '', $baseImage);
+    }
 
     $API_KEYS = [
         "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
