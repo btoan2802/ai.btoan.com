@@ -97,6 +97,9 @@ try {
     if ($chat_id > 0) {
         // Update existing row
         $stmt = $conn->prepare("UPDATE chats SET music_url = ?, music_prompt = ?, music_duration = ? WHERE id = ? AND user_id = ?");
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error . " (Make sure database columns are updated)");
+        }
         $stmt->bind_param("ssiii", $publicUrl, $prompt, $duration, $chat_id, $user_id);
     } else {
         // First, ensure conversation exists
@@ -113,6 +116,10 @@ try {
             INSERT INTO chats (user_id, conversation_id, question, answer, music_url, music_prompt, music_duration)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         ");
+        
+        if (!$stmt) {
+            throw new Exception("Prepare failed: " . $conn->error . " (Make sure database columns are updated)");
+        }
         
         $stmt->bind_param("iissssi", $user_id, $conversation_id, $prompt, $answer, $publicUrl, $prompt, $duration);
     }
