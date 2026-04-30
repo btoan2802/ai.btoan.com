@@ -29,6 +29,20 @@ let mode = "auto"
 let lastExportContent = ""
 let isSending = false
 
+function setMode(m) {
+    mode = m;
+    const status = document.getElementById("modeStatus");
+    if (status) {
+        if (m === "thinking") {
+            status.innerText = "🧠 Thinking";
+            status.className = "badge bg-purple text-white ms-1";
+        } else {
+            status.innerText = "⚡ Fast";
+            status.className = "badge bg-light text-dark ms-1";
+        }
+    }
+}
+
 const systemInstruction = `
 Bạn đang chạy trong một ứng dụng CÓ THỂ tạo và xuất file thật cho người dùng.
 
@@ -280,8 +294,26 @@ function createMessageActions({ text, exportType = null, onExport = null }) {
 }
 
 
+function cleanBotText(text) {
+    if (!text) return "";
+    return text
+        .replace(/\[GENIMAGE\].*?(\n|$)/gi, "")
+        .replace(/\[GENVIDEO\].*?(\n|$)/gi, "")
+        .replace(/\[GENMUSIC\].*?(\n|$)/gi, "")
+        .replace(/\[EDITIMAGE\].*?(\n|$)/gi, "")
+        .replace(/\[SEARCH\].*?(\n|$)/gi, "")
+        .replace(/\[EXPORT\].*?(\n|$)/gi, "")
+        .trim();
+}
+
 function addBotBubble(text, exportType = null) {
     if (!chatEl) return
+
+    const cleanedText = cleanBotText(text);
+    if (!cleanedText && !exportType) {
+        // Nếu sau khi xóa tag mà không còn chữ, và không có export thì có thể là tin nhắn chỉ chứa media
+        // Chúng ta vẫn tạo bubble nhưng rỗng hoặc ẩn text
+    }
 
     const row = document.createElement("div")
     row.className = "msgrow bot"
@@ -291,10 +323,10 @@ function addBotBubble(text, exportType = null) {
 
     const content = document.createElement("div")
     content.className = "message-content"
-    content.innerHTML = marked.parse(text)
+    content.innerHTML = marked.parse(cleanedText || "")
     bubble.appendChild(content)
 
-    bubble.appendChild(createMessageActions({ text, exportType }))
+    bubble.appendChild(createMessageActions({ text: cleanedText || text, exportType }))
 
     row.appendChild(bubble)
     chatEl.appendChild(row)
@@ -385,10 +417,15 @@ function streamBot(text, exportType = null) {
     chatEl.appendChild(row)
 
     let i = 0
+    const cleanedFullText = cleanBotText(text);
     const timer = setInterval(() => {
         // Use normalized text for rendering
         const currentText = normalizedText.substring(0, i);
-        content.innerHTML = marked.parse(currentText)
+        // We clean the text dynamically or just wait for completion? 
+        // For streaming, cleaning dynamically might be tricky, but let's try.
+        const cleanedCurrent = cleanBotText(currentText);
+        
+        content.innerHTML = marked.parse(cleanedCurrent)
             .replace(/language-j\b/g, "language-java")
 
 
@@ -501,6 +538,8 @@ async function callGemini(userText, images, files) {
         }
     };
 
+    console.log("[CHAT REQUEST]", payload);
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
@@ -537,11 +576,13 @@ async function callGemini(userText, images, files) {
     clearTimeout(timeout);
 
     const raw = await res.text();
+    console.log("[CHAT RAW RESPONSE]", raw);
 
     let data;
 
     try {
         data = JSON.parse(raw);
+        console.log("[CHAT JSON RESPONSE]", data);
     } catch {
         throw new Error("server trả dữ liệu không phải JSON");
     }
@@ -555,12 +596,19 @@ async function callGemini(userText, images, files) {
 
 
 
-    if (!res.ok) {
-        throw new Error(data?.error?.message || "http error");
+    if (!res.ok || data.ok === false) {
+        return {
+            ok: false,
+            text: data.answer || data?.error?.message || "Lỗi máy chủ",
+            error: data.error || "http error",
+            chat_id: data.chat_id
+        };
     }
 
     const respParts = data?.candidates?.[0]?.content?.parts || [];
-    const reply = respParts.map(p => p.text).join("\n");
+    let reply = respParts.map(p => p.text).join("\n");
+    if (!reply && data.answer) reply = data.answer; // Use standardized answer if candidates missing
+
     // 🔥 AUTO TITLE (CHỈ 1 LẦN)
     if (conversation_id && !autoRenamed) {
 
@@ -589,7 +637,9 @@ async function callGemini(userText, images, files) {
 
 
     return {
+        ok: true,
         text: reply,
+        images: data.images || [],
         chat_id: data.chat_id
     };
 
@@ -670,6 +720,7 @@ async function send() {
         isSending = false
         return
     }
+
     // ===== TOOL DETECTION =====
     if (userText.startsWith("/search ") || userText.toLowerCase().includes("tìm trên mạng")) {
 
@@ -736,8 +787,23 @@ async function send() {
     try {
 
         let geminiRes = await callGemini(userText, images, files)
+        
+        if (!geminiRes.ok) {
+            typing.remove();
+            addBotBubble("❌ " + geminiRes.text);
+            isSending = false;
+            return;
+        }
+
         let reply = geminiRes.text;
         let current_chat_id = geminiRes.chat_id;
+
+        if (!reply || reply.trim() === "") {
+            typing.remove();
+            addBotBubble("❌ Backend trả về rỗng, vui lòng kiểm tra log.");
+            isSending = false;
+            return;
+        }
 
         // 🔥 AI quyết định export
         let exportType = null
@@ -759,6 +825,37 @@ async function send() {
                 lastExportContent = reply
                 localStorage.setItem("lastExportContent", reply)
             }
+        }
+
+        // 🔥 AUTO GENMUSIC
+        if (reply.includes("[GENMUSIC]")) {
+            const tag = "[GENMUSIC]";
+            const index = reply.indexOf(tag);
+
+            let textBefore = reply.substring(0, index).trim();
+            let remainder = reply.substring(index + tag.length).trim();
+
+            let promptLines = remainder.split("\n");
+            const musicPrompt = promptLines[0].trim();
+            let textAfter = promptLines.slice(1).join("\n").trim();
+
+            const fullText = (textBefore + "\n" + textAfter).trim();
+
+            typing.remove();
+
+            if (fullText) {
+                streamBot(fullText, exportType);
+            }
+
+            const musicLoading = document.createElement("div");
+            musicLoading.className = "msgrow bot";
+            musicLoading.innerHTML = `<div class="bubble music-card assistant">🎵 Đang soạn nhạc cho bạn...</div>`;
+            chatEl.appendChild(musicLoading);
+            scrollToBottom();
+
+            triggerMusicGeneration(musicPrompt, musicLoading, current_chat_id);
+            isSending = false;
+            return;
         }
 
         // 🔥 AUTO GENIMAGE (ROBUST JOIN)
@@ -864,10 +961,23 @@ async function send() {
                 streamBot(fullText, exportType);
             }
 
-            const baseImage = images.length > 0 ? images[0] : null;
+            let baseImage = images.length > 0 ? images[0] : null;
+
+            // 🔥 TỰ ĐỘNG TÌM ẢNH CŨ (BỀN VỮNG: Gọi Backend)
+            if (!baseImage && conversation_id) {
+                try {
+                    const lastImgRes = await fetch(`/ai/api/get_last_image.php?conversation_id=${conversation_id}`);
+                    const lastImgData = await lastImgRes.json();
+                    if (lastImgData.success && lastImgData.image_url) {
+                        baseImage = lastImgData.image_url;
+                    }
+                } catch (e) {
+                    console.log("History image fetch error:", e);
+                }
+            }
 
             if (!baseImage) {
-                addBotBubble("❌ Bạn cần gửi kèm ảnh để tôi có thể chỉnh sửa.");
+                addBotBubble("❌ Bạn cần gửi kèm ảnh hoặc đã từng gửi ảnh trong đoạn chat này để tôi có thể chỉnh sửa.");
                 isSending = false;
                 return;
             }
@@ -1462,6 +1572,13 @@ async function loadConversation(id, updateUrl = true) {
                         chatEl.appendChild(row);
                     }
 
+                    if (m.music_url) {
+                        addMusicBubble({
+                            music_url: m.music_url,
+                            music_prompt: m.music_prompt,
+                            music_duration: m.music_duration
+                        });
+                    }
                 }
                 chatHistoryBuffer.push({
                     role: "model",
@@ -2699,4 +2816,67 @@ async function forceDownloadVideo(url, filename, btn) {
             btn.innerHTML = originalContent;
         }, 3000);
     }
+}
+async function triggerMusicGeneration(prompt, loadingBubble, chatId) {
+    try {
+        const res = await fetch("/ai/api/generate_music.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                prompt: prompt,
+                conversation_id: conversation_id,
+                user_id: localStorage.getItem("user_id"),
+                chat_id: chatId,
+                duration: 30
+            })
+        });
+
+        const data = await res.json();
+        if (loadingBubble) loadingBubble.remove();
+
+        if (data.success) {
+            addMusicBubble(data);
+        } else {
+            addBotBubble("❌ Lỗi tạo nhạc: " + (data.error || "Lỗi không xác định"));
+        }
+    } catch (e) {
+        if (loadingBubble) loadingBubble.remove();
+        addBotBubble("❌ Lỗi kết nối: " + e.message);
+    }
+}
+
+function addMusicBubble(data) {
+    const row = document.createElement("div");
+    row.className = "msgrow bot";
+    row.innerHTML = `
+        <div class="bubble music-card assistant">
+            <div class="music-header">
+                <i class="bi bi-music-note-beamed"></i>
+                <span>Btoan AI Music</span>
+            </div>
+            <div class="music-body">
+                <div class="music-prompt">"${data.music_prompt || data.prompt || 'Nhạc AI'}"</div>
+                <audio controls preload="metadata" src="${data.music_url || data.url}" class="w-100 mt-2"></audio>
+            </div>
+            <div class="music-footer">
+                <button class="music-action-btn" onclick="copyMusicLink('${data.music_url || data.url}', this)">
+                    <i class="bi bi-link-45deg"></i> <span>Copy link</span>
+                </button>
+                <a href="${data.music_url || data.url}" download="btoan_music_${Date.now()}.mp3" class="music-action-btn">
+                    <i class="bi bi-download"></i> Tải về
+                </a>
+            </div>
+        </div>
+    `;
+    chatEl.appendChild(row);
+    scrollToBottom();
+}
+
+function copyMusicLink(url, btn) {
+    navigator.clipboard.writeText(url);
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i class="bi bi-check2"></i> <span>Copied!</span>`;
+    setTimeout(() => {
+        btn.innerHTML = originalText;
+    }, 2000);
 }

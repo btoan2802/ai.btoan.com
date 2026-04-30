@@ -1016,3 +1016,87 @@ pre code {
 .video-processing-card .progress-bar {
     background-color: var(--primary-color) !important;
 }
+
+/* 🎵 AI MUSIC CARD STYLES */
+.music-card {
+    padding: 16px !important;
+    background: #ffffff !important;
+    border: 1px solid #eef2f6 !important;
+    border-radius: 20px !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04) !important;
+    max-width: 400px !important;
+}
+
+.music-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+    color: #ef4444;
+    font-weight: 700;
+    font-size: 15px;
+}
+
+.music-header i {
+    font-size: 18px;
+}
+
+.music-prompt {
+    font-size: 13px;
+    color: #64748b;
+    font-style: italic;
+    margin-bottom: 12px;
+    line-height: 1.4;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 12px;
+}
+
+.music-card audio {
+    height: 36px;
+    border-radius: 10px;
+}
+
+.music-footer {
+    display: flex;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.music-action-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    border: none;
+    border-radius: 10px;
+    text-decoration: none !important;
+    transition: all 0.2s;
+}
+
+.music-action-btn:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+    transform: translateY(-1px);
+}
+
+.music-action-btn:active {
+    transform: translateY(0);
+}
+
+.music-action-btn i {
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .music-card {
+        max-width: 100% !important;
+        margin: 0 5px;
+    }
+}

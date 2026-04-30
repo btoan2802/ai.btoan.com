@@ -68,7 +68,18 @@ class R2Uploader {
         if (!file_exists($filePath)) throw new Exception("Local file not found: $filePath");
         
         $fileName = $folder . "/" . bin2hex(random_bytes(16)) . "." . $ext;
-        $contentType = ($ext === 'mp4') ? 'video/mp4' : mime_content_type($filePath);
+        
+        // Map common extensions to mime types to avoid dependency on fileinfo extension
+        $mimeTypes = [
+            'mp4' => 'video/mp4',
+            'mp3' => 'audio/mpeg',
+            'png' => 'image/png',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'webp' => 'image/webp'
+        ];
+        
+        $contentType = $mimeTypes[strtolower($ext)] ?? 'application/octet-stream';
 
         try {
             $this->s3->putObject([

@@ -1,15 +1,20 @@
 <?php
-header("Content-Type: text/plain; charset=utf-8");
-header("Content-Disposition: inline");
-header("Content-Type: application/json");
+header("Content-Type: application/json; charset=utf-8");
 header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Headers: Content-Type");
+header("Access-Control-Allow-Methods: POST, OPTIONS");
 
-ini_set('display_errors',1);
-error_reporting(E_ALL);
+ini_set('memory_limit', '512M');
+set_time_limit(600);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+ini_set('error_log', dirname(__FILE__) . '/ai_error.log');
 
 try {
 
 require "db.php";
+require "intent_engine.php";
+
 
 $API_KEYS = [
 "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
@@ -55,6 +60,16 @@ Ngành Khoa học máy tính, công nghệ thông tin. Và là admin project gam
 * Công thức toán học nên trình bày bằng LaTeX trong $...$ hoặc $$...$$ để dễ đọc.
 
 * Nếu biểu thức dài, ưu tiên xuống dòng hoặc trình bày nhiều bước.
+* Nếu người dùng yêu cầu tạo ảnh mới:
+  Sử dụng thẻ [GENIMAGE] ở dòng cuối cùng.
+  Mô tả sau thẻ phải bằng tiếng Anh, chi tiết và nghệ thuật.
+  Ví dụ: [GENIMAGE] A beautiful landscape of Ha Long Bay at sunset, cinematic lighting, 8k.
+
+* Nếu người dùng yêu cầu chỉnh sửa ảnh (có ảnh trong lịch sử hoặc đính kèm):
+  Sử dụng thẻ [EDITIMAGE] ở dòng cuối cùng.
+  Mô tả sau thẻ phải bằng tiếng Anh, tập trung vào những thay đổi cần thực hiện.
+  Ví dụ: [EDITIMAGE] Change the hair color to red and add sunglasses to the person in the image.
+
 * Nếu người dùng yêu cầu tạo video:
   Sử dụng thẻ [GENVIDEO] ở dòng cuối cùng của câu trả lời.
   Mô tả sau thẻ phải cực kỳ ngắn gọn (tối đa 20 từ), tập trung vào hành động và bối cảnh.
@@ -62,6 +77,11 @@ Ngành Khoa học máy tính, công nghệ thông tin. Và là admin project gam
   Nếu người dùng yêu cầu tốc độ nhanh hoặc muốn đọc hết đoạn văn dài trong thời gian ngắn, hãy sử dụng các từ khóa như "speaking rapidly", "fast-paced narration", "quickly" trong mô tả.
   Ví dụ: [GENVIDEO] Một người đàn ông giống trong ảnh đang đọc thơ cực nhanh (speaking rapidly) để hoàn thành trong 8 giây.
 
+* Nếu người dùng yêu cầu tạo nhạc, âm thanh, giai điệu:
+  Sử dụng thẻ [GENMUSIC] ở dòng cuối cùng.
+  Phần mô tả sau thẻ [GENMUSIC] phải bằng tiếng Anh để mô hình Lyria hiểu tốt nhất (về genre, mood, instruments, tempo). 
+  TUY NHIÊN, nếu người dùng có yêu cầu về lời bài hát (lyrics) hoặc phong cách đặc trưng Việt Nam (V-Pop, Bolero, nhạc cụ dân tộc), hãy giữ nguyên các từ khóa đó trong prompt tiếng Anh.
+  Ví dụ: [GENMUSIC] A V-Pop style ballad, emotional, piano and strings, lyrics about "cảm ơn anh Phùng Thanh Độ", male vocal.
 ';
 
 set_time_limit(600);
@@ -78,8 +98,10 @@ throw new Exception("empty request body");
 $input = json_decode($input_raw,true);
 
 if(!$input){
-throw new Exception("invalid json");
+throw new Exception("invalid json: " . json_last_error_msg());
 }
+error_log("[CHAT DEBUG] Parsed Input: " . json_encode($input));
+
 
 $model = $input["model"] ?? "gemini-2.5-flash";
 $payload = $input["payload"] ?? [];
@@ -98,55 +120,115 @@ $conversation_id = intval($input["conversation_id"] ?? 0);
 Lấy câu hỏi
 */
 $question = "";
-
 if(isset($payload["contents"]) && is_array($payload["contents"])){
-
-$last = end($payload["contents"]);
-
-$question = $last["parts"][0]["text"] ?? "";
-
+    $last = end($payload["contents"]);
+    $question = $last["parts"][0]["text"] ?? "";
 }
+
+/*
+Tạo/Kiểm tra conversation
+*/
+if(!$conversation_id){
+    $stmt = $conn->prepare("INSERT INTO conversations(user_id,title) VALUES (?,?)");
+    if(!$stmt) throw new Exception($conn->error);
+    $title = "Chat mới";
+    $stmt->bind_param("is",$user_id,$title);
+    if(!$stmt->execute()) throw new Exception($stmt->error);
+    $conversation_id = $conn->insert_id;
+} else {
+    $stmt = $conn->prepare("SELECT id FROM conversations WHERE id=? AND user_id=?");
+    $stmt->bind_param("ii", $conversation_id, $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+    if(!$res || $res->num_rows == 0) throw new Exception("conversation không hợp lệ");
+}
+
+$intent = $input["intent"] ?? "chat";
+
+// 📚 Load history BEFORE intent analysis to know if we have previous images
+$messages = [];
+if (strpos($intent, "visual_exact_") !== 0 && $conversation_id) {
+    $stmt = $conn->prepare("
+        SELECT question, answer, images
+        FROM chats 
+        WHERE conversation_id=? AND user_id=?
+        ORDER BY id ASC
+        LIMIT 20
+    ");
+    $stmt->bind_param("ii", $conversation_id, $user_id);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    while($row = $res->fetch_assoc()){
+        $parts = [["text"=>$row["question"]]];
+        $imgs = json_decode($row["images"], true);
+        if (is_array($imgs)) {
+            foreach ($imgs as $img) {
+                if (strpos($img, "base64,") !== false) {
+                    [$meta, $base64] = explode(",", $img);
+                    $mime = str_replace("data:", "", explode(";", $meta)[0]);
+                    $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => $base64]];
+                } elseif (strpos($img, "/uploads/") === 0) {
+                    // Handle local URLs: Read from disk and convert to base64 for Gemini
+                    $localPath = $_SERVER['DOCUMENT_ROOT'] . $img;
+                    // Fallback for different environments
+                    if (!file_exists($localPath)) {
+                        $localPath = dirname(__FILE__, 3) . $img;
+                    }
+                    
+                    $imgContent = @file_get_contents($localPath);
+                    if ($imgContent) {
+                        $mime = "image/jpeg"; 
+                        if (strpos($img, ".png") !== false) $mime = "image/png";
+                        if (strpos($img, ".webp") !== false) $mime = "image/webp";
+                        
+                        $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => base64_encode($imgContent)]];
+                    }
+                }
+            }
+        }
+        $messages[] = ["role"=>"user", "parts"=>$parts];
+        $messages[] = ["role"=>"model", "parts"=>[["text"=>$row["answer"]]]];
+    }
+}
+
+// Merge history into payload early
+$payload["contents"] = array_merge($messages, $payload["contents"]);
+
+// --- INTENT ANALYSIS STEP ---
+// Now $has_images will correctly detect images from history
+$has_images = false;
+foreach ($payload["contents"] as $msg) {
+    if (isset($msg["parts"])) {
+        foreach ($msg["parts"] as $part) {
+            if (isset($part["inline_data"])) {
+                $has_images = true;
+                break 2;
+            }
+        }
+    }
+}
+error_log("[CHAT DEBUG] Has Images (incl history): " . ($has_images ? "Yes" : "No"));
+
+$intent_obj = IntentEngine::analyzeIntent($question, $has_images);
+error_log("[CHAT DEBUG] Intent Analysis: " . json_encode($intent_obj));
+
+// --- PROMPT PROTECTION ---
+$protection = IntentEngine::getSystemProtection($intent_obj);
+$SYSTEM_INSTRUCTION .= $protection;
+$payload["systemInstruction"]["parts"][0]["text"] = $SYSTEM_INSTRUCTION;
+
+// --- SPECIALIZED TASK HANDLING ---
+if ($intent_obj['task_type'] === 'image_generation' || $intent_obj['task_type'] === 'image_edit' || $intent_obj['task_type'] === 'identity_preserving_image_edit') {
+    // If it's an image task, we might want to adjust the prompt or model
+    // For now, let's just ensure the system instruction is very clear about it
+    // If the frontend expects a specific redirect, that would happen here
+}
+
 
 /*
 Tạo conversation
 */
-if(!$conversation_id){
-
-$stmt = $conn->prepare("
-INSERT INTO conversations(user_id,title)
-VALUES (?,?)
-");
-
-if(!$stmt){
-throw new Exception($conn->error);
-}
-
-$title = "Chat mới";
-
-$stmt->bind_param("is",$user_id,$title);
-
-if(!$stmt->execute()){
-throw new Exception($stmt->error);
-}
-
-$conversation_id = $conn->insert_id;
-
-}
-else{
-    // 🔥 check conversation có thuộc user không
-    $stmt = $conn->prepare("
-        SELECT id FROM conversations 
-        WHERE id=? AND user_id=?
-    ");
-    $stmt->bind_param("ii", $conversation_id, $user_id);
-    $stmt->execute();
-
-$res = $stmt->get_result();
-
-if(!$res || $res->num_rows == 0){
-    throw new Exception("conversation không hợp lệ");
-}
-}
 $intent = $input["intent"] ?? "chat";
 
 // 🎨 Handle Specialized Intents (Visual/Math Mode)
@@ -160,42 +242,7 @@ if (strpos($intent, "visual_exact_") === 0) {
     - Format: [Lời giải chi tiết...] [GENIMAGE] [English prompt for image generation]
     - Focus on educational accuracy.";
 
-    
     $payload["systemInstruction"]["parts"][0]["text"] = $SYSTEM_INSTRUCTION;
-    $messages = []; 
-} else if ($conversation_id) {
-
-    // 📚 NORMAL CHAT: Load history as usual
-    $stmt = $conn->prepare("
-        SELECT question, answer, images
-        FROM chats 
-        WHERE conversation_id=? AND user_id=?
-        ORDER BY id ASC
-        LIMIT 20
-    ");
-
-    $stmt->bind_param("ii", $conversation_id, $user_id);
-    $stmt->execute();
-    $res = $stmt->get_result();
-
-    $messages = [];
-    while($row = $res->fetch_assoc()){
-        $parts = [["text"=>$row["question"]]];
-        $imgs = json_decode($row["images"], true);
-        if (is_array($imgs)) {
-            foreach ($imgs as $img) {
-                if (strpos($img, "base64,") !== false) {
-                    [$meta, $base64] = explode(",", $img);
-                    $mime = str_replace("data:", "", explode(";", $meta)[0]);
-                    $parts[] = ["inline_data" => ["mime_type" => $mime, "data" => $base64]];
-                }
-            }
-        }
-        $messages[] = ["role"=>"user", "parts"=>$parts];
-        $messages[] = ["role"=>"model", "parts"=>[["text"=>$row["answer"]]]];
-    }
-    
-    $payload["contents"] = array_merge($messages, $payload["contents"]);
 }
 
 
@@ -234,6 +281,23 @@ if (strpos($intent, "visual_exact_") !== 0 && !empty($question)) {
 
 
 
+// --- IMAGE PROTECTION ---
+if ($intent_obj['needs_reference_image'] && !$has_images) {
+    echo json_encode([
+        "ok" => true,
+        "answer" => "Tôi cần bạn gửi ảnh tham chiếu để có thể thực hiện yêu cầu này chính xác (ví dụ: giữ khuôn mặt hoặc sửa chi tiết trong ảnh). Vui lòng tải ảnh lên và thử lại.",
+        "images" => [],
+        "error" => null,
+        "conversation_id" => $conversation_id,
+        "intent_analysis" => $intent_obj,
+        "candidates" => [
+            ["content" => ["parts" => [["text" => "Tôi cần bạn gửi ảnh tham chiếu để có thể thực hiện yêu cầu này chính xác (ví dụ: giữ khuôn mặt hoặc sửa chi tiết trong ảnh). Vui lòng tải ảnh lên và thử lại."]]]]
+        ]
+    ]);
+    exit;
+}
+
+
 /*
 Gọi Gemini
 */
@@ -259,25 +323,28 @@ CURLOPT_CONNECTTIMEOUT => 30,
 CURLOPT_TIMEOUT => 600
 ]);
 
+// Removed large payload logging to prevent memory issues
+// error_log("[CHAT DEBUG] Final Payload sent to Gemini: " . json_encode($payload));
+
 $response = curl_exec($ch);
 
-$curl_error = curl_error($ch);
 
+$curl_error = curl_error($ch);
 $data = json_decode($response,true);
 
 $debug[] = [
-"key"=>substr($API_KEY,0,12)."****",
-"curl_error"=>$curl_error,
-"response"=>$response
+    "key"=>substr($API_KEY,0,12)."****",
+    "curl_error"=>$curl_error,
+    "response"=> (strlen($response) > 500) ? substr($response, 0, 500) . "..." : $response
 ];
 
-if($response === false){
-continue;
-}
 
-if(!$data){
-continue;
+if($response === false || !$data){
+    error_log("[CHAT DEBUG] Gemini API Call Failed. Response: " . $response);
+    continue;
 }
+error_log("[CHAT DEBUG] Gemini Response: " . $response);
+
 
 /*
 Nếu có câu trả lời
@@ -286,6 +353,20 @@ if(isset($data["candidates"][0]["content"]["parts"][0]["text"])){
 
 $answer = $data["candidates"][0]["content"]["parts"][0]["text"];
 
+// --- SELF-CHECK STEP ---
+$validation = IntentEngine::validateResponse($intent_obj, $answer);
+if (!$validation['valid']) {
+    // If invalid, try ONE retry with a stronger warning
+    $payload["contents"][] = ["role" => "model", "parts" => [["text" => $answer]]];
+    $payload["contents"][] = ["role" => "user", "parts" => [["text" => "Kết quả của bạn vi phạm ràng buộc: " . $validation['reason'] . ". Hãy sửa lại và TUÂN THỦ TUYỆT ĐỐI các ràng buộc đã nêu trong Protocol."]]];
+    
+    // We reuse the same loop or just call once more? Let's just do a manual retry for simplicity in this key
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    $response = curl_exec($ch);
+    $data = json_decode($response, true);
+    $answer = $data["candidates"][0]["content"]["parts"][0]["text"] ?? $answer;
+}
+
 
 
 /*
@@ -293,22 +374,35 @@ Lưu DB
 */
 $image_list = [];
 
-$lastContent = end($input["payload"]["contents"]);
+$contents = $input["payload"]["contents"] ?? [];
+$lastContent = !empty($contents) ? end($contents) : null;
 
-if (isset($lastContent["parts"])) {
+if ($lastContent && isset($lastContent["parts"])) {
+    $uploadDir = dirname(__FILE__, 3) . "/uploads/chat/";
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+
     foreach ($lastContent["parts"] as $part) {
-
         if (isset($part["inline_data"])) {
-
             $mime = $part["inline_data"]["mime_type"];
             $base64Data = $part["inline_data"]["data"];
+            
+            $ext = explode("/", $mime)[1] ?? "jpg";
+            $filename = "img_" . bin2hex(random_bytes(10)) . "." . $ext;
+            $savePath = $uploadDir . $filename;
+            $publicUrl = "/uploads/chat/" . $filename;
 
-            $image_list[] = "data:$mime;base64,$base64Data";
+            if (file_put_contents($savePath, base64_decode($base64Data))) {
+                $image_list[] = $publicUrl;
+            } else {
+                // Fallback to base64 if save fails
+                $image_list[] = "data:$mime;base64,$base64Data";
+            }
         }
     }
 }
 
 $images = json_encode($image_list);
+
 $stmt = $conn->prepare("
 INSERT INTO chats(user_id,question,answer,conversation_id,images)
 VALUES (?,?,?,?,?)
@@ -324,39 +418,54 @@ if(!$stmt->execute()){
 throw new Exception($stmt->error);
 }
 
-$data["conversation_id"] = $conversation_id;
-$data["chat_id"] = $conn->insert_id;
+        // --- FINAL RESPONSE ---
+        $final_response = [
+            "ok" => true,
+            "answer" => $answer,
+            "images" => $image_list,
+            "error" => null,
+            "conversation_id" => $conversation_id,
+            "chat_id" => $conn->insert_id,
+            "debug" => [
+                "task_type" => $intent_obj['task_type'],
+                "has_reference_images" => $has_images,
+                "route" => ($intent_obj['task_type'] === 'image_generation' || $intent_obj['task_type'] === 'image_edit' || $intent_obj['task_type'] === 'identity_preserving_image_edit') ? "image_task" : "chat",
+                "model" => $model
+            ],
+            // Keep Gemini structure for backward compatibility
+            "candidates" => [
+                ["content" => ["parts" => [["text" => $answer]]]]
+            ]
+        ];
 
-echo json_encode($data);
-
-exit;
-
-}
-
+        echo json_encode($final_response);
+        exit;
+    }
 }
 
 /*
 Nếu tất cả key fail
 */
-
-/*
-Nếu tất cả key fail
-*/
-
 echo json_encode([
-    "error"=>true,
-    "conversation_id"=>$conversation_id ?? null,
-    "message"=>"All API keys failed",
-    "debug"=>$debug
+    "ok" => false,
+    "answer" => "Tất cả API keys đều thất bại hoặc không có câu trả lời.",
+    "images" => [],
+    "error" => "All API keys failed",
+    "conversation_id" => $conversation_id ?? null,
+    "debug" => [
+        "task_type" => $intent_obj['task_type'] ?? 'unknown',
+        "has_reference_images" => $has_images ?? false,
+        "detail" => $debug
+    ]
 ]);
 
 } catch(Throwable $e){
-
-echo json_encode([
-"error"=>true,
-"message"=>$e->getMessage(),
-"file"=>$e->getFile(),
-"line"=>$e->getLine()
-]);
-
-}
+    echo json_encode([
+        "ok" => false,
+        "answer" => "Lỗi hệ thống: " . $e->getMessage(),
+        "images" => [],
+        "error" => $e->getMessage(),
+        "file" => $e->getFile(),
+        "line" => $e->getLine()
+    ]);
+}

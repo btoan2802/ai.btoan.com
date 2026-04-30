@@ -15,13 +15,13 @@ try {
         SELECT images 
         FROM chats 
         WHERE conversation_id = ? 
-          AND role = 'user' 
           AND images IS NOT NULL 
           AND images != '' 
           AND images != '[]'
         ORDER BY id DESC 
         LIMIT 1
     ");
+
     
     if (!$stmt) {
         throw new Exception("Prepare failed: " . $conn->error);

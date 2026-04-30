@@ -84,11 +84,16 @@ try {
     
     // 🔥 IMAGE-TO-VIDEO SUPPORT (WITH MIME TYPE FIX)
     if ($base64Image) {
-        // Nếu là URL (bắt đầu bằng http), tải về và chuyển sang base64
+        // Nếu là URL (bắt đầu bằng http hoặc /uploads/), tải về/đọc file và chuyển sang base64
         if (strpos($base64Image, 'http') === 0) {
             $imgData = @file_get_contents($base64Image);
             if ($imgData) {
                 $base64Image = base64_encode($imgData);
+            }
+        } elseif (strpos($base64Image, '/uploads/') === 0) {
+            $localPath = dirname(__FILE__, 3) . $base64Image;
+            if (file_exists($localPath)) {
+                $base64Image = base64_encode(file_get_contents($localPath));
             }
         }
         
@@ -117,7 +122,14 @@ try {
             "fps" => 24,
             "aspectRatio" => "16:9",
             "videoDurationSeconds" => $duration,
-            "storageUri" => $outputUri
+            "storageUri" => $outputUri,
+            "personGeneration" => "allow_all",
+            "safetySettings" => [
+                ["category" => "HATE_SPEECH", "threshold" => "BLOCK_NONE"],
+                ["category" => "DANGEROUS_CONTENT", "threshold" => "BLOCK_NONE"],
+                ["category" => "SEXUALLY_EXPLICIT", "threshold" => "BLOCK_NONE"],
+                ["category" => "HARASSMENT", "threshold" => "BLOCK_NONE"]
+            ]
         ]
     ];
 

@@ -17,6 +17,8 @@ error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);
 set_time_limit(180);
 
 require "db.php";
+require "intent_engine.php";
+
 
 set_error_handler(function ($severity, $message, $file, $line) {
     throw new ErrorException($message, 0, $severity, $file, $line);
@@ -42,7 +44,7 @@ try {
     }
 
     $prompt = trim((string) ($input['prompt'] ?? ''));
-    $baseImage = trim((string) ($input['image'] ?? '')); // Base64
+    $baseImage = trim((string) ($input['image'] ?? '')); // Can be Base64 or local URL
     $conversation_id = (int) ($input['conversation_id'] ?? 0);
     $user_id = (int) ($input['user_id'] ?? 0);
     $assistant_text = trim((string) ($input['assistant_text'] ?? 'Đây là ảnh đã chỉnh sửa của bạn:'));
@@ -51,8 +53,19 @@ try {
         sendJson(['success' => false, 'error' => 'Prompt and Base Image are required'], 400);
     }
 
-    // Prepare Base64 data (remove prefix if exists)
-    $cleanBase64 = preg_replace('#^data:image/[^;]+;base64,#', '', $baseImage);
+    $cleanBase64 = "";
+    if (strpos($baseImage, "/uploads/") === 0) {
+        // Handle local URLs: Read from disk
+        $localPath = dirname(__FILE__, 3) . $baseImage;
+        if (file_exists($localPath)) {
+            $cleanBase64 = base64_encode(file_get_contents($localPath));
+        } else {
+            sendJson(['success' => false, 'error' => 'Reference image file not found: ' . $baseImage], 404);
+        }
+    } else {
+        // Prepare Base64 data (remove prefix if exists)
+        $cleanBase64 = preg_replace('#^data:image/[^;]+;base64,#', '', $baseImage);
+    }
 
     $API_KEYS = [
         "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
@@ -66,6 +79,9 @@ try {
     ];
 
     shuffle($API_KEYS);
+
+    $intent_obj = IntentEngine::analyzeIntent($prompt, true);
+    $protection = IntentEngine::getSystemProtection($intent_obj);
 
     // Using gemini-2.5-flash-image or imagen model for editing
     // For Vertex AI / Google AI, this varies. Here we use the common pool logic.
@@ -82,7 +98,8 @@ try {
                 [
                     "role" => "user",
                     "parts" => [
-                        ["text" => "Please edit the following image based on this description: " . $prompt],
+                        ["text" => "PROTOCOL:\n" . $protection . "\n\nTASK: Please edit the following image based on this description: " . $prompt],
+
                         [
                             "inline_data" => [
                                 "mime_type" => "image/png",
@@ -141,9 +158,25 @@ try {
         if ($imageBase64 !== null) {
             $imageSrc = "data:{$mimeType};base64,{$imageBase64}";
 
+            // Save to local storage to avoid DB packet limit issues
+            $uploadDir = dirname(__FILE__, 3) . "/uploads/edits/";
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+            
+            $ext = explode("/", $mimeType)[1] ?? "png";
+            $filename = "edit_" . bin2hex(random_bytes(10)) . "." . $ext;
+            $savePath = $uploadDir . $filename;
+            $publicUrl = "/uploads/edits/" . $filename;
+
+            if (file_put_contents($savePath, base64_decode($imageBase64))) {
+                $dbImageValue = $publicUrl;
+            } else {
+                // Fallback to base64 if save fails
+                $dbImageValue = $imageSrc;
+            }
+
             // Sync to database history
             if ($conversation_id > 0 && $user_id > 0) {
-                $assistant_images = json_encode([$imageSrc], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $assistant_images = json_encode([$dbImageValue], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 $stmt = $conn->prepare("
                     UPDATE chats
                     SET answer = ?, assistant_images = ?
@@ -160,7 +193,8 @@ try {
             sendJson([
                 'success' => true,
                 'mimeType' => $mimeType,
-                'imageBase64' => $imageBase64
+                'imageBase64' => $imageBase64,
+                'publicUrl' => $publicUrl ?? null
             ]);
         }
     }

@@ -40,13 +40,22 @@ try {
     }
 
     // 🔥 AUTO MIGRATE (Self-healing)
-    $check = $conn->query("SHOW COLUMNS FROM `chats` LIKE 'assistant_video'");
-    if ($check && $check->num_rows === 0) {
-        $conn->query("ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images");
+    $cols = [
+        'assistant_video' => "ALTER TABLE chats ADD COLUMN assistant_video TEXT AFTER assistant_images",
+        'music_url' => "ALTER TABLE chats ADD COLUMN music_url TEXT NULL",
+        'music_prompt' => "ALTER TABLE chats ADD COLUMN music_prompt TEXT NULL",
+        'music_duration' => "ALTER TABLE chats ADD COLUMN music_duration INT NULL"
+    ];
+
+    foreach ($cols as $col => $sql) {
+        $check = $conn->query("SHOW COLUMNS FROM `chats` LIKE '$col'");
+        if ($check && $check->num_rows === 0) {
+            $conn->query($sql);
+        }
     }
 
     $stmt = $conn->prepare("
-        SELECT question, answer, images, assistant_images, assistant_video
+        SELECT question, answer, images, assistant_images, assistant_video, music_url, music_prompt, music_duration
         FROM chats
         WHERE conversation_id = ?
         ORDER BY id ASC
@@ -101,7 +110,10 @@ try {
                 "role" => "assistant",
                 "text" => $row["answer"] ?? "",
                 "images" => $assistantImages,
-                "videos" => $videos
+                "videos" => $videos,
+                "music_url" => $row["music_url"] ?? null,
+                "music_prompt" => $row["music_prompt"] ?? null,
+                "music_duration" => $row["music_duration"] ?? null
             ];
         }
     }

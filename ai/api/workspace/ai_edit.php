@@ -5,6 +5,8 @@ ini_set('display_errors', '0');
 error_reporting(E_ALL & ~E_DEPRECATED & ~E_NOTICE);ob_start();
 
 require __DIR__ . "/_bootstrap.php";
+require __DIR__ . "/../intent_engine.php";
+
 
 try {
     $raw = file_get_contents("php://input");
@@ -100,8 +102,12 @@ try {
 
     shuffle($API_KEYS);
 
+    $intent_obj = IntentEngine::analyzeIntent($instruction);
+    $protection = IntentEngine::getSystemProtection($intent_obj);
+
     $prompt = <<<PROMPT
 Bạn là AI code editor.
+{$protection}
 
 Nhiệm vụ:
 - Chỉnh sửa file mã nguồn theo yêu cầu người dùng.
@@ -120,6 +126,7 @@ Yêu cầu người dùng:
 Nội dung file hiện tại:
 {$content}
 PROMPT;
+
 
     $answer = null;
     $lastError = "Không gọi được Gemini";
