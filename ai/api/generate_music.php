@@ -61,7 +61,7 @@ try {
     $provider = new GeminiMusicProvider($API_KEYS);
     
     // Standardize prompt for better results
-    $finalPrompt = "Create an original music track. Style: $prompt. Duration: {$duration}s. High quality, clean mix, suitable for social media background. Do not imitate copyrighted artists.";
+    $finalPrompt = "Create an original music track based on this description: $prompt. Ensure the musical style and any specific cultural or language references (like Vietnamese lyrics or instruments) are preserved. High quality, clean mix, suitable for background music. Do not imitate copyrighted artists.";
 
     // 2. Generate Music
     error_log("[MUSIC DEBUG] Starting generation with prompt: " . $finalPrompt);
