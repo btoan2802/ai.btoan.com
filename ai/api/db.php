@@ -17,9 +17,6 @@ $db   = "btoan_ai";
 $conn = new mysqli($host,$user,$pass,$db);
 $conn->set_charset("utf8mb4");
 
-// 🔥 Fix: Increase max_allowed_packet to handle large base64 images
-$conn->query("SET SESSION max_allowed_packet=67108864"); // 64MB
-
 if($conn->connect_error){
     die("DB error");
 }
