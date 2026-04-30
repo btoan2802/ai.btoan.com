@@ -215,7 +215,9 @@
               <button class="action-icon-btn" data-bs-toggle="dropdown" title="Tính năng thêm">
                 <i class="bi bi-plus-lg"></i>
               </button>
-              <span id="modeStatus" class="badge bg-light text-dark ms-1 border" style="font-size: 0.75rem; cursor: pointer;"><img src="img/fast_logo.png?v=6" style="width:14px; height:14px; margin-right:5px; vertical-align: middle;"> Fast</span>
+              <span id="modeStatus" class="badge bg-light text-dark ms-1 border d-inline-flex align-items-center" style="font-size: 0.75rem; cursor: pointer; padding: 4px 10px; border-radius: 20px;">
+                <span class="mode-logo-css fast">T</span> Fast
+              </span>
 
 
               <ul class="dropdown-menu shadow-md border-0 profile-menu-premium">
@@ -237,12 +239,12 @@
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
-                    <img src="img/fast_logo.png?v=6" class="me-2" style="width: 20px; height: 20px; object-fit: contain;"> <span>Fast (Mặc định)</span>
+                    <span class="mode-logo-css fast me-2">T</span> <span>Fast (Mặc định)</span>
                   </button>
                 </li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
-                    <img src="img/thinking_logo.png?v=6" class="me-2" style="width: 20px; height: 20px; object-fit: contain;"> <span>Thinking (Chuyên sâu)</span>
+                    <span class="mode-logo-css thinking me-2">T</span> <span>Thinking (Chuyên sâu)</span>
                   </button>
                 </li>
               </ul>
