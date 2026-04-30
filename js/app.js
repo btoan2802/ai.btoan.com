@@ -1851,19 +1851,6 @@ function toggleSidebar() {
 }
 
 
-function setMode(m) {
-    mode = m;
-    const btn = document.getElementById("modeStatus");
-    if (!btn) return;
-
-    if (m === "thinking") {
-        btn.innerText = "🧠 Thinking";
-        btn.className = "badge bg-warning text-dark ms-1";
-    } else {
-        btn.innerText = "⚡ Fast";
-        btn.className = "badge bg-light text-dark ms-1";
-    }
-}
 
 
 document.getElementById("pickImage")?.addEventListener("click", () => {
