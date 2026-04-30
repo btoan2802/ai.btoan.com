@@ -294,8 +294,26 @@ function createMessageActions({ text, exportType = null, onExport = null }) {
 }
 
 
+function cleanBotText(text) {
+    if (!text) return "";
+    return text
+        .replace(/\[GENIMAGE\].*?(\n|$)/gi, "")
+        .replace(/\[GENVIDEO\].*?(\n|$)/gi, "")
+        .replace(/\[GENMUSIC\].*?(\n|$)/gi, "")
+        .replace(/\[EDITIMAGE\].*?(\n|$)/gi, "")
+        .replace(/\[SEARCH\].*?(\n|$)/gi, "")
+        .replace(/\[EXPORT\].*?(\n|$)/gi, "")
+        .trim();
+}
+
 function addBotBubble(text, exportType = null) {
     if (!chatEl) return
+
+    const cleanedText = cleanBotText(text);
+    if (!cleanedText && !exportType) {
+        // Nếu sau khi xóa tag mà không còn chữ, và không có export thì có thể là tin nhắn chỉ chứa media
+        // Chúng ta vẫn tạo bubble nhưng rỗng hoặc ẩn text
+    }
 
     const row = document.createElement("div")
     row.className = "msgrow bot"
@@ -305,10 +323,10 @@ function addBotBubble(text, exportType = null) {
 
     const content = document.createElement("div")
     content.className = "message-content"
-    content.innerHTML = marked.parse(text)
+    content.innerHTML = marked.parse(cleanedText || "")
     bubble.appendChild(content)
 
-    bubble.appendChild(createMessageActions({ text, exportType }))
+    bubble.appendChild(createMessageActions({ text: cleanedText || text, exportType }))
 
     row.appendChild(bubble)
     chatEl.appendChild(row)
@@ -399,10 +417,15 @@ function streamBot(text, exportType = null) {
     chatEl.appendChild(row)
 
     let i = 0
+    const cleanedFullText = cleanBotText(text);
     const timer = setInterval(() => {
         // Use normalized text for rendering
         const currentText = normalizedText.substring(0, i);
-        content.innerHTML = marked.parse(currentText)
+        // We clean the text dynamically or just wait for completion? 
+        // For streaming, cleaning dynamically might be tricky, but let's try.
+        const cleanedCurrent = cleanBotText(currentText);
+        
+        content.innerHTML = marked.parse(cleanedCurrent)
             .replace(/language-j\b/g, "language-java")
 
 
