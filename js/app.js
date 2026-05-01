@@ -424,7 +424,6 @@ function streamBot(text, exportType = null) {
     chatEl.appendChild(row)
 
     let i = 0
-    const cleanedFullText = cleanBotText(text);
     const timer = setInterval(() => {
         // Use normalized text for rendering
         const currentText = normalizedText.substring(0, i);

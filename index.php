@@ -381,7 +381,7 @@
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
   <script src="facelib/face-api.min.js"></script>
   <script src="login/SignUp_LogIn_Form.js?v=19"></script>
-  <script src="js/app.js?v=33"></script>
+  <script src="js/app.js?v=34"></script>
   <script src="js/hand_scene.js?v=9"></script>
   <script src="js/hand_shapes.js?v=4"></script>
   <script src="js/hand_engine.js?v=11"></script>
