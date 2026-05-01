@@ -2821,7 +2821,7 @@ async function triggerMusicGeneration(prompt, loadingBubble, chatId) {
                 conversation_id: conversation_id,
                 user_id: localStorage.getItem("user_id"),
                 chat_id: chatId,
-                duration: 30
+                duration: 60
             })
         });
 
