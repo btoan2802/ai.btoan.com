@@ -33,8 +33,7 @@ class GeminiMusicProvider {
                         ]
                     ],
                     "generationConfig" => [
-                        "candidateCount" => 1,
-                        "durationSeconds" => (int)$duration
+                        "candidateCount" => 1
                     ]
                 ];
 
