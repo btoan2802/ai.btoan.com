@@ -317,10 +317,7 @@ function addBotBubble(text, exportType = null) {
     if (!chatEl) return
 
     const cleanedText = cleanBotText(text);
-    if (!cleanedText && !exportType) {
-        // Nếu sau khi xóa tag mà không còn chữ, và không có export thì có thể là tin nhắn chỉ chứa media
-        // Chúng ta vẫn tạo bubble nhưng rỗng hoặc ẩn text
-    }
+    if (!cleanedText.trim() && !exportType) return; // 🔥 KHÔNG TẠO Ô CHAT NẾU CHỈ CÓ MEDIA
 
     const row = document.createElement("div")
     row.className = "msgrow bot"
@@ -406,6 +403,9 @@ function normalizeMathText(text) {
 }
 
 function streamBot(text, exportType = null) {
+    const cleanedFullText = cleanBotText(text);
+    if (!cleanedFullText.trim()) return; // 🔥 KHÔNG TẠO Ô CHAT NẾU CHỈ CÓ MEDIA
+
     const normalizedText = normalizeMathText(text);
 
     const row = document.createElement("div")
