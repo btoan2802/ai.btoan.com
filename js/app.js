@@ -1734,6 +1734,9 @@ window.onload = function () {
 
     msgEl?.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
+            // Nếu là mobile, Enter chỉ là xuống dòng, không gửi
+            if (isMobile()) return;
+
             e.preventDefault()
             send()
         }
