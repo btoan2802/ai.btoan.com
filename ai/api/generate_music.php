@@ -58,6 +58,20 @@ try {
         "AIzaSyBdwrghehTW22SuWH0Yq2jBbv6H5OZ4Ce8"
     ];
 
+    // 1. Resolve lyrics placeholder if needed
+    if (strpos($prompt, "[FULL_USER_LYRICS]") !== false) {
+        $stmt = $conn->prepare("SELECT question FROM chats WHERE conversation_id = ? ORDER BY id DESC LIMIT 1");
+        $stmt->bind_param("i", $conversation_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($row = $res->fetch_assoc()) {
+            $userLyrics = $row['question'];
+            // Clean up lyrics (remove [GENMUSIC] if user accidentally included it)
+            $userLyrics = preg_replace('/\[GENMUSIC\].*$/is', '', $userLyrics);
+            $prompt = str_replace("[FULL_USER_LYRICS]", "\"" . trim($userLyrics) . "\"", $prompt);
+        }
+    }
+
     $provider = new GeminiMusicProvider($API_KEYS);
     
     // Standardize prompt for better results
