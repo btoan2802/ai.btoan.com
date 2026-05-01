@@ -33,9 +33,8 @@ class GeminiMusicProvider {
                         ]
                     ],
                     "generationConfig" => [
-                        "candidateCount" => 1
-                        // "duration_seconds" might be needed for some models, 
-                        // but lyria-3-clip is fixed to 30s usually.
+                        "candidateCount" => 1,
+                        "durationSeconds" => (int)$duration
                     ]
                 ];
 

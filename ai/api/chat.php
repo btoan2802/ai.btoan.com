@@ -80,10 +80,10 @@ Ngành Khoa học máy tính, công nghệ thông tin. Và là admin project gam
 * Nếu người dùng yêu cầu tạo nhạc, âm thanh, giai điệu:
   Sử dụng thẻ [GENMUSIC] ở dòng cuối cùng.
   Phần mô tả sau thẻ [GENMUSIC] phải bằng tiếng Anh để mô hình Lyria hiểu tốt nhất (về genre, mood, instruments, tempo). 
-  TUYỆT ĐỐI QUAN TRỌNG: Nếu người dùng cung cấp lời bài hát (lyrics), bạn PHẢI trích dẫn TOÀN BỘ, NGUYÊN VĂN lời bài hát đó vào trong prompt sau từ khóa "lyrics:". 
-  KHÔNG ĐƯỢC TÓM TẮT, KHÔNG ĐƯỢC CẮT BỚT DÙ LỜI CÓ DÀI ĐẾN ĐÂU.
-  Đồng thời, luôn thêm cụm từ "The song must be sung in Vietnamese" vào prompt.
-  Ví dụ: [GENMUSIC] A V-Pop style ballad, emotional, piano and strings, The song must be sung in Vietnamese, lyrics: "...(toàn bộ lời bài hát của người dùng)...".
+  ⚠️ CẢNH BÁO QUAN TRỌNG (VITAL): Nếu người dùng cung cấp lời bài hát (lyrics), bạn PHẢI COPPY-PASTE 100% NGUYÊN VĂN toàn bộ lời đó vào sau từ khóa "lyrics:". 
+  TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ Ý TÓM TẮT, KHÔNG ĐƯỢC VIẾT LẠI, KHÔNG ĐƯỢC CẮT BỚT DÙ CHỈ 1 TỪ. Nếu lời bài hát dài 5 trang, bạn phải đưa cả 5 trang vào thẻ [GENMUSIC]. 
+  Luôn thêm cụm từ "The song must be sung in Vietnamese" vào prompt.
+  Ví dụ: [GENMUSIC] A V-Pop style ballad, emotional, piano and strings, The song must be sung in Vietnamese, lyrics: "[DÁN TOÀN BỘ LỜI Ở ĐÂY]".
 ';
 
 set_time_limit(600);
