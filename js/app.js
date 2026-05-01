@@ -2831,7 +2831,11 @@ async function triggerMusicGeneration(prompt, loadingBubble, chatId) {
         if (data.success) {
             addMusicBubble(data);
         } else {
-            addBotBubble("❌ Lỗi tạo nhạc: " + (data.error || "Lỗi không xác định"));
+            let errorMsg = data.error || "Lỗi không xác định";
+            if (errorMsg.includes("429")) {
+                errorMsg = "Hệ thống đang quá tải hoặc hết lượt tạo nhạc miễn phí (429 Quota Exceeded). Bạn vui lòng đợi khoảng 1-2 phút rồi thử lại nhé! Lyria AI có giới hạn lượt dùng khá chặt chẽ.";
+            }
+            addBotBubble("❌ Lỗi tạo nhạc: " + errorMsg);
         }
     } catch (e) {
         if (loadingBubble) loadingBubble.remove();
