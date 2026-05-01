@@ -58,10 +58,24 @@ try {
         "AIzaSyBdwrghehTW22SuWH0Yq2jBbv6H5OZ4Ce8"
     ];
 
+    // 1. Resolve lyrics placeholder if needed
+    if (strpos($prompt, "[FULL_USER_LYRICS]") !== false) {
+        $stmt = $conn->prepare("SELECT question FROM chats WHERE conversation_id = ? ORDER BY id DESC LIMIT 1");
+        $stmt->bind_param("i", $conversation_id);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        if ($row = $res->fetch_assoc()) {
+            $userLyrics = $row['question'];
+            // Clean up lyrics (remove [GENMUSIC] if user accidentally included it)
+            $userLyrics = preg_replace('/\[GENMUSIC\].*$/is', '', $userLyrics);
+            $prompt = str_replace("[FULL_USER_LYRICS]", "\"" . trim($userLyrics) . "\"", $prompt);
+        }
+    }
+
     $provider = new GeminiMusicProvider($API_KEYS);
     
     // Standardize prompt for better results
-    $finalPrompt = "Create an original music track based on this description: $prompt. Ensure the musical style and any specific cultural or language references (like Vietnamese lyrics or instruments) are preserved. High quality, clean mix, suitable for background music. Do not imitate copyrighted artists.";
+    $finalPrompt = "Create a 60-second long original music track based on this description: $prompt. Ensure the musical style and any specific lyrics provided in the description are used exactly. The song MUST be sung in the language of the lyrics (e.g., Vietnamese). High quality, clean mix, suitable for background music. Do not imitate copyrighted artists.";
 
     // 2. Generate Music
     error_log("[MUSIC DEBUG] Starting generation with prompt: " . $finalPrompt);

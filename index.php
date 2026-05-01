@@ -215,7 +215,9 @@
               <button class="action-icon-btn" data-bs-toggle="dropdown" title="Tính năng thêm">
                 <i class="bi bi-plus-lg"></i>
               </button>
-              <span id="modeStatus" class="badge bg-light text-dark ms-1" style="font-size:0.7rem;">⚡ Fast</span>
+              <span id="modeStatus" class="badge bg-light text-dark ms-1 border d-inline-flex align-items-center" style="font-size: 0.75rem; cursor: pointer; padding: 4px 10px; border-radius: 20px;">
+                <img src="img/fast_logo.png?v=10" class="me-2" style="width: 18px; height: 18px; border-radius: 50%; object-fit: cover;"> Fast
+              </span>
 
 
               <ul class="dropdown-menu shadow-md border-0 profile-menu-premium">
@@ -237,12 +239,12 @@
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('fast')">
-                    <i class="bi bi-lightning-charge-fill me-2 text-warning"></i> <span>Fast (Mặc định)</span>
+                    <img src="img/fast_logo.png?v=10" class="me-2" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover;"> <span>Fast (Mặc định)</span>
                   </button>
                 </li>
                 <li>
                   <button class="dropdown-item d-flex align-items-center py-2" onclick="setMode('thinking')">
-                    <i class="bi bi-brain me-2 text-purp"></i> <span>Thinking (Chuyên sâu)</span>
+                    <img src="img/thinking_logo.png?v=10" class="me-2" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover;"> <span>Thinking (Chuyên sâu)</span>
                   </button>
                 </li>
               </ul>
@@ -379,7 +381,7 @@
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
   <script src="facelib/face-api.min.js"></script>
   <script src="login/SignUp_LogIn_Form.js?v=19"></script>
-  <script src="js/app.js?v=29"></script>
+  <script src="js/app.js?v=34"></script>
   <script src="js/hand_scene.js?v=9"></script>
   <script src="js/hand_shapes.js?v=4"></script>
   <script src="js/hand_engine.js?v=11"></script>

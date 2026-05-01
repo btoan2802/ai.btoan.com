@@ -34,11 +34,18 @@ function setMode(m) {
     const status = document.getElementById("modeStatus");
     if (status) {
         if (m === "thinking") {
-            status.innerText = "🧠 Thinking";
-            status.className = "badge bg-purple text-white ms-1";
+            status.innerHTML = `<img src="img/thinking_logo.png?v=10" style="width:16px; height:16px; margin-right:6px; border-radius: 50%; object-fit: cover;"> Thinking`;
+            status.className = "badge ms-1 d-inline-flex align-items-center";
+            status.style.backgroundColor = "#0d9488"; // Professional Teal
+            status.style.color = "white";
+            status.style.padding = "4px 10px";
+            status.style.borderRadius = "20px";
         } else {
-            status.innerText = "⚡ Fast";
-            status.className = "badge bg-light text-dark ms-1";
+            status.innerHTML = `<img src="img/fast_logo.png?v=10" style="width:16px; height:16px; margin-right:6px; border-radius: 50%; object-fit: cover;"> Fast`;
+            status.className = "badge bg-light text-dark ms-1 border d-inline-flex align-items-center";
+            status.style.backgroundColor = ""; 
+            status.style.padding = "4px 10px";
+            status.style.borderRadius = "20px";
         }
     }
 }
@@ -310,10 +317,7 @@ function addBotBubble(text, exportType = null) {
     if (!chatEl) return
 
     const cleanedText = cleanBotText(text);
-    if (!cleanedText && !exportType) {
-        // Nếu sau khi xóa tag mà không còn chữ, và không có export thì có thể là tin nhắn chỉ chứa media
-        // Chúng ta vẫn tạo bubble nhưng rỗng hoặc ẩn text
-    }
+    if (!cleanedText.trim() && !exportType) return; // 🔥 KHÔNG TẠO Ô CHAT NẾU CHỈ CÓ MEDIA
 
     const row = document.createElement("div")
     row.className = "msgrow bot"
@@ -399,6 +403,9 @@ function normalizeMathText(text) {
 }
 
 function streamBot(text, exportType = null) {
+    const cleanedFullText = cleanBotText(text);
+    if (!cleanedFullText.trim()) return; // 🔥 KHÔNG TẠO Ô CHAT NẾU CHỈ CÓ MEDIA
+
     const normalizedText = normalizeMathText(text);
 
     const row = document.createElement("div")
@@ -417,7 +424,6 @@ function streamBot(text, exportType = null) {
     chatEl.appendChild(row)
 
     let i = 0
-    const cleanedFullText = cleanBotText(text);
     const timer = setInterval(() => {
         // Use normalized text for rendering
         const currentText = normalizedText.substring(0, i);
@@ -1727,6 +1733,9 @@ window.onload = function () {
 
     msgEl?.addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) {
+            // Nếu là mobile, Enter chỉ là xuống dòng, không gửi
+            if (isMobile()) return;
+
             e.preventDefault()
             send()
         }
@@ -1848,19 +1857,6 @@ function toggleSidebar() {
 }
 
 
-function setMode(m) {
-    mode = m;
-    const btn = document.getElementById("modeStatus");
-    if (!btn) return;
-
-    if (m === "thinking") {
-        btn.innerText = "🧠 Thinking";
-        btn.className = "badge bg-warning text-dark ms-1";
-    } else {
-        btn.innerText = "⚡ Fast";
-        btn.className = "badge bg-light text-dark ms-1";
-    }
-}
 
 
 document.getElementById("pickImage")?.addEventListener("click", () => {
@@ -2827,7 +2823,7 @@ async function triggerMusicGeneration(prompt, loadingBubble, chatId) {
                 conversation_id: conversation_id,
                 user_id: localStorage.getItem("user_id"),
                 chat_id: chatId,
-                duration: 30
+                duration: 60
             })
         });
 
@@ -2837,7 +2833,11 @@ async function triggerMusicGeneration(prompt, loadingBubble, chatId) {
         if (data.success) {
             addMusicBubble(data);
         } else {
-            addBotBubble("❌ Lỗi tạo nhạc: " + (data.error || "Lỗi không xác định"));
+            let errorMsg = data.error || "Lỗi không xác định";
+            if (errorMsg.includes("429")) {
+                errorMsg = "Hệ thống đang quá tải hoặc hết lượt tạo nhạc miễn phí (429 Quota Exceeded). Bạn vui lòng đợi khoảng 1-2 phút rồi thử lại nhé! Lyria AI có giới hạn lượt dùng khá chặt chẽ.";
+            }
+            addBotBubble("❌ Lỗi tạo nhạc: " + errorMsg);
         }
     } catch (e) {
         if (loadingBubble) loadingBubble.remove();
