@@ -3,6 +3,7 @@
         "phpoffice/phpword": "^1.4",
         "erusev/parsedown": "^1.8",
         "dompdf/dompdf": "^3.1",
-        "aws/aws-sdk-php": "^3.0"
+        "aws/aws-sdk-php": "^3.0 <3.371",
+        "thecodingmachine/safe": "^1.3"
     }
 }

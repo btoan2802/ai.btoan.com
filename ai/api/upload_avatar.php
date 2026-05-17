@@ -1,6 +1,7 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+error_reporting(0);
+ini_set('display_errors', 0);
+putenv("AWS_SUPPRESS_PHP_DEPRECATION_WARNING=true");
 
 require "db.php";
 require __DIR__ . "/../../vendor/autoload.php";
@@ -25,6 +26,9 @@ try {
 
     // 💾 SAVE DB
     $stmt = $conn->prepare("UPDATE users SET avatar=? WHERE id=?");
+    if (!$stmt) {
+        throw new Exception("Database error: " . $conn->error);
+    }
     $stmt->bind_param("si", $url, $user_id);
     $stmt->execute();
 

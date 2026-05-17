@@ -27,8 +27,8 @@ try{
         SET full_name = ?, dob = ?
         WHERE id = ?
     ");
-
-    $stmt->execute([$full_name, $dob, $user_id]);
+    $stmt->bind_param("ssi", $full_name, $dob, $user_id);
+    $stmt->execute();
 
     echo json_encode([
         "success" => true

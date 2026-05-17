@@ -13,6 +13,7 @@ class R2Uploader {
             'version' => 'latest',
             'region' => 'auto',
             'endpoint' => $this->config['endpoint'],
+            'suppress_php_deprecation_warning' => true,
             'credentials' => [
                 'key'    => $this->config['access_key'],
                 'secret' => $this->config['secret_key'],
