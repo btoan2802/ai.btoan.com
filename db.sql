@@ -231,6 +231,11 @@ CREATE TABLE IF NOT EXISTS `chats` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `conversation_id` int(11) DEFAULT NULL,
   `images` longtext DEFAULT NULL,
+  `assistant_images` longtext DEFAULT NULL,
+  `assistant_video` longtext DEFAULT NULL,
+  `music_url` text DEFAULT NULL,
+  `music_prompt` text DEFAULT NULL,
+  `music_duration` int(11) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=476 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -756,6 +761,14 @@ CREATE TABLE IF NOT EXISTS `users` (
   `full_name` varchar(255) DEFAULT NULL,
   `password` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `dob` date DEFAULT NULL,
+  `email` varchar(255) DEFAULT NULL,
+  `google_id` varchar(255) DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
+  `face_enabled` tinyint(1) DEFAULT 0,
+  `face_image_url` varchar(255) DEFAULT NULL,
+  `face_descriptor` text DEFAULT NULL,
+  `face_updated_at` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `username` (`username`)
 ) ENGINE=InnoDB AUTO_INCREMENT=58 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
