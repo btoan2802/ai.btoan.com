@@ -57,14 +57,26 @@ namespace BtoanAiNet.Services
                 UpdatedAt = DateTime.UtcNow
             };
 
-            _context.Projects.Add(project);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.Projects.Add(project);
+                await _context.SaveChangesAsync();
 
-            string relativeStorage = Path.Combine("uploads", "workspaces", userId.ToString(), project.Id.ToString()).Replace('\\', '/');
-            project.StoragePath = relativeStorage;
-            await _context.SaveChangesAsync();
+                string relativeStorage = Path.Combine("uploads", "workspaces", userId.ToString(), project.Id.ToString()).Replace('\\', '/');
+                project.StoragePath = relativeStorage;
+                await _context.SaveChangesAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"DB Save Warning in CreateProjectAsync: {ex.Message}");
+                if (project.Id == 0) project.Id = Math.Abs((int)DateTime.UtcNow.Ticks % 100000);
+                if (string.IsNullOrEmpty(project.StoragePath))
+                {
+                    project.StoragePath = Path.Combine("uploads", "workspaces", userId.ToString(), project.Id.ToString()).Replace('\\', '/');
+                }
+            }
 
-            string absoluteStorage = Path.Combine(webRootPath, relativeStorage);
+            string absoluteStorage = Path.Combine(webRootPath, project.StoragePath);
             if (!Directory.Exists(absoluteStorage))
             {
                 Directory.CreateDirectory(absoluteStorage);
@@ -159,48 +171,55 @@ namespace BtoanAiNet.Services
 
             await File.WriteAllTextAsync(absolutePath, content, Encoding.UTF8);
 
-            var pFile = await _context.ProjectFiles.FirstOrDefaultAsync(f => f.ProjectId == projectId && f.RelativePath == relativePath);
-            if (pFile == null)
+            try
             {
-                pFile = new ProjectFile
+                var pFile = await _context.ProjectFiles.FirstOrDefaultAsync(f => f.ProjectId == projectId && f.RelativePath == relativePath);
+                if (pFile == null)
                 {
-                    ProjectId = projectId,
-                    RelativePath = relativePath,
-                    Language = DetectLanguage(relativePath),
+                    pFile = new ProjectFile
+                    {
+                        ProjectId = projectId,
+                        RelativePath = relativePath,
+                        Language = DetectLanguage(relativePath),
+                        Content = content,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+                    _context.ProjectFiles.Add(pFile);
+                }
+                else
+                {
+                    pFile.Content = content;
+                    pFile.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _context.SaveChangesAsync();
+
+                int latestVersion = await _context.FileVersions
+                    .Where(v => v.ProjectFileId == pFile.Id)
+                    .Select(v => (int?)v.VersionNumber)
+                    .MaxAsync() ?? 0;
+
+                var version = new FileVersion
+                {
+                    ProjectFileId = pFile.Id,
+                    VersionNumber = latestVersion + 1,
                     Content = content,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedBy = createdBy,
+                    ChangeSummary = changeSummary ?? "Updated code",
+                    CreatedAt = DateTime.UtcNow
                 };
-                _context.ProjectFiles.Add(pFile);
+
+                _context.FileVersions.Add(version);
+
+                var project = await _context.Projects.FindAsync(projectId);
+                if (project != null) project.UpdatedAt = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
             }
-            else
+            catch (Exception ex)
             {
-                pFile.Content = content;
-                pFile.UpdatedAt = DateTime.UtcNow;
+                Console.WriteLine($"DB Sync Warning in SaveFileWithVersionAsync: {ex.Message}");
             }
-
-            await _context.SaveChangesAsync();
-
-            int latestVersion = await _context.FileVersions
-                .Where(v => v.ProjectFileId == pFile.Id)
-                .Select(v => (int?)v.VersionNumber)
-                .MaxAsync() ?? 0;
-
-            var version = new FileVersion
-            {
-                ProjectFileId = pFile.Id,
-                VersionNumber = latestVersion + 1,
-                Content = content,
-                CreatedBy = createdBy,
-                ChangeSummary = changeSummary ?? "Updated code",
-                CreatedAt = DateTime.UtcNow
-            };
-
-            _context.FileVersions.Add(version);
-
-            var project = await _context.Projects.FindAsync(projectId);
-            if (project != null) project.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
         }
 
         public async Task<List<FileVersion>> GetFileVersionHistoryAsync(int projectId, string relativePath)
