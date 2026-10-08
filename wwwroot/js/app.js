@@ -2572,11 +2572,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const uid = localStorage.getItem("user_id");
 
+    // Check if URL has conversation ID path e.g. /c/30002
+    const pathMatch = window.location.pathname.match(/\/c\/(\d+)/);
+    const urlCid = pathMatch ? parseInt(pathMatch[1]) : null;
+
     if (uid && uid !== "undefined" && uid !== "0") {
         if (document.getElementById("userBox")) document.getElementById("userBox").style.display = "flex";
         if (document.getElementById("guestLoginBox")) document.getElementById("guestLoginBox").style.display = "none";
         checkProfile(uid);
-        loadHistory();
+        loadHistory().then(() => {
+            if (urlCid) {
+                loadConversation(urlCid, false);
+            }
+        });
     } else {
         if (document.getElementById("userBox")) document.getElementById("userBox").style.display = "none";
         if (document.getElementById("guestLoginBox")) document.getElementById("guestLoginBox").style.display = "flex";
