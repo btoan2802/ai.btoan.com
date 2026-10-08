@@ -86,6 +86,15 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        try
+        {
+            dbContext.Database.EnsureCreated();
+        }
+        catch (Exception initEx)
+        {
+            Console.WriteLine($"DB EnsureCreated Warning: {initEx.Message}");
+        }
+
         string sql = @"
 IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[Projects]') AND name = 'UserId')
 BEGIN
@@ -358,7 +367,10 @@ BEGIN
     );
 END
 ";
-        dbContext.Database.ExecuteSqlRaw(sql);
+        if (dbProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+        {
+            dbContext.Database.ExecuteSqlRaw(sql);
+        }
     }
     catch (Exception ex)
     {
