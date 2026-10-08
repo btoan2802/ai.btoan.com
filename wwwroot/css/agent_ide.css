@@ -493,3 +493,43 @@ body.agent-ide-body {
     background-color: #454545;
     margin: 4px 0;
 }
+
+/* VS CODE WEB MODALS */
+.modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10400;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(3px);
+}
+
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10500;
+    width: 100vw;
+    height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    outline: 0;
+}
+
+.modal-content {
+    background-color: #252526 !important;
+    border: 1px solid #3c3c3c !important;
+    color: #cccccc !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8) !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid #333333 !important;
+}
+
+.modal-footer {
+    border-top: 1px solid #333333 !important;
+}

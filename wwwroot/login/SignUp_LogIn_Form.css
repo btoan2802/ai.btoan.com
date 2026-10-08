@@ -9,12 +9,18 @@
     list-style: none;
 }
 
-body{
-    display: flex;
+#loginBox{
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 99999;
+    /* display is controlled by JavaScript - do NOT set display here */
     justify-content: center;
     align-items: center;
-    min-height: 100vh;
     background: linear-gradient(90deg, #e2e2e2, #c9d6ff);
+    overflow: auto;
 }
 
 .container{
@@ -231,7 +237,12 @@ form{ width: 100%; }
     }
 
 @media screen and (max-width: 650px){
-    .container{ height: calc(100vh - 40px); }
+    #loginBox .container, .container{ 
+        width: calc(100vw - 20px) !important;
+        max-width: 440px !important;
+        margin: 10px auto !important;
+        height: calc(100dvh - 20px) !important; 
+    }
 
     .form-box{
         bottom: 0;

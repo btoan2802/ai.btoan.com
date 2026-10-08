@@ -25,8 +25,8 @@
 
   <!-- 4. CSS Local -->
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
-  <link rel="stylesheet" href="css/main_style.css?v=16">
+  <link rel="stylesheet" href="login/SignUp_LogIn_Form.css?v=21">
+  <link rel="stylesheet" href="css/main_style.css?v=21">
 
   <!-- 5. Config Script (Ngắn) -->
   <script src="js/mathjax_config.js"></script>
@@ -40,7 +40,8 @@
 <body>
 
   <!-- A. LOGIN -->
-  <div id="loginBox" style="display:none">
+  <div id="loginBox" style="display:none" onclick="if(event.target===this) closeLoginModal();">
+    <button type="button" class="btn-close-login" onclick="closeLoginModal()" title="Đóng quay lại Chat">&times;</button>
     <div class="container">
       <div class="form-box login" id="loginForm">
         <form onsubmit="event.preventDefault(); login();">
@@ -115,7 +116,7 @@
   </div>
 
   <!-- B. CHAT APP -->
-  <div id="chatApp" style="display:none">
+  <div id="chatApp" style="display:flex">
     <div class="d-flex main-app-wrapper w-100 h-100">
 
       <!-- SIDEBAR (280px FIXED) -->
@@ -188,15 +189,15 @@
 
         <!-- SIDEBAR FOOTER (USER PROFILE CARD) -->
         <div class="sidebar-footer border-top p-2 mt-auto">
-          <div class="sidebar-user-card d-flex align-items-center justify-content-between p-2 rounded-3" onclick="openProfile()">
+          <div class="sidebar-user-card d-flex align-items-center justify-content-between p-2 rounded-3" onclick="handleUserCardClick()">
             <div class="d-flex align-items-center gap-2.5 overflow-hidden">
               <div id="sidebarUserAvatar" class="user-avatar-circle fw-bold flex-shrink-0">U</div>
               <div class="user-meta overflow-hidden">
                 <div id="sidebarUserName" class="user-name-text fw-semibold text-truncate text-nowrap">User</div>
-                <div class="user-role-text text-muted text-nowrap">Btoan AI Member</div>
+                <div id="sidebarUserRole" class="user-role-text text-muted text-nowrap">Btoan AI Member</div>
               </div>
             </div>
-            <button class="btn-logout-sidebar border-0 bg-transparent text-muted p-1" onclick="event.stopPropagation(); logout();" title="Đăng xuất">
+            <button id="sidebarLogoutBtn" class="btn-logout-sidebar border-0 bg-transparent text-muted p-1" onclick="event.stopPropagation(); handleSidebarAction();" title="Đăng xuất">
               <i class="bi bi-box-arrow-right fs-5"></i>
             </button>
           </div>
@@ -222,7 +223,7 @@
             </div>
           </div>
 
-          <div class="topbar-center">
+          <div class="topbar-center d-flex align-items-center gap-2">
             <!-- MODEL SELECTOR DROPDOWN PILL -->
             <div class="dropdown d-inline-block">
               <button class="model-selector-btn btn btn-light border btn-sm rounded-pill" id="modelSelectorBtn" data-bs-toggle="dropdown" aria-expanded="false">
@@ -253,10 +254,21 @@
                 </li>
               </ul>
             </div>
+
+            <!-- DARK / LIGHT MODE TOGGLE BUTTON -->
+            <button id="themeToggleBtn" onclick="toggleTheme()" class="btn btn-light border btn-sm rounded-circle p-1.5 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;" title="Chuyển chế độ Sáng / Tối">
+              <i id="themeToggleIcon" class="bi bi-moon-stars text-secondary fs-6"></i>
+            </button>
           </div>
 
           <div class="topbar-right">
-            <div id="userBox" class="user-box">
+            <div id="guestLoginBox" class="guest-login-box">
+              <button onclick="openLoginModal()" class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 fw-semibold d-flex align-items-center gap-1.5 shadow-sm" style="font-size: 0.85rem;">
+                <i class="bi bi-box-arrow-in-right fs-6"></i>
+                <span class="text-nowrap">Đăng nhập</span>
+              </button>
+            </div>
+            <div id="userBox" class="user-box" style="display:none">
               <div class="user-info" onclick="toggleUserMenu()">
                 <div id="userAvatar" class="avatar-sm">U</div>
                 <span id="userName" class="user-name">User</span>
@@ -438,8 +450,8 @@
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
   <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
   <script src="facelib/face-api.min.js"></script>
-  <script src="login/SignUp_LogIn_Form.js?v=19"></script>
-  <script src="js/app.js?v=36"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=20"></script>
+  <script src="js/app.js?v=42"></script>
 
   <!-- E. CURSOR AI CODING AGENT MODAL -->
   <div id="agentModal" class="profile-modal" style="display:none">

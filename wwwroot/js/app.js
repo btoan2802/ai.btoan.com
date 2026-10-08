@@ -1282,7 +1282,10 @@ async function login() {
 
         console.log("AFTER SAVE:", localStorage.getItem("user_id"));
 
-        document.getElementById("loginBox").remove();
+        const lBox = document.getElementById("loginBox");
+        if (lBox) lBox.style.display = "none";
+        if (document.getElementById("userBox")) document.getElementById("userBox").style.display = "flex";
+        if (document.getElementById("guestLoginBox")) document.getElementById("guestLoginBox").style.display = "none";
 
         await checkProfile(data.user_id)  // 🔥 QUAN TRỌNG
 
@@ -1360,14 +1363,23 @@ function logout() {
 // ====== HISTORY ======
 async function loadHistory() {
     const user_id = localStorage.getItem("user_id");
-    const res = await fetch("/ai/api/get_conversations.php?user_id=" + user_id);
-    const data = await res.json();
-
     const list = document.getElementById("historyList");
     if (!list) return;
 
-    list.innerHTML = "";
-    if (data.length === 0) return;
+    if (!user_id || user_id === "undefined" || user_id === "0") {
+        setupGuestUI();
+        return;
+    }
+
+    try {
+        const res = await fetch("/ai/api/get_conversations.php?user_id=" + user_id);
+        const data = await res.json();
+
+        list.innerHTML = "";
+        if (!data || data.length === 0) {
+            list.innerHTML = `<div class="px-3 py-3 text-muted text-center extra-small">Chưa có đoạn chat nào</div>`;
+            return;
+        }
 
     data.forEach((c) => {
         const div = document.createElement("div")
@@ -1403,6 +1415,9 @@ async function loadHistory() {
         div.onclick = () => loadConversation(c.id);
         list.appendChild(div);
     });
+    } catch (err) {
+        console.warn("Failed to load history:", err);
+    }
 }
 
 function updateSidebarActive(id) {
@@ -2319,9 +2334,14 @@ function cleanExportContent(text) {
         .trim()
 }
 async function checkProfile(user_id) {
+    if (!user_id || user_id === "undefined" || user_id === "0") {
+        setupGuestUI();
+        return;
+    }
 
-    const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id)
-    const data = await res.json()
+    try {
+        const res = await fetch("/ai/api/check_profile.php?user_id=" + user_id);
+        const data = await res.json();
 
     const fullName = data.full_name?.trim()
 
@@ -2399,7 +2419,9 @@ async function checkProfile(user_id) {
 
         localStorage.setItem("has_profile", "1")
     }
-
+    } catch (e) {
+        console.warn("Failed to check profile:", e);
+    }
 }
 async function saveProfile() {
 
@@ -2522,45 +2544,141 @@ function handleGoogleLogin(response) {
                 localStorage.setItem("user_id", user_id);
                 localStorage.setItem("username", data.user.username);
                 // ✅ ẩn login
-                document.getElementById("loginBox").style.display = "none";
+                const lBox = document.getElementById("loginBox");
+                if (lBox) lBox.style.display = "none";
+                if (document.getElementById("userBox")) document.getElementById("userBox").style.display = "flex";
+                if (document.getElementById("guestLoginBox")) document.getElementById("guestLoginBox").style.display = "none";
 
-                // ✅ auto fill tên (xịn hơn)
-                document.getElementById("pf_name").value = data.user.name || "";
+                // ✅ auto fill tên
+                const pfName = document.getElementById("pf_name");
+                if (pfName) pfName.value = data.user.name || "";
 
-                // ✅ check profile NGAY (KHÔNG reload)
+                // ✅ check profile NGAY & load history
                 checkProfile(user_id);
-
-                // // 👉 nếu đã có profile → load app luôn
-                // loadHistory();
-                // newChat();
+                loadHistory();
 
             } else {
                 alert("Login Google thất bại");
             }
         });
 }
+
 document.addEventListener("DOMContentLoaded", () => {
+    // Luôn luôn hiển thị giao diện Chat ngay lập tức (không ép login)
+    const chatApp = document.getElementById("chatApp");
+    if (chatApp) chatApp.style.display = "flex";
+    const loginBox = document.getElementById("loginBox");
+    if (loginBox) loginBox.style.display = "none";
 
     const uid = localStorage.getItem("user_id");
 
-    if (uid && uid !== "undefined") {
-
-        document.getElementById("loginBox").style.display = "none";
-        document.getElementById("chatApp").style.display = "flex";
-
-        checkProfile(uid)
-        loadHistory()
-        // newChat() // Moved to startup routing in window.onload
-
-
+    if (uid && uid !== "undefined" && uid !== "0") {
+        if (document.getElementById("userBox")) document.getElementById("userBox").style.display = "flex";
+        if (document.getElementById("guestLoginBox")) document.getElementById("guestLoginBox").style.display = "none";
+        checkProfile(uid);
+        loadHistory();
     } else {
-
-        document.getElementById("loginBox").style.display = "flex";
-        document.getElementById("chatApp").style.display = "none";
-
+        if (document.getElementById("userBox")) document.getElementById("userBox").style.display = "none";
+        if (document.getElementById("guestLoginBox")) document.getElementById("guestLoginBox").style.display = "flex";
+        setupGuestUI();
     }
+});
 
-})
+function openLoginModal() {
+    const box = document.getElementById("loginBox");
+    if (box) box.style.display = "flex";
+}
+
+function closeLoginModal() {
+    const box = document.getElementById("loginBox");
+    if (box) box.style.display = "none";
+}
+
+function handleUserCardClick() {
+    const uid = localStorage.getItem("user_id");
+    if (uid && uid !== "undefined" && uid !== "0") {
+        openProfile();
+    } else {
+        openLoginModal();
+    }
+}
+
+function handleSidebarAction() {
+    const uid = localStorage.getItem("user_id");
+    if (uid && uid !== "undefined" && uid !== "0") {
+        logout();
+    } else {
+        openLoginModal();
+    }
+}
+
+function setupGuestUI() {
+    const userNameEl = document.getElementById("userName");
+    if (userNameEl) userNameEl.innerText = "Khách";
+    const sidebarNameEl = document.getElementById("sidebarUserName");
+    if (sidebarNameEl) sidebarNameEl.innerText = "Khách";
+    const sidebarRoleEl = document.getElementById("sidebarUserRole");
+    if (sidebarRoleEl) sidebarRoleEl.innerText = "Chưa đăng nhập";
+    const avatarEl = document.getElementById("userAvatar");
+    if (avatarEl) {
+        avatarEl.innerHTML = "G";
+        avatarEl.style.background = "linear-gradient(135deg, #64748b, #475569)";
+        avatarEl.style.color = "#fff";
+    }
+    const sidebarAvatarEl = document.getElementById("sidebarUserAvatar");
+    if (sidebarAvatarEl) {
+        sidebarAvatarEl.innerHTML = "G";
+        sidebarAvatarEl.style.background = "linear-gradient(135deg, #64748b, #475569)";
+        sidebarAvatarEl.style.color = "#fff";
+    }
+    const logoutBtn = document.getElementById("sidebarLogoutBtn");
+    if (logoutBtn) {
+        logoutBtn.title = "Đăng nhập";
+        logoutBtn.innerHTML = `<i class="bi bi-box-arrow-in-right fs-5 text-primary"></i>`;
+    }
+    const list = document.getElementById("historyList");
+    if (list) {
+        list.innerHTML = `
+            <div class="px-3 py-4 text-center text-muted" style="font-size: 12px;">
+                <i class="bi bi-clock-history d-block mb-2 text-indigo fs-3"></i>
+                <div class="fw-semibold text-dark mb-1" style="color: var(--text-main) !important;">Chế độ Khách</div>
+                <div class="text-muted mb-3">Đăng nhập để tự động lưu và đồng bộ lịch sử hội thoại.</div>
+                <button type="button" onclick="openLoginModal()" class="btn btn-primary btn-sm rounded-pill px-3 py-1.5 extra-small fw-semibold shadow-sm">
+                    <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập ngay
+                </button>
+            </div>
+        `;
+    }
+}
+
+// 🌙 THEME TOGGLE (DARK / LIGHT MODE)
+function initTheme() {
+    const savedTheme = localStorage.getItem("appTheme") || "light";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("appTheme", newTheme);
+    updateThemeIcon(newTheme);
+}
+
+function updateThemeIcon(theme) {
+    const icon = document.getElementById("themeToggleIcon");
+    if (!icon) return;
+    if (theme === "dark") {
+        icon.className = "bi bi-sun-fill text-warning fs-6";
+    } else {
+        icon.className = "bi bi-moon-stars text-secondary fs-6";
+    }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    initTheme();
+});
 
 function toggleUserMenu() {
     const menu = document.getElementById("userMenu")

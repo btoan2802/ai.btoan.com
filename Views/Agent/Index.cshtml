@@ -11,6 +11,13 @@
     <!-- Bootstrap 5 & Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Load Bootstrap JS BEFORE Monaco AMD Loader to prevent AMD define conflict -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        if (typeof window !== 'undefined' && typeof bootstrap !== 'undefined') {
+            window.bootstrap = bootstrap;
+        }
+    </script>
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
@@ -19,14 +26,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
 
     <!-- VS Code Web Dark Theme CSS -->
-    <link rel="stylesheet" href="/css/agent_ide.css?v=9" />
+    <link rel="stylesheet" href="/css/agent_ide.css?v=20" />
 </head>
 <body class="agent-ide-body">
 
     <!-- 1. TOP MENU BAR -->
     <header class="vscode-top-bar">
         <div class="d-flex align-items-center gap-2">
-            <!-- VS Code Logo -->
+            <!-- Back to Chat Button & Logo -->
+            <a href="/" class="d-flex align-items-center text-decoration-none text-info fs-6 me-1 py-1 px-2 rounded hover-bg-dark" title="Quay lại giao diện Chat">
+                <i class="bi bi-chevron-left me-1"></i> <span style="font-size: 11px; font-weight: 600;">Về Chat</span>
+            </a>
             <div class="d-flex align-items-center text-primary fs-6 me-1">
                 <i class="bi bi-microsoft"></i>
             </div>
@@ -59,7 +69,7 @@
         <!-- Right Side User & Layout Controls -->
         <div class="d-flex align-items-center gap-2">
             <button class="top-bar-menu-item border-0 bg-transparent text-secondary"><i class="bi bi-search"></i></button>
-            <button class="btn-sign-in">Sign In</button>
+            <button class="btn-sign-in" onclick="location.href='/'">Sign In</button>
             <div class="d-flex align-items-center gap-1 text-secondary ms-1">
                 <i class="bi bi-layout-sidebar top-bar-menu-item" title="Toggle Primary Sidebar"></i>
                 <i class="bi bi-layout-split top-bar-menu-item" title="Toggle Secondary Panel"></i>
@@ -288,10 +298,12 @@
                     <div class="mb-3">
                         <label class="form-label extra-small fw-semibold">Template dự án mẫu:</label>
                         <select id="newProjectTemplate" class="form-select bg-dark-subtle text-light border-secondary extra-small">
-                            <option value="dotnet-mvc">C# ASP.NET Core MVC</option>
-                            <option value="react">React Project (App.jsx)</option>
-                            <option value="nodejs">NodeJS Express (server.js)</option>
-                            <option value="python">Python Project (main.py)</option>
+                            <option value="dotnet-mvc">C# ASP.NET Core MVC (.cs, .cshtml)</option>
+                            <option value="html5">🌐 HTML5 / CSS3 / JS Web Studio (.html, .css, .js)</option>
+                            <option value="java">☕ Java Application (.java)</option>
+                            <option value="react">React Project (.jsx)</option>
+                            <option value="nodejs">NodeJS Express (.js)</option>
+                            <option value="python">Python Project (.py)</option>
                             <option value="empty">Empty Project</option>
                         </select>
                     </div>
@@ -434,7 +446,6 @@
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="/js/agent_ide.js?v=9"></script>
+    <script src="/js/agent_ide.js?v=20"></script>
 </body>
 </html>

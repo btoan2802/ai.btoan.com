@@ -410,19 +410,90 @@ function onProjectChanged() {
     refreshFileTree();
 }
 
+// ====== SAFE MODAL HELPERS (Pure DOM Fallback + Bootstrap) ======
+function showModalSafely(modalId) {
+    const el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+    if (!el) {
+        console.warn("Modal not found:", modalId);
+        return;
+    }
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        try {
+            const inst = bootstrap.Modal.getOrCreateInstance(el);
+            inst.show();
+            return;
+        } catch (e) {
+            console.warn('Bootstrap modal error, using native fallback:', e);
+        }
+    }
+    // Native fallback: ensures modal ALWAYS opens even if Bootstrap AMD conflict happens!
+    el.classList.add('show');
+    el.style.display = 'block';
+    el.removeAttribute('aria-hidden');
+    el.setAttribute('aria-modal', 'true');
+    let backdrop = document.getElementById('safe-modal-backdrop');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.id = 'safe-modal-backdrop';
+        backdrop.className = 'modal-backdrop fade show';
+        backdrop.onclick = () => hideModalSafely(el.id);
+        document.body.appendChild(backdrop);
+    }
+}
+
+function hideModalSafely(modalId) {
+    const el = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+    if (!el) return;
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        try {
+            const inst = bootstrap.Modal.getInstance(el);
+            if (inst) inst.hide();
+        } catch (e) {}
+    }
+    el.classList.remove('show');
+    el.style.display = 'none';
+    el.setAttribute('aria-hidden', 'true');
+    el.removeAttribute('aria-modal');
+    const backdrop = document.getElementById('safe-modal-backdrop');
+    if (backdrop) backdrop.remove();
+    document.querySelectorAll('.modal-backdrop').forEach(b => b.remove());
+}
+
+// Global click dismiss for data-bs-dismiss="modal"
+document.addEventListener("click", function (e) {
+    const dismissBtn = e.target.closest('[data-bs-dismiss="modal"]');
+    if (dismissBtn) {
+        const modal = dismissBtn.closest('.modal');
+        if (modal) hideModalSafely(modal.id);
+    }
+});
+
+function openQuickOpenModal() {
+    if (workspaceFilesList && workspaceFilesList.length > 0) {
+        const query = prompt("Tìm nhanh file trong workspace (nhập tên):");
+        if (query && query.trim()) {
+            const match = workspaceFilesList.find(f => f.name.toLowerCase().includes(query.trim().toLowerCase()));
+            if (match) {
+                openFile(match.path, match.name);
+            } else {
+                alert("Không tìm thấy file nào khớp với: " + query);
+            }
+        }
+    } else {
+        alert("Chưa có danh sách file trong workspace.");
+    }
+}
+
 function openCreateProjectModal() {
-    const modalEl = document.getElementById("createProjectModal");
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    showModalSafely("createProjectModal");
 }
 
 function openUploadZipModal() {
-    const modalEl = document.getElementById("uploadZipModal");
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    showModalSafely("uploadZipModal");
 }
 
 function openImportGitModal() {
-    const modalEl = document.getElementById("importGitModal");
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    showModalSafely("importGitModal");
 }
 
 async function submitCreateProject() {
@@ -440,7 +511,7 @@ async function submitCreateProject() {
         });
         const data = await res.json();
         if (data.ok && data.project) {
-            bootstrap.Modal.getInstance(document.getElementById("createProjectModal"))?.hide();
+            hideModalSafely("createProjectModal");
             await loadUserProjects();
             document.getElementById("projectSelect").value = data.project.id;
             onProjectChanged();
@@ -463,7 +534,7 @@ async function submitUploadZip() {
         const res = await fetch("/ai/api/agent/projects/upload-zip", { method: "POST", body: formData });
         const data = await res.json();
         if (data.ok && data.project) {
-            bootstrap.Modal.getInstance(document.getElementById("uploadZipModal"))?.hide();
+            hideModalSafely("uploadZipModal");
             await loadUserProjects();
             document.getElementById("projectSelect").value = data.project.id;
             onProjectChanged();
@@ -486,7 +557,7 @@ async function submitImportGit() {
         });
         const data = await res.json();
         if (data.ok && data.project) {
-            bootstrap.Modal.getInstance(document.getElementById("importGitModal"))?.hide();
+            hideModalSafely("importGitModal");
             await loadUserProjects();
             document.getElementById("projectSelect").value = data.project.id;
             onProjectChanged();
@@ -644,15 +715,13 @@ function openCreateFileModal(defaultPrefix = "") {
     if (input) {
         input.value = defaultPrefix ? `${defaultPrefix}/` : "";
     }
-    const modalEl = document.getElementById("createFileModal");
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    showModalSafely("createFileModal");
 }
 
 async function submitCreateFileModal() {
     const input = document.getElementById("createFileInput");
     if (!input || !input.value.trim()) return;
-    const modalEl = document.getElementById("createFileModal");
-    bootstrap.Modal.getInstance(modalEl)?.hide();
+    hideModalSafely("createFileModal");
     await apiCreateFile(input.value.trim());
 }
 
@@ -661,23 +730,20 @@ function openCreateFolderModal(defaultPrefix = "") {
     if (input) {
         input.value = defaultPrefix ? `${defaultPrefix}/` : "";
     }
-    const modalEl = document.getElementById("createFolderModal");
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    showModalSafely("createFolderModal");
 }
 
 async function submitCreateFolderModal() {
     const input = document.getElementById("createFolderInput");
     if (!input || !input.value.trim()) return;
-    const modalEl = document.getElementById("createFolderModal");
-    bootstrap.Modal.getInstance(modalEl)?.hide();
+    hideModalSafely("createFolderModal");
     await apiCreateFolder(input.value.trim());
 }
 
 function openRenameModal(oldPath) {
     document.getElementById("renameOldPath").value = oldPath;
     document.getElementById("renameNewPath").value = oldPath;
-    const modalEl = document.getElementById("renameItemModal");
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    showModalSafely("renameItemModal");
 }
 
 async function submitRenameModal() {
@@ -685,8 +751,7 @@ async function submitRenameModal() {
     const newPath = document.getElementById("renameNewPath").value;
     if (!newPath || !newPath.trim() || newPath === oldPath) return;
 
-    const modalEl = document.getElementById("renameItemModal");
-    bootstrap.Modal.getInstance(modalEl)?.hide();
+    hideModalSafely("renameItemModal");
 
     const userId = localStorage.getItem("user_id") || "1";
     try {
@@ -705,14 +770,12 @@ function openDeleteModal(targetPath) {
     deleteCandidatePath = targetPath;
     const targetEl = document.getElementById("deleteTargetPath");
     if (targetEl) targetEl.innerText = targetPath;
-    const modalEl = document.getElementById("deleteItemModal");
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    showModalSafely("deleteItemModal");
 }
 
 async function submitDeleteModal() {
     if (!deleteCandidatePath) return;
-    const modalEl = document.getElementById("deleteItemModal");
-    bootstrap.Modal.getInstance(modalEl)?.hide();
+    hideModalSafely("deleteItemModal");
 
     const userId = localStorage.getItem("user_id") || "1";
     try {

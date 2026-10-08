@@ -546,9 +546,28 @@ html, body {
   text-overflow: ellipsis !important;
 }
 
+.btn-attach-plus {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 50% !important;
+  padding: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  flex-shrink: 0 !important;
+}
+
 .btn-send-circle {
   width: 36px !important;
   height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+  max-width: 36px !important;
+  max-height: 36px !important;
+  border-radius: 50% !important;
+  aspect-ratio: 1 / 1 !important;
   background: var(--gradient-primary) !important;
   color: #ffffff !important;
   border: none !important;
@@ -645,10 +664,51 @@ html, body {
   height: 100dvh !important;
   z-index: 99999 !important;
   background: linear-gradient(90deg, #e2e2e2, #c9d6ff) !important;
-  display: flex !important;
+  /* display controlled by JS via inline style - do NOT set display here */
   align-items: center !important;
   justify-content: center !important;
   overflow: auto !important;
+}
+
+#loginBox[style*="display: flex"],
+#loginBox[style*="display:flex"] {
+  display: flex !important;
+}
+
+.btn-close-login {
+  position: absolute !important;
+  top: 24px !important;
+  right: 28px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  border-radius: 50% !important;
+  width: 42px !important;
+  height: 42px !important;
+  font-size: 26px !important;
+  line-height: 1 !important;
+  color: #1e293b !important;
+  cursor: pointer !important;
+  z-index: 100000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15) !important;
+}
+.btn-close-login:hover {
+  background: #ffffff !important;
+  color: #ef4444 !important;
+  transform: scale(1.08) !important;
+}
+
+.guest-login-box .btn {
+  background: var(--gradient-primary) !important;
+  border: none !important;
+  transition: all 0.2s ease !important;
+}
+.guest-login-box .btn:hover {
+  background: var(--gradient-hover) !important;
+  transform: translateY(-1px) !important;
 }
 
 /* RESPONSIVE DESIGN (DESKTOP & MOBILE) */
@@ -790,3 +850,86 @@ html, body {
     width: 100% !important;
   }
 }
+
+/* 🌙 DARK MODE OVERRIDES */
+[data-theme="dark"] {
+  --bg-app: #0f172a;
+  --bg-sidebar: #1e293b;
+  --bg-topbar: #1e293b;
+  --bg-bubble-bot: #1e293b;
+
+  --text-main: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+
+  --border-light: #334155;
+  --border-subtle: #1e293b;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-floating: 0 10px 30px -4px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .topbar,
+[data-theme="dark"] .sidebar,
+[data-theme="dark"] .floating-input-bar {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+[data-theme="dark"] .chat-input-textarea {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .chat-input-textarea::placeholder {
+  color: #64748b !important;
+}
+
+[data-theme="dark"] .welcome-card,
+[data-theme="dark"] .user-menu,
+[data-theme="dark"] .dropdown-menu {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .welcome-card .fw-bold,
+[data-theme="dark"] .welcome-title,
+[data-theme="dark"] .brand-title,
+[data-theme="dark"] .brand-text,
+[data-theme="dark"] .user-name-text,
+[data-theme="dark"] .nav-item span,
+[data-theme="dark"] .nav-subitem,
+[data-theme="dark"] .dropdown-item,
+[data-theme="dark"] .sidebar-title,
+[data-theme="dark"] .user-role-text {
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .nav-subitem {
+  color: #cbd5e1 !important;
+}
+
+[data-theme="dark"] .nav-subitem:hover {
+  color: #818cf8 !important;
+}
+
+[data-theme="dark"] .hover-bg-light:hover,
+[data-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .nav-item:hover {
+  background: #334155 !important;
+}
+
+[data-theme="dark"] .model-selector-btn,
+[data-theme="dark"] #themeToggleBtn {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="dark"] .msg-bot {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+

@@ -79,8 +79,8 @@ Ngành Khoa học máy tính, công nghệ thông tin.
             }
 
             bool isNewConv = false;
-            // Ensure Conversation exists
-            if (conversationId == 0)
+            // Ensure Conversation exists (only for logged-in users)
+            if (userId > 0 && conversationId == 0)
             {
                 var conv = await _conversationRepository.CreateConversationAsync(userId, "Chat mới");
                 conversationId = conv.Id;
@@ -100,7 +100,9 @@ Ngành Khoa học máy tính, công nghệ thông tin.
             }
 
             // Load Chat History
-            var historyChats = await _conversationRepository.GetChatHistoryAsync(conversationId, userId, 20);
+            var historyChats = userId > 0 && conversationId > 0 
+                ? await _conversationRepository.GetChatHistoryAsync(conversationId, userId, 20)
+                : new List<Chat>();
             var historyMessages = new JsonArray();
 
             foreach (var chat in historyChats)
@@ -227,35 +229,41 @@ Ngành Khoa học máy tính, công nghệ thông tin.
                 }
             }
 
-            // Save Chat to DB
-            var chatRecord = new Chat
-            {
-                UserId = userId,
-                Question = question,
-                Answer = answer,
-                ConversationId = conversationId,
-                Images = JsonSerializer.Serialize(imageList),
-                CreatedAt = DateTime.UtcNow
-            };
-
-            chatRecord = await _conversationRepository.AddChatAsync(chatRecord);
-
-            // Auto-generate Title if conversation is new or title is "Chat mới"
             string generatedTitle = null;
-            if (isNewConv || conversationId > 0)
+            int savedChatId = 0;
+            // Save Chat to DB (only if logged in)
+            if (userId > 0)
             {
-                var existingConv = await _conversationRepository.GetConversationByIdAsync(conversationId, userId);
-                if (existingConv != null && (existingConv.Title == "Chat mới" || string.IsNullOrWhiteSpace(existingConv.Title)))
+                var chatRecord = new Chat
                 {
-                    generatedTitle = await GenerateTitleAsync(question);
-                    if (!string.IsNullOrWhiteSpace(generatedTitle))
+                    UserId = userId,
+                    Question = question,
+                    Answer = answer,
+                    ConversationId = conversationId,
+                    Images = JsonSerializer.Serialize(imageList),
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                chatRecord = await _conversationRepository.AddChatAsync(chatRecord);
+                savedChatId = chatRecord.Id;
+
+                // Auto-generate Title if conversation is new or title is "Chat mới"
+                if (isNewConv || conversationId > 0)
+                {
+                    var existingConv = await _conversationRepository.GetConversationByIdAsync(conversationId, userId);
+                    if (existingConv != null && (existingConv.Title == "Chat mới" || string.IsNullOrWhiteSpace(existingConv.Title)))
                     {
-                        await _conversationRepository.UpdateConversationTitleAsync(conversationId, generatedTitle);
+                        var genTitle = await GenerateTitleAsync(question);
+                        if (!string.IsNullOrWhiteSpace(genTitle))
+                        {
+                            await _conversationRepository.UpdateConversationTitleAsync(conversationId, genTitle);
+                            generatedTitle = genTitle;
+                        }
                     }
-                }
-                else if (existingConv != null)
-                {
-                    generatedTitle = existingConv.Title;
+                    else if (existingConv != null)
+                    {
+                        generatedTitle = existingConv.Title;
+                    }
                 }
             }
 
@@ -271,7 +279,7 @@ Ngành Khoa học máy tính, công nghệ thông tin.
                 ["error"] = null,
                 ["conversation_id"] = conversationId,
                 ["conversation_title"] = generatedTitle ?? "Chat mới",
-                ["chat_id"] = chatRecord.Id,
+                ["chat_id"] = savedChatId,
                 ["candidates"] = new JsonArray
                 {
                     new JsonObject

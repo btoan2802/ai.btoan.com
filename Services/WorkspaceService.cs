@@ -403,6 +403,74 @@ root.render(<App />);", "SYSTEM", "Initial Template", storagePath);
                     await SaveFileWithVersionAsync(projectId, "index.js", @"console.log('Hello Node.js Workspace!');\n", "SYSTEM", "Initial Template", storagePath);
                     break;
 
+                case "html5":
+                case "html":
+                case "web":
+                    await SaveFileWithVersionAsync(projectId, "index.html", @"<!DOCTYPE html>
+<html lang=""vi"">
+<head>
+    <meta charset=""UTF-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <title>Web App Studio</title>
+    <link rel=""stylesheet"" href=""style.css"">
+</head>
+<body>
+    <div class=""container"">
+        <h1>Welcome to Btoan Cloud Web Studio</h1>
+        <p>Start editing index.html, style.css, and script.js!</p>
+        <button id=""clickBtn"">Click Me</button>
+    </div>
+    <script src=""script.js""></script>
+</body>
+</html>", "SYSTEM", "Initial Template", storagePath);
+                    await SaveFileWithVersionAsync(projectId, "style.css", @"body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0f172a;
+    color: #f8fafc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+.container {
+    text-align: center;
+    background: #1e293b;
+    padding: 2rem;
+    border-radius: 1rem;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+}
+button {
+    background: #6366f1;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+button:hover { background: #4f46e5; }", "SYSTEM", "Initial Template", storagePath);
+                    await SaveFileWithVersionAsync(projectId, "script.js", @"document.getElementById('clickBtn').addEventListener('click', () => {
+    alert('Hello from Btoan Cloud IDE!');
+});", "SYSTEM", "Initial Template", storagePath);
+                    break;
+
+                case "java":
+                    await SaveFileWithVersionAsync(projectId, "Main.java", @"public class Main {
+    public static void main(String[] args) {
+        System.out.println(""Hello Java Cloud Workspace!"");
+        Calculator calc = new Calculator();
+        System.out.println(""5 + 3 = "" + calc.add(5, 3));
+    }
+}
+
+class Calculator {
+    public int add(int a, int b) {
+        return a + b;
+    }
+}", "SYSTEM", "Initial Template", storagePath);
+                    break;
+
                 case "python":
                     await SaveFileWithVersionAsync(projectId, "main.py", "print('Hello Python Workspace!')\n", "SYSTEM", "Initial Template", storagePath);
                     await SaveFileWithVersionAsync(projectId, "requirements.txt", "# Dependencies list\n", "SYSTEM", "Initial Template", storagePath);
@@ -468,6 +536,7 @@ namespace MyProject.Controllers {
             return ext switch
             {
                 ".cs" => "csharp",
+                ".java" => "java",
                 ".js" or ".jsx" => "javascript",
                 ".ts" or ".tsx" => "typescript",
                 ".html" or ".cshtml" => "html",
