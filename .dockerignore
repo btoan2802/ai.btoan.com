@@ -1,0 +1,10 @@
+**/.git
+**/.vs
+**/bin
+**/obj
+**/publish
+**/publish_out
+**/publish_linux
+**/*.user
+**/*.suo
+**/uploads/workspaces/**

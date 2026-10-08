@@ -1,0 +1,440 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visual Studio Code Web - Btoan Cloud IDE</title>
+
+    <!-- Bootstrap 5 & Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Monaco Editor AMD Loader -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.45.0/min/vs/loader.min.js"></script>
+
+    <!-- VS Code Web Dark Theme CSS -->
+    <link rel="stylesheet" href="/css/agent_ide.css?v=9" />
+</head>
+<body class="agent-ide-body">
+
+    <!-- 1. TOP MENU BAR -->
+    <header class="vscode-top-bar">
+        <div class="d-flex align-items-center gap-2">
+            <!-- VS Code Logo -->
+            <div class="d-flex align-items-center text-primary fs-6 me-1">
+                <i class="bi bi-microsoft"></i>
+            </div>
+            <!-- Menus -->
+            <div class="d-flex align-items-center gap-1">
+                <span class="top-bar-menu-item">File</span>
+                <span class="top-bar-menu-item">Edit</span>
+                <span class="top-bar-menu-item">Selection</span>
+                <span class="top-bar-menu-item">View</span>
+                <span class="top-bar-menu-item">Go</span>
+                <span class="top-bar-menu-item">Run</span>
+                <span class="top-bar-menu-item">...</span>
+            </div>
+            <div class="d-flex align-items-center gap-1 ms-2 text-secondary">
+                <i class="bi bi-arrow-left top-bar-menu-item"></i>
+                <i class="bi bi-arrow-right top-bar-menu-item"></i>
+            </div>
+        </div>
+
+        <!-- Center Workspace Selector Search Bar -->
+        <div class="d-flex align-items-center gap-2">
+            <div class="top-bar-search-box gap-2" onclick="openQuickOpenModal()">
+                <i class="bi bi-search text-secondary extra-small"></i>
+                <select id="projectSelect" onchange="onProjectChanged()" class="bg-transparent border-0 text-light extra-small outline-none" style="max-width: 220px; cursor: pointer;">
+                    <option value="0">Loading projects...</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Right Side User & Layout Controls -->
+        <div class="d-flex align-items-center gap-2">
+            <button class="top-bar-menu-item border-0 bg-transparent text-secondary"><i class="bi bi-search"></i></button>
+            <button class="btn-sign-in">Sign In</button>
+            <div class="d-flex align-items-center gap-1 text-secondary ms-1">
+                <i class="bi bi-layout-sidebar top-bar-menu-item" title="Toggle Primary Sidebar"></i>
+                <i class="bi bi-layout-split top-bar-menu-item" title="Toggle Secondary Panel"></i>
+                <i class="bi bi-layout-sidebar-reverse top-bar-menu-item" title="Toggle Right Panel"></i>
+            </div>
+            <div class="d-flex align-items-center gap-2 text-secondary ms-2">
+                <span class="top-bar-menu-item py-0">―</span>
+                <span class="top-bar-menu-item py-0">□</span>
+                <span class="top-bar-menu-item py-0 text-danger">✕</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. RESTRICTED MODE BANNER -->
+    <div class="restricted-banner">
+        <i class="bi bi-shield-check text-info me-2 fs-6"></i>
+        <span>Restricted Mode is intended for safe code browsing. Trust this folder to enable all features.</span>
+        <a href="#" onclick="event.preventDefault(); alert('Trust folder enabled');">Manage</a>
+        <a href="#" onclick="event.preventDefault();">Learn More</a>
+    </div>
+
+    <!-- 3. MAIN 4-REGION IDE CONTAINER -->
+    <div class="vscode-main-container">
+
+        <!-- 3.1. ACTIVITY BAR (FAR-LEFT VERTICAL BAR) -->
+        <div class="activity-bar">
+            <div class="d-flex flex-column align-items-center gap-1">
+                <button id="actBtnExplorer" onclick="switchActivityTab('explorer')" class="activity-btn active" title="Explorer (Ctrl+Shift+E)">
+                    <i class="bi bi-files fs-5"></i>
+                </button>
+                <button id="actBtnSearch" onclick="openQuickOpenModal()" class="activity-btn" title="Search (Ctrl+Shift+F)">
+                    <i class="bi bi-search fs-5"></i>
+                </button>
+                <button id="actBtnGit" onclick="openImportGitModal()" class="activity-btn" title="Source Control (Ctrl+Shift+G)">
+                    <i class="bi bi-git fs-5"></i>
+                </button>
+                <button id="actBtnRun" onclick="runBuildOnly()" class="activity-btn" title="Run & Debug (Ctrl+Shift+D)">
+                    <i class="bi bi-play-circle fs-5"></i>
+                </button>
+                <button id="actBtnExtensions" onclick="alert('Extensions Gallery')" class="activity-btn" title="Extensions">
+                    <i class="bi bi-grid-fill fs-5"></i>
+                </button>
+                <button id="actBtnAgent" onclick="switchActivityTab('agent')" class="activity-btn" title="Cursor AI Agent (Ctrl+Shift+A)">
+                    <i class="bi bi-stars fs-5 text-info"></i>
+                </button>
+            </div>
+            <div class="d-flex flex-column align-items-center">
+                <button onclick="alert('Btoan Cloud IDE v2.5 - Visual Studio Code Web Engine')" class="activity-btn" title="Settings">
+                    <i class="bi bi-gear fs-5"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 3.2. LEFT SIDEBAR: EXPLORER (#252526) -->
+        <aside id="leftExplorerPanel" class="left-explorer-panel">
+            <div class="explorer-header">
+                <span>EXPLORER</span>
+                <div class="d-flex align-items-center gap-1">
+                    <button onclick="openCreateFileModal()" class="btn-icon" title="New File"><i class="bi bi-file-earmark-plus"></i></button>
+                    <button onclick="openCreateFolderModal()" class="btn-icon" title="New Folder"><i class="bi bi-folder-plus"></i></button>
+                    <button onclick="refreshFileTree()" class="btn-icon" title="Refresh Explorer"><i class="bi bi-arrow-clockwise"></i></button>
+                    <button onclick="openCreateProjectModal()" class="btn-icon" title="+ Create Project"><i class="bi bi-plus-lg"></i></button>
+                </div>
+            </div>
+            
+            <div id="workspaceTreeContainer" class="flex-grow-1 overflow-y-auto p-1">
+                <div class="text-center text-muted p-3 extra-small">
+                    <div class="spinner-border spinner-border-sm me-1"></div> Loading workspace tree...
+                </div>
+            </div>
+
+            <!-- Bottom Accordion Sections -->
+            <div class="accordion-section-header">
+                <i class="bi bi-chevron-right me-1"></i> OUTLINE
+            </div>
+            <div class="accordion-section-header">
+                <i class="bi bi-chevron-right me-1"></i> TIMELINE
+            </div>
+        </aside>
+
+        <!-- 3.3. CENTER PANEL: MONACO EDITOR, MULTI-TABS (#1e1e1e) -->
+        <main class="center-editor-panel">
+            <!-- Multi-Tab Bar -->
+            <div id="editorTabBar" class="editor-tab-bar">
+                <div class="vscode-tab active">
+                    <i class="bi bi-filetype-php text-primary"></i>
+                    <span>db.php</span>
+                    <span class="tab-close-icon">&times;</span>
+                </div>
+            </div>
+
+            <!-- Breadcrumb Navigation Bar -->
+            <div id="editorBreadcrumb" class="editor-breadcrumb-bar">
+                <span id="breadcrumbPath">asset &gt; lib &gt; db.php</span>
+            </div>
+
+            <!-- Monaco Code & Diff Editor Container -->
+            <div class="flex-grow-1 position-relative overflow-hidden">
+                <div id="monacoContainer" style="width: 100%; height: 100%;"></div>
+                <div id="monacoDiffContainer" style="width: 100%; height: 100%; display: none;"></div>
+            </div>
+
+            <!-- Bottom Terminal / Output Panel -->
+            <div id="bottomPanel" class="vscode-bottom-panel border-top d-flex flex-column" style="height: 140px;">
+                <div class="d-flex align-items-center justify-content-between px-2 py-1 bg-dark border-bottom border-secondary">
+                    <div class="d-flex align-items-center gap-1">
+                        <button id="bottomTabBtnTerminal" onclick="switchBottomTab('terminal')" class="panel-tab-btn active">Terminal</button>
+                        <button id="bottomTabBtnProblems" onclick="switchBottomTab('problems')" class="panel-tab-btn">Problems (0)</button>
+                        <button id="bottomTabBtnOutput" onclick="switchBottomTab('output')" class="panel-tab-btn">Output</button>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button onclick="clearTerminalOutput()" class="btn-icon text-secondary" title="Clear Console"><i class="bi bi-eraser"></i></button>
+                        <button onclick="toggleBottomPanel()" class="btn-icon text-secondary" title="Minimize Panel"><i class="bi bi-dash-lg"></i></button>
+                    </div>
+                </div>
+
+                <div id="bottomTabTerminalBody" class="p-2 font-mono extra-small flex-grow-1 d-flex flex-column">
+                    <div id="terminalOutputLog" class="terminal-output-log flex-grow-1 overflow-y-auto">
+                        <div class="text-muted">[Terminal ready. Execute commands inside workspace directory]</div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                        <span class="text-success font-mono extra-small fw-bold">></span>
+                        <input type="text" id="terminalCommandInput" class="form-control bg-dark text-light font-mono extra-small py-0 px-2 border-secondary" placeholder="Type command (e.g. 'dotnet build', 'npm install')...">
+                        <button onclick="executeTerminalInput()" class="btn btn-vscode btn-sm extra-small py-0 px-3 font-mono">Run</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 3.4. RIGHT SIDEBAR: COPILOT / AGENT AI CHAT PANEL (#181818) -->
+        <aside id="rightAgentPanel" class="right-chat-panel">
+            <!-- Header -->
+            <div class="chat-header">
+                <span>CHAT</span>
+                <div class="d-flex align-items-center gap-2 text-secondary">
+                    <i class="bi bi-plus-lg top-bar-menu-item" title="New Chat"></i>
+                    <i class="bi bi-chevron-down top-bar-menu-item"></i>
+                    <i class="bi bi-gear top-bar-menu-item"></i>
+                    <i class="bi bi-three-dots top-bar-menu-item"></i>
+                    <i class="bi bi-layout-sidebar-reverse top-bar-menu-item"></i>
+                    <i class="bi bi-x-lg top-bar-menu-item"></i>
+                </div>
+            </div>
+
+            <!-- Copilot Splash Area -->
+            <div id="chatSplashArea" class="chat-splash-area">
+                <div class="copilot-sparkle-icon">
+                    <i class="bi bi-stars"></i>
+                </div>
+                <div class="chat-splash-title">Build with Agent</div>
+                <div class="chat-splash-sub">AI responses may be inaccurate</div>
+                <a href="#" onclick="event.preventDefault();" class="chat-splash-link">
+                    Generate Agent Instructions to onboard AI onto your codebase.
+                </a>
+            </div>
+
+            <!-- Agent Chat Messages Container (if active messages exist) -->
+            <div id="agentMessagesContainer" class="d-flex flex-column gap-2 p-2 overflow-y-auto" style="display: none; max-height: 240px;"></div>
+
+            <!-- Bottom Floating Prompt Box -->
+            <div class="chat-prompt-card">
+                <!-- Context Pill -->
+                <div class="chat-context-pill">
+                    <i class="bi bi-plus-lg"></i>
+                    <i class="bi bi-filetype-php text-primary"></i>
+                    <span id="activeContextPill">db.php</span>
+                </div>
+
+                <!-- Textarea -->
+                <textarea id="agentTaskInput" class="chat-textarea" placeholder="Describe what to build"></textarea>
+
+                <!-- Toolbar -->
+                <div class="chat-prompt-toolbar">
+                    <div class="d-flex align-items-center gap-2 text-secondary extra-small">
+                        <i class="bi bi-plus-lg top-bar-menu-item"></i>
+                        <span class="top-bar-menu-item d-flex align-items-center gap-1"><i class="bi bi-record-circle text-info"></i> Agent</span>
+                        <span class="top-bar-menu-item">Models</span>
+                        <i class="bi bi-sliders top-bar-menu-item"></i>
+                    </div>
+                    <button id="btnSendAgentTask" onclick="sendAgentTask()" class="btn-send-arrow">
+                        <i class="bi bi-arrow-up-short fs-5"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- 4. BOTTOM STATUS BAR (#007acc) -->
+    <footer class="vscode-status-bar">
+        <div class="d-flex align-items-center">
+            <div class="status-bar-item">
+                <i class="bi bi-shield-check me-1"></i> Restricted Mode
+            </div>
+            <div class="status-bar-item ms-2">
+                <i class="bi bi-x-circle me-1"></i> 0
+                <i class="bi bi-exclamation-triangle ms-1 me-1"></i> 0
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center">
+            <div id="statusLnCol" class="status-bar-item">Ln 6, Col 28</div>
+            <div class="status-bar-item">Spaces: 4</div>
+            <div class="status-bar-item">UTF-8</div>
+            <div class="status-bar-item">CRLF</div>
+            <div class="status-bar-item font-mono">{ }</div>
+            <div id="statusLanguage" class="status-bar-item">PHP</div>
+            <div class="status-bar-item"><i class="bi bi-bell"></i></div>
+        </div>
+    </footer>
+
+    <!-- MODALS SECTION -->
+    <!-- 1. MODAL CREATE PROJECT -->
+    <div id="createProjectModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-folder-plus text-primary me-2"></i> Tạo Dự Án Workspace Mới</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-semibold">Tên dự án:</label>
+                        <input type="text" id="newProjectName" class="form-control bg-dark-subtle text-light border-secondary extra-small" placeholder="Ví dụ: MyShopApp">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-semibold">Template dự án mẫu:</label>
+                        <select id="newProjectTemplate" class="form-select bg-dark-subtle text-light border-secondary extra-small">
+                            <option value="dotnet-mvc">C# ASP.NET Core MVC</option>
+                            <option value="react">React Project (App.jsx)</option>
+                            <option value="nodejs">NodeJS Express (server.js)</option>
+                            <option value="python">Python Project (main.py)</option>
+                            <option value="empty">Empty Project</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary btn-sm extra-small" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" onclick="submitCreateProject()" class="btn btn-primary btn-sm extra-small fw-semibold">Tạo Dự Án</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MODAL UPLOAD ZIP -->
+    <div id="uploadZipModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-file-earmark-zip text-warning me-2"></i> Upload Workspace Tệp ZIP</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-semibold">Tên dự án:</label>
+                        <input type="text" id="zipProjectName" class="form-control bg-dark-subtle text-light border-secondary extra-small" placeholder="Ví dụ: ImportedZipApp">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-semibold">Chọn tệp ZIP archive:</label>
+                        <input type="file" id="zipFileInput" accept=".zip" class="form-control bg-dark-subtle text-light border-secondary extra-small">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary btn-sm extra-small" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" onclick="submitUploadZip()" class="btn btn-warning btn-sm extra-small fw-semibold">Upload & Giải Nén</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. MODAL IMPORT GIT -->
+    <div id="importGitModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title fs-6 fw-bold"><i class="bi bi-git text-info me-2"></i> Import Git Repository</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-semibold">Tên dự án:</label>
+                        <input type="text" id="gitProjectName" class="form-control bg-dark-subtle text-light border-secondary extra-small" placeholder="Ví dụ: ClonedGitRepo">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label extra-small fw-semibold">Git Repository URL:</label>
+                        <input type="text" id="gitRepoUrl" class="form-control bg-dark-subtle text-light border-secondary extra-small" placeholder="https://github.com/user/repo.git">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary btn-sm extra-small" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" onclick="submitImportGit()" class="btn btn-info btn-sm extra-small fw-semibold text-white">Import Git</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. MODAL CREATE FILE (NO BROWSER PROMPT) -->
+    <div id="createFileModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary py-2">
+                    <h6 class="modal-title extra-small fw-bold"><i class="bi bi-file-earmark-plus text-primary me-2"></i> Create File</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-2">
+                    <input type="text" id="createFileInput" class="form-control bg-dark-subtle text-light border-secondary extra-small" placeholder="e.g. Services/AuthService.cs">
+                </div>
+                <div class="modal-footer border-secondary py-1">
+                    <button type="button" class="btn btn-secondary btn-sm extra-small" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" onclick="submitCreateFileModal()" class="btn btn-primary btn-sm extra-small">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. MODAL CREATE FOLDER (NO BROWSER PROMPT) -->
+    <div id="createFolderModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary py-2">
+                    <h6 class="modal-title extra-small fw-bold"><i class="bi bi-folder-plus text-warning me-2"></i> Create Folder</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-2">
+                    <input type="text" id="createFolderInput" class="form-control bg-dark-subtle text-light border-secondary extra-small" placeholder="e.g. Models/DTOs">
+                </div>
+                <div class="modal-footer border-secondary py-1">
+                    <button type="button" class="btn btn-secondary btn-sm extra-small" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" onclick="submitCreateFolderModal()" class="btn btn-warning btn-sm extra-small">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. MODAL RENAME ITEM (NO BROWSER PROMPT) -->
+    <div id="renameItemModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary py-2">
+                    <h6 class="modal-title extra-small fw-bold"><i class="bi bi-pencil text-warning me-2"></i> Rename Item</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-2">
+                    <input type="hidden" id="renameOldPath">
+                    <input type="text" id="renameNewPath" class="form-control bg-dark-subtle text-light border-secondary extra-small">
+                </div>
+                <div class="modal-footer border-secondary py-1">
+                    <button type="button" class="btn btn-secondary btn-sm extra-small" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" onclick="submitRenameModal()" class="btn btn-warning btn-sm extra-small">Rename</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. MODAL DELETE ITEM (NO BROWSER CONFIRM) -->
+    <div id="deleteItemModal" class="modal fade" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content bg-dark text-light border-secondary">
+                <div class="modal-header border-secondary py-2">
+                    <h6 class="modal-title extra-small fw-bold text-danger"><i class="bi bi-trash me-2"></i> Confirm Delete</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body py-2 text-light extra-small">
+                    Are you sure you want to delete <span id="deleteTargetPath" class="font-mono text-warning"></span>?
+                </div>
+                <div class="modal-footer border-secondary py-1">
+                    <button type="button" class="btn btn-secondary btn-sm extra-small" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" onclick="submitDeleteModal()" class="btn btn-danger btn-sm extra-small">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/agent_ide.js?v=9"></script>
+</body>
+</html>

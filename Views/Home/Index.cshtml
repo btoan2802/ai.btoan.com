@@ -1,0 +1,639 @@
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <!-- 1. Meta -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- 2. Title + Icon -->
+  <title>Btoan AI</title>
+  <base href="/">
+  <link rel="icon" href="favicon.ico">
+
+  <!-- 3. CSS Library -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+
+  <!-- 4. CSS Local -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="login/SignUp_LogIn_Form.css">
+  <link rel="stylesheet" href="css/main_style.css?v=15">
+
+  <!-- 5. Config Script (Ngắn) -->
+  <script src="js/mathjax_config.js"></script>
+
+  <!-- 6. JS Library Cần Load Sớm -->
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+
+<body>
+
+  <!-- A. LOGIN -->
+  <div id="loginBox" style="display:none">
+    <div class="container">
+      <div class="form-box login" id="loginForm">
+        <form onsubmit="event.preventDefault(); login();">
+          <div id="loginMsg" style="color:red;"></div>
+          <h1>Login</h1>
+          <div class="input-box">
+            <input id="login_username" type="text" placeholder="Username" required>
+            <i class='bx bxs-user'></i>
+          </div>
+          <div class="input-box">
+            <input id="login_password" type="password" placeholder="Password" required>
+            <i class='bx bxs-lock-alt'></i>
+          </div>
+          <div class="forgot-link"><a href="#">Forgot Password?</a></div>
+          <button type="submit" class="btn">Login</button>
+          <button type="button" id="face-login-btn" class="btn btn-face">
+            <i class='bx bx-scan'></i> Đăng nhập khuôn mặt
+          </button>
+          <div id="face-login-status"></div>
+          <div class="switch-auth">Chưa có tài khoản? <span onclick="showRegisterForm()">Đăng ký</span></div>
+          <p>or login with social platforms</p>
+          <div class="social-icons">
+            <div id="g_id_onload"
+              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
+              data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+            <div class="g_id_signin" data-type="standard" data-size="large"></div>
+          </div>
+        </form>
+      </div>
+
+      <div class="form-box register" id="registerForm">
+        <form onsubmit="event.preventDefault(); register();">
+          <div id="registerMsg" style="color:red;"></div>
+          <h1>Registration</h1>
+          <div class="input-box">
+            <input id="reg_username" type="text" placeholder="Username" required>
+            <i class='bx bxs-user'></i>
+          </div>
+          <div class="input-box">
+            <input id="reg_password" type="password" placeholder="Password" required>
+            <i class='bx bxs-lock-alt'></i>
+          </div>
+          <div class="input-box">
+            <input id="reg_password2" type="password" placeholder="Confirm Password" required>
+            <i class='bx bxs-lock-alt'></i>
+          </div>
+          <button type="submit" class="btn">Register</button>
+          <div class="switch-auth">Đã có tài khoản? <span onclick="showLoginForm()">Đăng nhập</span></div>
+          <p>or register with social platforms</p>
+          <div class="social-icons">
+            <div id="g_id_onload"
+              data-client_id="988870371741-2qt9rtkb37oo71dmtst492j2unvfo569.apps.googleusercontent.com"
+              data-callback="handleGoogleLogin" data-auto_prompt="false"></div>
+            <div class="g_id_signin" data-type="standard" data-size="large"></div>
+          </div>
+        </form>
+      </div>
+
+      <div class="toggle-box">
+        <div class="toggle-panel toggle-left">
+          <h1>Welcome Back!</h1>
+          <p>Don't have an account?</p>
+          <button class="btn register-btn">Register</button>
+        </div>
+        <div class="toggle-panel toggle-right">
+          <h1>Hello, Welcome!</h1>
+          <p>Already have an account?</p>
+          <button class="btn login-btn">Login</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. CHAT APP -->
+  <div id="chatApp" style="display:none">
+    <div class="d-flex main-app-wrapper w-100 h-100">
+
+      <!-- SIDEBAR (280px FIXED) -->
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-top p-3">
+          <!-- BRAND LOGO -->
+          <div class="sidebar-brand-wrapper d-flex align-items-center justify-content-between mb-3">
+            <div class="sidebar-brand d-flex align-items-center gap-2.5">
+              <div class="brand-badge d-flex align-items-center justify-content-center">
+                <i class="bi bi-cpu-fill"></i>
+              </div>
+              <span class="brand-title fw-bold text-nowrap">Btoan AI</span>
+            </div>
+            <button class="icon-toggle-btn d-md-none border-0 bg-transparent text-muted" onclick="toggleSidebar()" title="Đóng sidebar">
+              <i class="bi bi-x-lg fs-5"></i>
+            </button>
+          </div>
+
+          <!-- NEW CHAT BUTTON -->
+          <button class="new-chat-btn w-100 d-flex align-items-center justify-content-center gap-2 py-2.5 px-3 rounded-pill fw-semibold shadow-sm mb-3 text-nowrap" onclick="newChat()" title="Chat mới">
+            <i class="bi bi-plus-lg fs-5"></i>
+            <span>+ Chat mới</span>
+          </button>
+
+          <!-- NAV MENU (AI AGENT, CODE, IMAGE, KNOWLEDGE) -->
+          <div class="sidebar-menu-nav d-flex flex-column gap-1 mb-2">
+            <!-- AI AGENT COLLAPSIBLE MENU -->
+            <div class="nav-item-group">
+              <a href="/agent" class="nav-item d-flex align-items-center justify-content-between px-3 py-2 rounded-3 hover-bg-light text-decoration-none">
+                <div class="d-flex align-items-center gap-2.5">
+                  <i class="bi bi-robot text-indigo fs-5"></i>
+                  <span class="fw-semibold small text-dark">🤖 Cursor AI Agent</span>
+                </div>
+                <span class="badge bg-indigo-50 text-indigo extra-small">IDE</span>
+              </a>
+              <div class="collapse ms-3 mt-1 show" id="aiAgentSubmenu">
+                <div class="d-flex flex-column gap-1 border-start ps-2">
+                  <a href="/agent" class="nav-subitem px-2.5 py-1.5 rounded-2 text-secondary small hover-text-indigo text-decoration-none">📌 Sửa code & Build thật (/agent)</a>
+                  <a href="/agent" class="nav-subitem px-2.5 py-1.5 rounded-2 text-secondary small hover-text-indigo text-decoration-none">📊 Project Explorer IDE</a>
+                  <a href="/agent" class="nav-subitem px-2.5 py-1.5 rounded-2 text-secondary small hover-text-indigo text-decoration-none">⚡ Quét Diff & Auto-Fix</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- CODE ASSISTANT -->
+            <a href="/agent" class="nav-item d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 hover-bg-light text-decoration-none">
+              <i class="bi bi-code-square text-indigo fs-5"></i>
+              <span class="fw-semibold small text-dark">💻 Agent Studio IDE</span>
+            </a>
+
+            <!-- IMAGE CREATOR -->
+            <a href="#" class="nav-item d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 hover-bg-light text-decoration-none" onclick="quickPrompt('Tạo ảnh AI từ mô tả: ')">
+              <i class="bi bi-palette text-indigo fs-5"></i>
+              <span class="fw-semibold small text-dark">🖼 Image Creator</span>
+            </a>
+
+            <!-- KNOWLEDGE BASE -->
+            <a href="#" class="nav-item d-flex align-items-center gap-2.5 px-3 py-2 rounded-3 hover-bg-light text-decoration-none" onclick="quickPrompt('Tra cứu thông tin tài liệu và kiến thức')">
+              <i class="bi bi-journal-text text-indigo fs-5"></i>
+              <span class="fw-semibold small text-dark">📚 Knowledge Base</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- CHAT HISTORY LIST SECTION -->
+        <div class="sidebar-history-container flex-grow-1 d-flex flex-column overflow-hidden px-2 border-top pt-2">
+          <div class="sidebar-title px-3 py-1.5 text-muted fw-bold extra-small text-uppercase tracking-wider">Lịch sử chat</div>
+          <div id="historyList" class="history-list-wrapper flex-grow-1 overflow-y-auto px-1"></div>
+        </div>
+
+        <!-- SIDEBAR FOOTER (USER PROFILE CARD) -->
+        <div class="sidebar-footer border-top p-2 mt-auto">
+          <div class="sidebar-user-card d-flex align-items-center justify-content-between p-2 rounded-3" onclick="openProfile()">
+            <div class="d-flex align-items-center gap-2.5 overflow-hidden">
+              <div id="sidebarUserAvatar" class="user-avatar-circle fw-bold flex-shrink-0">U</div>
+              <div class="user-meta overflow-hidden">
+                <div id="sidebarUserName" class="user-name-text fw-semibold text-truncate text-nowrap">User</div>
+                <div class="user-role-text text-muted text-nowrap">Btoan AI Member</div>
+              </div>
+            </div>
+            <button class="btn-logout-sidebar border-0 bg-transparent text-muted p-1" onclick="event.stopPropagation(); logout();" title="Đăng xuất">
+              <i class="bi bi-box-arrow-right fs-5"></i>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+      <!-- MAIN CONTENT AREA (flex: 1) -->
+      <div class="main-content-container chat-main flex-grow-1 d-flex flex-column h-100 overflow-hidden">
+        
+        <!-- HEADER (FIXED 70px) -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <button class="icon-toggle-btn border-0 bg-transparent text-secondary p-1 rounded-3 d-md-none" id="openSidebarBtn" onclick="toggleSidebar()" title="Mở sidebar">
+              <i class="bi bi-layout-sidebar fs-5"></i>
+            </button>
+            <div class="d-flex align-items-center gap-2">
+              <div class="brand-badge d-flex align-items-center justify-content-center" style="width:28px; height:28px; font-size:14px;">
+                <i class="bi bi-cpu-fill"></i>
+              </div>
+              <span class="brand-text">Btoan AI</span>
+            </div>
+          </div>
+
+          <div class="topbar-center">
+            <!-- MODEL SELECTOR DROPDOWN PILL -->
+            <div class="dropdown d-inline-block">
+              <button class="model-selector-btn btn btn-light border btn-sm rounded-pill" id="modelSelectorBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                <span id="modeStatus" class="mode-status-span">
+                  <img src="img/fast_logo.png?v=10" class="mode-icon">
+                  <span class="mode-text">⚡ Fast</span>
+                </span>
+                <i class="bi bi-chevron-down text-muted ms-1" style="font-size: 0.75rem;"></i>
+              </button>
+              <ul class="dropdown-menu shadow-lg border-0 rounded-4 p-2 mt-1">
+                <li>
+                  <button class="dropdown-item d-flex align-items-center gap-2.5 py-2 px-3 rounded-3" onclick="setMode('fast')">
+                    <img src="img/fast_logo.png?v=10" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                      <div class="fw-semibold text-dark small text-nowrap">⚡ Btoan AI Fast</div>
+                      <div class="text-muted" style="font-size: 0.7rem;">Phản hồi tức thì, phù hợp giao tiếp hàng ngày</div>
+                    </div>
+                  </button>
+                </li>
+                <li>
+                  <button class="dropdown-item d-flex align-items-center gap-2.5 py-2 px-3 rounded-3 mt-1" onclick="setMode('thinking')">
+                    <img src="img/thinking_logo.png?v=10" style="width: 22px; height: 22px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                      <div class="fw-semibold text-dark small text-nowrap">🧠 Btoan AI Thinking</div>
+                      <div class="text-muted" style="font-size: 0.7rem;">Suy luận chuyên sâu, bài toán phức tạp</div>
+                    </div>
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="topbar-right">
+            <div id="userBox" class="user-box">
+              <div class="user-info" onclick="toggleUserMenu()">
+                <div id="userAvatar" class="avatar-sm">U</div>
+                <span id="userName" class="user-name">User</span>
+                <i class="bi bi-chevron-down text-muted small ms-1"></i>
+              </div>
+              <div id="userMenu" class="user-menu shadow-lg border-0 rounded-4 p-2 position-absolute end-0 mt-1 bg-white" style="display:none; z-index:1050; min-width: 180px;">
+                <div class="menu-item-premium d-flex align-items-center gap-2 py-2 px-3 rounded-3 hover-bg-light cursor-pointer" onclick="openProfile()">
+                  <i class="bi bi-person text-indigo fs-6"></i>
+                  <span class="text-nowrap">Hồ sơ cá nhân</span>
+                </div>
+                <div class="menu-item-divider my-1 border-top"></div>
+                <div class="menu-item-premium text-danger d-flex align-items-center gap-2 py-2 px-3 rounded-3 hover-bg-light cursor-pointer" onclick="logout()">
+                  <i class="bi bi-box-arrow-right fs-6"></i>
+                  <span class="text-nowrap">Đăng xuất</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- CHAT STREAM AREA & WELCOME SCREEN -->
+        <main id="chat" class="chat-viewport flex-grow-1 p-3 p-md-4 overflow-y-auto">
+          <!-- WELCOME SCREEN (SHOWN WHEN NO MESSAGES YET) -->
+          <div id="welcome-screen" class="welcome-container text-center my-auto py-4 px-2">
+            <div class="welcome-badge d-inline-flex align-items-center gap-2 px-3 py-1.5 rounded-pill mb-3">
+              <i class="bi bi-sparkles text-indigo"></i>
+              <span class="small fw-semibold text-indigo">Trợ lý AI thế hệ mới</span>
+            </div>
+            <h1 class="welcome-title fw-bold text-dark mb-2">Chào mừng đến Btoan AI</h1>
+            <p class="welcome-subtitle text-muted mb-4 fs-6">
+              Hệ thống hỗ trợ Lập trình, Tạo ảnh AI, Phân tích dữ liệu & Tự động hóa tác vụ.
+            </p>
+
+            <div class="welcome-cards-grid row g-3 justify-content-center mx-auto" style="max-width: 720px;">
+              <div class="col-6 col-md-6">
+                <div class="welcome-card p-3 rounded-4 border bg-white shadow-sm text-start hover-card cursor-pointer" onclick="quickPrompt('Viết giúp tôi một hàm JavaScript sắp xếp mảng bất đồng bộ')">
+                  <div class="card-icon-wrapper mb-2 rounded-3 bg-indigo-50 text-indigo d-inline-flex align-items-center justify-content-center p-2">
+                    <i class="bi bi-code-slash fs-4"></i>
+                  </div>
+                  <div class="fw-bold text-dark small mb-1">💻 Coding</div>
+                  <div class="text-muted extra-small">Viết code, debug & tối ưu thuật toán</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-6">
+                <div class="welcome-card p-3 rounded-4 border bg-white shadow-sm text-start hover-card cursor-pointer" onclick="quickPrompt('Tạo ảnh một con mèo phi hành gia bơi trong không gian vũ trụ nghệ thuật digital art')">
+                  <div class="card-icon-wrapper mb-2 rounded-3 bg-indigo-50 text-indigo d-inline-flex align-items-center justify-content-center p-2">
+                    <i class="bi bi-palette-fill fs-4"></i>
+                  </div>
+                  <div class="fw-bold text-dark small mb-1">🖼 Image Generation</div>
+                  <div class="text-muted extra-small">Vẽ ảnh AI bằng tiếng Việt chân thực</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-6">
+                <div class="welcome-card p-3 rounded-4 border bg-white shadow-sm text-start hover-card cursor-pointer" onclick="quickPrompt('Lập kế hoạch phân tích dữ liệu kinh doanh và tự động hóa tác vụ')">
+                  <div class="card-icon-wrapper mb-2 rounded-3 bg-indigo-50 text-indigo d-inline-flex align-items-center justify-content-center p-2">
+                    <i class="bi bi-robot fs-4"></i>
+                  </div>
+                  <div class="fw-bold text-dark small mb-1">🤖 AI Agent</div>
+                  <div class="text-muted extra-small">Tự động phân tích & lập lịch làm việc</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-6">
+                <div class="welcome-card p-3 rounded-4 border bg-white shadow-sm text-start hover-card cursor-pointer" onclick="quickPrompt('Tóm tắt kiến thức quan trọng về trí tuệ nhân tạo và Machine Learning')">
+                  <div class="card-icon-wrapper mb-2 rounded-3 bg-indigo-50 text-indigo d-inline-flex align-items-center justify-content-center p-2">
+                    <i class="bi bi-journal-bookmark-fill fs-4"></i>
+                  </div>
+                  <div class="fw-bold text-dark small mb-1">📚 Learning</div>
+                  <div class="text-muted extra-small">Hỏi đáp kiến thức & tóm tắt tài liệu</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <!-- Scroll to Bottom Button -->
+        <button id="scrollToBottomBtn" class="scroll-bottom-btn" title="Cuộn xuống dưới">
+          <i class='bx bx-chevron-down'></i>
+        </button>
+
+        <div id="status" class="status-indicator text-muted" style="display:none"></div>
+
+        <!-- BOTTOM INPUT BAR (CHATGPT STYLE) -->
+        <div class="input-container-bottom">
+          <div class="floating-input-bar shadow-lg">
+            <div id="attachments" class="attachments-preview-row"></div>
+            <div class="input-card-row d-flex align-items-center gap-2 w-100 px-1">
+              <input id="fileImg" type="file" accept="image/*" multiple hidden>
+              <input id="fileCam" type="file" accept="image/*" capture="environment" hidden>
+              <input id="fileDoc" type="file" accept=".txt,.md,.csv,.json,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" multiple hidden>
+
+              <div class="dropdown">
+                <button class="btn btn-attach-plus text-muted rounded-circle p-2 d-flex align-items-center justify-content-center" data-bs-toggle="dropdown" title="Tính năng đính kèm">
+                  <i class="bi bi-plus-lg fs-5"></i>
+                </button>
+                <ul class="dropdown-menu shadow-lg border-0 rounded-4 p-2 mb-2">
+                  <li>
+                    <button id="pickImage" class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3">
+                      <i class="bi bi-image text-primary fs-5"></i>
+                      <span class="small fw-medium text-nowrap">Gửi hình ảnh</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button id="pickCamera" class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3">
+                      <i class="bi bi-camera text-success fs-5"></i>
+                      <span class="small fw-medium text-nowrap">Chụp ảnh</span>
+                    </button>
+                  </li>
+                  <li>
+                    <button id="pickFile" class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-3">
+                      <i class="bi bi-file-earmark-text text-info fs-5"></i>
+                      <span class="small fw-medium text-nowrap">Tải tệp tài liệu</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              <textarea id="msg" class="form-control border-0 bg-transparent px-2 py-1 chat-input-textarea" placeholder="Hỏi Btoan AI bất kỳ điều gì..." rows="1"></textarea>
+
+              <button id="send" class="btn btn-send-circle rounded-circle d-flex align-items-center justify-content-center" title="Gửi tin nhắn">
+                <i class="bi bi-arrow-up-short fs-3"></i>
+              </button>
+            </div>
+          </div>
+          <div class="input-disclaimer text-center text-muted small mt-1">
+            Btoan AI có thể mắc lỗi. Hãy kiểm tra thông tin quan trọng. Mọi thắc mắc liên hệ <a style="color: #4f46e5; text-decoration: none;" href="https://github.com/btoan2802" target="_blank">Admin</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C. PROFILE MODAL -->
+  <div id="profileModal" class="profile-modal" style="display:none">
+    <div class="profile-card">
+      <div class="avatar-upload">
+        <div id="avatarPreview" class="avatar-preview">U</div>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none">
+        <button onclick="document.getElementById('avatarInput').click()" class="btn btn-light btn-sm mt-2">Đổi ảnh</button>
+      </div>
+      <div class="profile-title">Thông tin cá nhân</div>
+      <div id="profileMsg" class="text-danger mb-2"></div>
+      <input id="pf_name" class="form-control mb-2" placeholder="Họ và tên">
+      <input id="pf_dob" class="form-control mb-3" placeholder="dd/mm/yyyy">
+      <button type="button" id="face-enroll-btn-profile" class="btn btn-face-enroll w-100 mb-3"
+        style="background: #edf2ff; color: #7494ec; border: none; font-size: 14px; height: 40px;">
+        <i class='bx bx-face'></i> Thiết lập khuôn mặt (FaceID)
+      </button>
+      <button onclick="saveProfile()" class="btn btn-primary w-100">Lưu thay đổi</button>
+    </div>
+  </div>
+
+  <!-- D. FACE ENROLL MODAL -->
+  <div id="face-enroll-modal"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:20000000; align-items:center; justify-content:center; backdrop-filter: blur(8px);">
+    <div
+      style="background:#fff; padding:30px; border-radius:24px; width:420px; max-width:92%; text-align:center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+      <h3 style="margin-top:0; font-weight:700; color:#1e293b; margin-bottom:10px;">Thiết lập FaceID</h3>
+      <p style="color:#64748b; font-size:14px; margin-bottom:20px;">Giữ điện thoại thẳng mặt và đảm bảo đủ ánh sáng</p>
+      <div
+        style="position:relative; width:100%; aspect-ratio:1/1; overflow:hidden; border-radius:50%; border:4px solid #7494ec; background:#000; margin-bottom:20px;">
+        <video id="face-video" autoplay playsinline
+          style="width:100%; height:100%; object-fit:cover; transform: scaleX(-1);"></video>
+        <div id="scan-line"
+          style="position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(to right, transparent, #7494ec, transparent); box-shadow: 0 0 15px #7494ec; animation: scanAnim 2s infinite linear; display:none;">
+        </div>
+      </div>
+      <canvas id="face-canvas" style="display:none;"></canvas>
+      <div id="face-enroll-status" style="min-height:20px; margin-bottom:15px;"></div>
+      <button type="button" id="face-close-btn" class="btn btn-danger"
+        style="background:#ef4444; height:44px; font-size:14px;">Hủy bỏ</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+  <script src="https://unpkg.com/docx@7.7.0/build/index.js"></script>
+  <script src="facelib/face-api.min.js"></script>
+  <script src="login/SignUp_LogIn_Form.js?v=19"></script>
+  <script src="js/app.js?v=36"></script>
+
+  <!-- E. CURSOR AI CODING AGENT MODAL -->
+  <div id="agentModal" class="profile-modal" style="display:none">
+    <div class="agent-modal-card bg-white rounded-4 p-4 shadow-lg position-relative" style="width: 860px; max-width: 95vw; max-height: 90vh; overflow-y: auto;">
+      <button onclick="closeAgentModal()" class="btn-close position-absolute top-0 end-0 m-3" title="Đóng"></button>
+      
+      <div class="d-flex align-items-center gap-2 mb-3">
+        <div class="brand-badge d-flex align-items-center justify-content-center" style="width:36px; height:36px;">
+          <i class="bi bi-robot fs-5"></i>
+        </div>
+        <div>
+          <h4 class="fw-bold text-dark m-0">Cursor AI Coding Agent</h4>
+          <span class="text-muted extra-small">Tự động quét dự án, lập kế hoạch, sửa file & tự động sửa lỗi build</span>
+        </div>
+      </div>
+
+      <!-- AGENT TASK INPUT -->
+      <div id="agent-input-step" class="mb-4">
+        <label class="fw-semibold text-dark small mb-1">Mô tả yêu cầu thay đổi mã nguồn (Prompt):</label>
+        <textarea id="agentPrompt" class="form-control rounded-3 border p-3 small" rows="3" placeholder="Ví dụ: Thêm chức năng giỏ hàng vào dự án BtoanAI..."></textarea>
+        <button id="btnRunAgentAnalyze" onclick="runAgentAnalyze()" class="btn btn-primary w-100 mt-2 rounded-pill fw-semibold py-2">
+          <i class="bi bi-magic me-1"></i> Bước 1: Quét dự án & Đề xuất Diff thay đổi
+        </button>
+      </div>
+
+      <!-- AGENT WORKFLOW STEPS -->
+      <div id="agent-workflow-steps" style="display:none">
+        <div class="agent-stepper d-flex align-items-center justify-content-between mb-3 border-bottom pb-3">
+          <div id="step-badge-1" class="step-item small fw-semibold text-primary"><i class="bi bi-search me-1"></i> 1. Quét dự án</div>
+          <i class="bi bi-chevron-right text-muted extra-small"></i>
+          <div id="step-badge-2" class="step-item small fw-semibold text-primary"><i class="bi bi-file-earmark-diff me-1"></i> 2. Xem Diff</div>
+          <i class="bi bi-chevron-right text-muted extra-small"></i>
+          <div id="step-badge-3" class="step-item small fw-semibold text-primary"><i class="bi bi-check-circle me-1"></i> 3. User Approve</div>
+          <i class="bi bi-chevron-right text-muted extra-small"></i>
+          <div id="step-badge-4" class="step-item small fw-semibold text-primary"><i class="bi bi-hammer me-1"></i> 4. Build & Auto-Fix</div>
+        </div>
+
+        <div id="agent-summary-box" class="alert alert-indigo rounded-3 small mb-3"></div>
+
+        <!-- FILE PROPOSALS & DIFF LIST -->
+        <div id="agent-proposals-container" class="mb-4"></div>
+
+        <!-- APPROVAL ACTION BAR -->
+        <div id="agent-approval-bar" class="d-flex align-items-center justify-content-end gap-2 border-top pt-3">
+          <button onclick="closeAgentModal()" class="btn btn-light rounded-pill px-4 btn-sm fw-medium">Hủy bỏ</button>
+          <button id="btnApplyAgentChanges" onclick="runAgentApply()" class="btn btn-success rounded-pill px-4 btn-sm fw-semibold">
+            <i class="bi bi-check-lg me-1"></i> Duyệt & Thực thi sửa file thật (Approve & Build)
+          </button>
+        </div>
+
+        <!-- AGENT BUILD & TERMINAL OUTPUT -->
+        <div id="agent-build-output-box" class="mt-3" style="display:none">
+          <div class="fw-semibold text-dark small mb-1"><i class="bi bi-terminal me-1"></i> Terminal Output (`dotnet build`):</div>
+          <pre id="agentTerminalLog" class="bg-dark text-light p-3 rounded-3 extra-small" style="max-height: 220px; overflow-y: auto; font-family: var(--font-mono);"></pre>
+          <div id="agentBuildStatusAlert" class="mt-2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- G. IMAGE PREVIEW MODAL -->
+  <div id="image-preview-modal" class="image-preview-modal" onclick="closeImagePreview()" style="display:none">
+    <span class="close-preview" onclick="closeImagePreview()">&times;</span>
+    <img id="preview-img" class="preview-content" src="" alt="" onerror="this.style.display='none'">
+  </div>
+
+  <script>
+    function quickPrompt(text) {
+      const msgEl = document.getElementById("msg");
+      if (msgEl) {
+        msgEl.value = text;
+        msgEl.focus();
+      }
+    }
+
+    let currentAgentProposal = null;
+
+    function openAgentModal() {
+      const modal = document.getElementById("agentModal");
+      if (modal) modal.style.display = "flex";
+    }
+
+    function closeAgentModal() {
+      const modal = document.getElementById("agentModal");
+      if (modal) modal.style.display = "none";
+    }
+
+    async function runAgentAnalyze() {
+      const prompt = document.getElementById("agentPrompt")?.value;
+      if (!prompt || !prompt.trim()) {
+        alert("Vui lòng nhập mô tả yêu cầu!");
+        return;
+      }
+
+      const btn = document.getElementById("btnRunAgentAnalyze");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Đang quét dự án & tạo Diff...`;
+
+      try {
+        const res = await fetch("/ai/api/agent/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: prompt.trim() })
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-magic me-1"></i> Bước 1: Quét dự án & Đề xuất Diff thay đổi`;
+
+        if (!data.ok) {
+          alert("Lỗi Agent: " + (data.error || "Không thể phân tích"));
+          return;
+        }
+
+        currentAgentProposal = data;
+        renderAgentProposals(data);
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-magic me-1"></i> Bước 1: Quét dự án & Đề xuất Diff thay đổi`;
+        alert("Lỗi kết nối Agent: " + err.message);
+      }
+    }
+
+    function renderAgentProposals(data) {
+      document.getElementById("agent-workflow-steps").style.display = "block";
+      document.getElementById("agent-summary-box").innerText = "📋 Đề xuất: " + (data.summary || "");
+
+      const container = document.getElementById("agent-proposals-container");
+      container.innerHTML = "";
+
+      if (!data.proposals || data.proposals.length === 0) {
+        container.innerHTML = `<div class="text-muted small">Không tìm thấy file cần thay đổi.</div>`;
+        return;
+      }
+
+      data.proposals.forEach((p, idx) => {
+        const card = document.createElement("div");
+        card.className = "border rounded-3 p-3 mb-2 bg-light";
+        const badgeColor = p.actionType === "CREATE" ? "bg-success" : "bg-primary";
+        card.innerHTML = `
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <span class="fw-bold small text-dark"><i class="bi bi-file-earmark-code me-1"></i>${p.relativePath}</span>
+            <span class="badge ${badgeColor}">${p.actionType}</span>
+          </div>
+          <pre class="bg-dark text-light p-2 rounded-2 extra-small mb-0" style="max-height: 160px; overflow-y: auto;"><code>${escapeHtml(p.diff || p.proposedContent)}</code></pre>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function runAgentApply() {
+      if (!currentAgentProposal || !currentAgentProposal.proposals) return;
+
+      const btn = document.getElementById("btnApplyAgentChanges");
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner-border spinner-border-sm me-1"></span> Đang ghi file & 'dotnet build'...`;
+
+      const outputBox = document.getElementById("agent-build-output-box");
+      const terminalLog = document.getElementById("agentTerminalLog");
+      const statusAlert = document.getElementById("agentBuildStatusAlert");
+      outputBox.style.display = "block";
+      terminalLog.innerText = "Ghi file thật lên ổ đĩa...\nĐang chạy command `dotnet build`...\n";
+
+      try {
+        const res = await fetch("/ai/api/agent/apply", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approvedProposals: currentAgentProposal.proposals })
+        });
+        const data = await res.json();
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-check-lg me-1"></i> Duyệt & Thực thi sửa file thật (Approve & Build)`;
+
+        if (!data.ok) {
+          statusAlert.className = "alert alert-danger small mb-0";
+          statusAlert.innerText = "❌ Lỗi thực thi Agent: " + (data.error || "Build thất bại");
+          terminalLog.innerText += data.buildOutput || "";
+          return;
+        }
+
+        terminalLog.innerText = data.buildOutput || "Build completed successfully.";
+        if (data.buildSucceeded) {
+          statusAlert.className = "alert alert-success small mb-0";
+          statusAlert.innerText = `🎉 Thành công! Đã ghi ${data.appliedFiles ? data.appliedFiles.length : 0} file thật và 'dotnet build' thành công 100%! (Số lần tự fix lỗi: ${data.autoFixAttempts || 0})`;
+        } else {
+          statusAlert.className = "alert alert-warning small mb-0";
+          statusAlert.innerText = `⚠️ Cảnh báo: Đã ghi file nhưng 'dotnet build' gặp lỗi biên dịch. Hãy kiểm tra terminal output ở trên.`;
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = `<i class="bi bi-check-lg me-1"></i> Duyệt & Thực thi sửa file thật (Approve & Build)`;
+        alert("Lỗi kết nối thực thi Agent: " + err.message);
+      }
+    }
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,19 @@
+## Build & Output folders
+[Bb]in/
+[Oo]bj/
+publish/
+publish_out/
+publish_linux/
+
+## Visual Studio & IDE
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## User-uploaded workspaces
+wwwroot/uploads/workspaces/
+
+## Sensitive configuration files
+appsettings.Production.json

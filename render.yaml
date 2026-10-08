@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: btoan-ai-net
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore # or oregon / frankfurt
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:8080
+      - key: DbProvider
+        value: MySql
+      - key: ConnectionStrings__DefaultConnection
+        sync: false # Set via dashboard to keep secret
