@@ -1,5 +1,6 @@
 using BtoanAiNet.Data;
 using BtoanAiNet.Models;
+using BtoanAiNet.Services.VectorDb;
 using Microsoft.EntityFrameworkCore;
 
 namespace BtoanAiNet.Services
@@ -7,13 +8,65 @@ namespace BtoanAiNet.Services
     public class ContextRetrieverService : IContextRetrieverService
     {
         private readonly IServiceScopeFactory _scopeFactory;
+        private readonly IVectorDatabaseService _vectorDb;
+        private readonly IEmbeddingService _embeddingService;
+        private readonly ILogger<ContextRetrieverService> _logger;
 
-        public ContextRetrieverService(IServiceScopeFactory scopeFactory)
+        public ContextRetrieverService(
+            IServiceScopeFactory scopeFactory,
+            IVectorDatabaseService vectorDb,
+            IEmbeddingService embeddingService,
+            ILogger<ContextRetrieverService> logger)
         {
             _scopeFactory = scopeFactory;
+            _vectorDb = vectorDb;
+            _embeddingService = embeddingService;
+            _logger = logger;
         }
 
         public async Task<List<ProjectFile>> GetRelevantFilesAsync(int projectId, string prompt, int maxFiles = 5)
+        {
+            try
+            {
+                // 1. Semantic Vector Search via Qdrant
+                var promptVector = await _embeddingService.GenerateEmbeddingAsync(prompt);
+                string collectionName = $"project_{projectId}_codebase";
+
+                var searchHits = await _vectorDb.SearchAsync(collectionName, promptVector, topK: maxFiles, minScore: 0.60f);
+                if (searchHits.Count > 0)
+                {
+                    var filePaths = searchHits
+                        .Select(h => h.GetPayloadValue<string>("filePath"))
+                        .Where(p => !string.IsNullOrEmpty(p))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+
+                    if (filePaths.Count > 0)
+                    {
+                        using var scope = _scopeFactory.CreateScope();
+                        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                        var matchedFiles = await dbContext.ProjectFiles
+                            .Where(f => f.ProjectId == projectId && !f.IsDirectory && filePaths.Contains(f.RelativePath))
+                            .ToListAsync();
+
+                        if (matchedFiles.Count > 0)
+                        {
+                            return matchedFiles;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Vector retrieval failed for project {ProjectId}. Falling back to keyword search.", projectId);
+            }
+
+            // 2. Resilient Keyword Search Fallback
+            return await FallbackKeywordSearchAsync(projectId, prompt, maxFiles);
+        }
+
+        private async Task<List<ProjectFile>> FallbackKeywordSearchAsync(int projectId, string prompt, int maxFiles)
         {
             using var scope = _scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();

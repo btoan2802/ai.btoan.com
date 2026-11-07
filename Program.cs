@@ -1,6 +1,11 @@
 using BtoanAiNet.Data;
 using BtoanAiNet.Repositories;
 using BtoanAiNet.Services;
+using BtoanAiNet.Services.VectorDb;
+using BtoanAiNet.Messaging.Consumers;
+using BtoanAiNet.FunctionCalling.Services;
+using BtoanAiNet.FunctionCalling.Tools;
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -66,6 +71,54 @@ builder.Services.AddScoped<IAgentOrchestrator, AgentOrchestrator>();
 builder.Services.AddScoped<IDiffService, DiffService>();
 builder.Services.AddScoped<IAgentTeamManager, AgentTeamManager>();
 builder.Services.AddScoped<IDeploymentService, DeploymentService>();
+
+// Vector Database & Semantic Embeddings
+builder.Services.AddHttpClient<IVectorDatabaseService, QdrantVectorDatabaseService>();
+builder.Services.AddHttpClient<IEmbeddingService, EmbeddingService>();
+builder.Services.AddSingleton<ISemanticChunkingService, SemanticChunkingService>();
+
+// MassTransit Message Queue (RabbitMQ with In-Memory fallback for Dev)
+builder.Services.AddMassTransit(x =>
+{
+    x.AddConsumer<MediaGenerationConsumer>();
+
+    string? rabbitHost = builder.Configuration["RabbitMQ:Host"];
+    if (!string.IsNullOrEmpty(rabbitHost) && !rabbitHost.Equals("in-memory", StringComparison.OrdinalIgnoreCase))
+    {
+        x.UsingRabbitMq((context, cfg) =>
+        {
+            cfg.Host(rabbitHost, "/", h =>
+            {
+                h.Username(builder.Configuration["RabbitMQ:User"] ?? "guest");
+                h.Password(builder.Configuration["RabbitMQ:Pass"] ?? "guest");
+            });
+
+            cfg.ReceiveEndpoint("btoan-media-generation-queue", e =>
+            {
+                e.ConfigureConsumer<MediaGenerationConsumer>(context);
+            });
+        });
+    }
+    else
+    {
+        x.UsingInMemory((context, cfg) =>
+        {
+            cfg.ConfigureEndpoints(context);
+        });
+    }
+});
+
+// Native Function Calling Engine
+builder.Services.AddSingleton<IToolRegistry>(sp =>
+{
+    var registry = new ToolRegistry();
+    registry.RegisterServiceTools<IWorkspaceTools>();
+    return registry;
+});
+builder.Services.AddScoped<IWorkspaceTools, WorkspaceTools>();
+builder.Services.AddScoped<IFunctionCallingDispatcher, FunctionCallingDispatcher>();
+builder.Services.AddScoped<IAgentToolLoopOrchestrator, AgentToolLoopOrchestrator>();
+
 builder.Services.AddSignalR();
 
 builder.Services.AddDistributedMemoryCache();
