@@ -17,6 +17,7 @@ namespace BtoanAiNet.Services
         private readonly HttpClient _httpClient;
         private readonly IConversationRepository _conversationRepository;
         private readonly IIntentEngineService _intentEngineService;
+        private readonly IConfiguration _configuration;
 
         private static readonly string[] ApiKeys = new[]
         {
@@ -107,11 +108,32 @@ namespace BtoanAiNet.Services
         public ImageGenerationService(
             HttpClient httpClient,
             IConversationRepository conversationRepository,
-            IIntentEngineService intentEngineService)
+            IIntentEngineService intentEngineService,
+            IConfiguration configuration)
         {
             _httpClient = httpClient;
             _conversationRepository = conversationRepository;
             _intentEngineService = intentEngineService;
+            _configuration = configuration;
+        }
+
+        private List<string> GetConfiguredApiKeys()
+        {
+            var keys = new List<string>();
+            string? singleKey = _configuration["Gemini:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(singleKey)) keys.Add(singleKey.Trim());
+
+            var arrayKeys = _configuration.GetSection("Gemini:ApiKeys").Get<string[]>();
+            if (arrayKeys != null)
+            {
+                keys.AddRange(arrayKeys.Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()));
+            }
+
+            string? envKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+            if (!string.IsNullOrWhiteSpace(envKey)) keys.Add(envKey.Trim());
+
+            keys.AddRange(ApiKeys);
+            return keys.Distinct().ToList();
         }
 
         public async Task<JsonObject> GenerateImageAsync(ImageGenerationRequestModel model)
@@ -161,7 +183,7 @@ namespace BtoanAiNet.Services
             Console.WriteLine("[IMAGE API PROMPT] " + refinedPrompt);
             Console.WriteLine("[IMAGE API FALLBACK KEYWORD] " + CleanPromptForAI(prompt));
 
-            var keys = ApiKeys.OrderBy(_ => Guid.NewGuid()).ToArray();
+            var keys = GetConfiguredApiKeys().OrderBy(_ => Guid.NewGuid()).ToArray();
             string modelName = "gemini-2.5-flash-image";
             string lastError = "Unknown Gemini API error";
 
@@ -257,18 +279,19 @@ namespace BtoanAiNet.Services
             try
             {
                 string keywords = CleanPromptForAI(prompt);
-                string encodedPrompt = Uri.EscapeDataString(keywords);
+                string searchPrompt = (!string.IsNullOrWhiteSpace(prompt) && prompt.Length > 5 && prompt.Length < 400) ? prompt : keywords;
+                string encodedPrompt = Uri.EscapeDataString(searchPrompt);
 
                 byte[]? imgBytes = null;
                 try
                 {
-                    using var req = new HttpRequestMessage(HttpMethod.Get, $"https://image.pollinations.ai/prompt/{encodedPrompt}");
+                    using var req = new HttpRequestMessage(HttpMethod.Get, $"https://image.pollinations.ai/prompt/{encodedPrompt}?width=1024&height=1024&nologo=true");
                     req.Headers.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
                     var res = await _httpClient.SendAsync(req);
                     if (res.IsSuccessStatusCode)
                     {
                         var readBytes = await res.Content.ReadAsByteArrayAsync();
-                        if (readBytes != null && readBytes.Length > 10000)
+                        if (readBytes != null && readBytes.Length > 1000)
                         {
                             imgBytes = readBytes;
                         }
@@ -358,7 +381,7 @@ namespace BtoanAiNet.Services
             var intentObj = await _intentEngineService.AnalyzeIntentAsync(prompt, true);
             string protection = _intentEngineService.GetSystemProtection(intentObj);
 
-            var keys = ApiKeys.OrderBy(_ => Guid.NewGuid()).ToArray();
+            var keys = GetConfiguredApiKeys().OrderBy(_ => Guid.NewGuid()).ToArray();
             string modelName = "gemini-2.5-flash-image";
             string lastError = "Unknown Gemini Edit API error";
 

@@ -13,6 +13,8 @@ namespace BtoanAiNet.Services
     public class IntentEngineService : IIntentEngineService
     {
         private readonly HttpClient _httpClient;
+        private readonly IConfiguration _configuration;
+
         private static readonly string[] ApiKeys = new[]
         {
             "AIzaSyCj5togPa80e1bI9Vup74BFOl44D08sZLw",
@@ -25,14 +27,34 @@ namespace BtoanAiNet.Services
             "AIzaSyBdwrghehTW22SuWH0Yq2jBbv6H5OZ4Ce8"
         };
 
-        public IntentEngineService(HttpClient httpClient)
+        public IntentEngineService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
+            _configuration = configuration;
+        }
+
+        private List<string> GetConfiguredApiKeys()
+        {
+            var keys = new List<string>();
+            string? singleKey = _configuration["Gemini:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(singleKey)) keys.Add(singleKey.Trim());
+
+            var arrayKeys = _configuration.GetSection("Gemini:ApiKeys").Get<string[]>();
+            if (arrayKeys != null)
+            {
+                keys.AddRange(arrayKeys.Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()));
+            }
+
+            string? envKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+            if (!string.IsNullOrWhiteSpace(envKey)) keys.Add(envKey.Trim());
+
+            keys.AddRange(ApiKeys);
+            return keys.Distinct().ToList();
         }
 
         public async Task<JsonObject> AnalyzeIntentAsync(string userMessage, bool hasImages = false, bool hasFiles = false)
         {
-            var keys = ApiKeys.OrderBy(_ => Guid.NewGuid()).ToArray();
+            var keys = GetConfiguredApiKeys().OrderBy(_ => Guid.NewGuid()).ToArray();
             string prompt = $@"Analyze the following user message to identify their intent and constraints for an AI assistant.
 Respond ONLY with a JSON object.
 

@@ -7,3 +7,4 @@ namespace BtoanAiNet.Services.VectorDb
         Task<List<float[]>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, CancellationToken cancellationToken = default);
     }
 }
+

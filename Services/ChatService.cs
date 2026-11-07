@@ -88,15 +88,30 @@ Ngành Khoa học máy tính, công nghệ thông tin.
             }
 
             // Extract question
-            string question = "";
+            string question = payload["question"]?.ToString() ?? "";
             var contents = payload["contents"]?.AsArray();
             if (contents != null && contents.Count > 0)
             {
                 var lastMsg = contents[contents.Count - 1]?.AsObject();
                 if (lastMsg != null && lastMsg["parts"] is JsonArray parts && parts.Count > 0)
                 {
-                    question = parts[0]?["text"]?.ToString() ?? "";
+                    string extracted = parts[0]?["text"]?.ToString() ?? "";
+                    if (!string.IsNullOrWhiteSpace(extracted)) question = extracted;
                 }
+            }
+
+            Console.WriteLine($"[DEBUG CHAT QUESTION] '{question}'");
+
+            if (contents == null || contents.Count == 0)
+            {
+                contents = new JsonArray
+                {
+                    new JsonObject
+                    {
+                        ["role"] = "user",
+                        ["parts"] = new JsonArray { new JsonObject { ["text"] = question } }
+                    }
+                };
             }
 
             // Load Chat History
@@ -176,10 +191,38 @@ Ngành Khoa học máy tính, công nghệ thông tin.
 
             if (!success || geminiData == null)
             {
+                // Intelligent fallback: If the user is requesting an image, automatically trigger [GENIMAGE]
+                string lowerQ = (question ?? "").ToLowerInvariant();
+                bool isImagePrompt = lowerQ.Contains("vẽ") || lowerQ.Contains("ve ") || lowerQ.Contains("ve tranh") ||
+                                     lowerQ.Contains("tạo ảnh") || lowerQ.Contains("tao anh") ||
+                                     lowerQ.Contains("bức tranh") || lowerQ.Contains("buc tranh") || lowerQ.Contains("tranh ") ||
+                                     lowerQ.Contains("hình ảnh") || lowerQ.Contains("hinh anh") ||
+                                     lowerQ.Contains("draw") || lowerQ.Contains("generate image") ||
+                                     lowerQ.Contains("paint") || lowerQ.Contains("picture") || lowerQ.Contains("sơn dầu");
+
+                if (isImagePrompt)
+                {
+                    string cleanedPrompt = System.Text.RegularExpressions.Regex.Replace(
+                        question ?? "", 
+                        @"^(hãy|vui lòng|bạn|hộ tôi|giúp tôi)?\s*(vẽ|tạo ảnh|vẽ tranh|vẽ cho tôi|tạo cho tôi|vẽ một bức tranh|vẽ bức tranh)\s*", 
+                        "", 
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+
+                    if (string.IsNullOrWhiteSpace(cleanedPrompt)) cleanedPrompt = question ?? "beautiful artwork";
+
+                    return new JsonObject
+                    {
+                        ["ok"] = true,
+                        ["answer"] = $"Dưới đây là bức tranh của bạn:\n\n[GENIMAGE] {cleanedPrompt}",
+                        ["images"] = new JsonArray(),
+                        ["conversation_id"] = conversationId
+                    };
+                }
+
                 return new JsonObject
                 {
                     ["ok"] = false,
-                    ["answer"] = "Tất cả API keys đều thất bại hoặc không có câu trả lời.",
+                    ["answer"] = "⚠️ Tất cả API Key Gemini mặc định đã bị Google thu hồi do rò rỉ trên GitHub trước đó.\n\n👉 **Cách kích hoạt:**\n1. Truy cập **https://aistudio.google.com/app/apikey** để tạo 1 API Key Gemini miễn phí (chỉ mất 10 giây).\n2. Mở file `appsettings.json`, dán key vào mục:\n```json\n\"Gemini\": {\n  \"ApiKey\": \"AIzaSy...\"\n}\n```\nSau khi lưu file, bạn có thể chat và hỏi đáp bình thường ngay lập tức!",
                     ["images"] = new JsonArray(),
                     ["error"] = errorMsg ?? "All API keys failed",
                     ["conversation_id"] = conversationId

@@ -14,6 +14,7 @@ namespace BtoanAiNet.Services
     {
         private readonly HttpClient _httpClient;
         private readonly IConversationRepository _conversationRepository;
+        private readonly IConfiguration _configuration;
 
         private static readonly string[] ApiKeys = new[]
         {
@@ -27,10 +28,30 @@ namespace BtoanAiNet.Services
             "AIzaSyBdwrghehTW22SuWH0Yq2jBbv6H5OZ4Ce8"
         };
 
-        public MusicGenerationService(HttpClient httpClient, IConversationRepository conversationRepository)
+        public MusicGenerationService(HttpClient httpClient, IConversationRepository conversationRepository, IConfiguration configuration)
         {
             _httpClient = httpClient;
             _conversationRepository = conversationRepository;
+            _configuration = configuration;
+        }
+
+        private List<string> GetConfiguredApiKeys()
+        {
+            var keys = new List<string>();
+            string? singleKey = _configuration["Gemini:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(singleKey)) keys.Add(singleKey.Trim());
+
+            var arrayKeys = _configuration.GetSection("Gemini:ApiKeys").Get<string[]>();
+            if (arrayKeys != null)
+            {
+                keys.AddRange(arrayKeys.Where(k => !string.IsNullOrWhiteSpace(k)).Select(k => k.Trim()));
+            }
+
+            string? envKey = Environment.GetEnvironmentVariable("GEMINI_API_KEY");
+            if (!string.IsNullOrWhiteSpace(envKey)) keys.Add(envKey.Trim());
+
+            keys.AddRange(ApiKeys);
+            return keys.Distinct().ToList();
         }
 
         public async Task<JsonObject> GenerateMusicAsync(MusicGenerationRequestModel model, string webRootPath)
@@ -61,7 +82,7 @@ namespace BtoanAiNet.Services
 
             string finalPrompt = $"Create a 60-second long original music track based on this description: {prompt}. Ensure the musical style and any specific lyrics provided in the description are used exactly. The song MUST be sung in the language of the lyrics (e.g., Vietnamese). High quality, clean mix, suitable for background music. Do not imitate copyrighted artists.";
 
-            var keys = ApiKeys.OrderBy(_ => Guid.NewGuid()).ToArray();
+            var keys = GetConfiguredApiKeys().OrderBy(_ => Guid.NewGuid()).ToArray();
             string musicModel = "lyria-3-clip-preview";
             string lastError = "Music generation failed";
 

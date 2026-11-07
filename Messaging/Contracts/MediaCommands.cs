@@ -32,3 +32,4 @@ namespace BtoanAiNet.Messaging.Contracts
         public DateTime Timestamp { get; init; } = DateTime.UtcNow;
     }
 }
+

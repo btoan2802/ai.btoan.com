@@ -40,3 +40,4 @@ namespace BtoanAiNet.Services.VectorDb
         Task<bool> IsHealthyAsync(CancellationToken cancellationToken = default);
     }
 }
+
