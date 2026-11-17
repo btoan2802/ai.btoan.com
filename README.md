@@ -111,3 +111,4 @@ Open `http://localhost:8000` in your web browser. Ensure camera permissions are 
 - **Author**: Nguyễn Bảo Toàn ([@btoan2802](https://github.com/btoan2802))
 - **Website**: [ai.btoan.com](https://ai.btoan.com)
 - **License**: MIT License
+
